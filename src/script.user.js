@@ -5,8 +5,8 @@
 // @description  Generate labels for selected rows of the items in the reference book.
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
-// @downloadURL  https://raw.githubusercontent.com/martynas2200/b1-labels/master/src/userscript.js
-// @updateURL    https://raw.githubusercontent.com/martynas2200/b1-labels/master/src/userscript.js
+// @downloadURL  https://raw.githubusercontent.com/martynas2200/b1-labels/master/src/script.user.js
+// @updateURL    https://raw.githubusercontent.com/martynas2200/b1-labels/master/src/script.user.js
 // @grant        unsafeWindow
 // @license      GNU GPLv3
 // ==/UserScript==
@@ -234,6 +234,12 @@
     // Main function to process selected rows
     function processSelectedRows() {
         const data = extractDataFromAngular();
+
+        if (data.length === 0) {
+            alert('Nepasirinkote jokių prekių');
+            return;
+        }
+
         const labels = data.map(generateLabel);
 
         const popup = window.open('', '_blank', 'width=700,height=700');
