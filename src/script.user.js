@@ -5,8 +5,8 @@
 // @description  Generate labels for selected rows of the items in the reference book.
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
-// @downloadURL  https://raw.githubusercontent.com/martynas2200/b1-labels/master/src/script.user.js
-// @updateURL    https://raw.githubusercontent.com/martynas2200/b1-labels/master/src/script.user.js
+// @downloadURL  https://raw.githubusercontent.com/martynas2200/b1-labels/main/src/script.user.js
+// @updateURL    https://raw.githubusercontent.com/martynas2200/b1-labels/main/src/script.user.js
 // @grant        unsafeWindow
 // @license      GNU GPLv3
 // ==/UserScript==
@@ -14,6 +14,77 @@
 (function() {
     'use strict';
 
+    // Global variable indicating whether all selected items are active in POS system
+    var isEverythingActive = true;
+
+    // Append button to the block with class "navbar-shortcuts"
+    const navbarShortcuts = document.querySelector('.navbar-shortcuts');
+    const settingsButton = document.createElement('span');
+    settingsButton.textContent = 'Spausdinimo nustatymai';
+    settingsButton.addEventListener('click', openSettingsModal); 
+
+    const liElement = document.createElement('li');
+    const aElement = document.createElement('a');
+    aElement.href = '#';
+    aElement.appendChild(settingsButton);
+    aElement.className = 'navbar-shortcut'; 
+
+    liElement.appendChild(aElement);
+    navbarShortcuts.querySelector('ul').appendChild(liElement);
+
+    // Create modal to hold the settings
+    const modal = document.createElement('div');
+    modal.style.display = 'none';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.7)';
+    modal.style.zIndex = '10000';
+    modal.innerHTML = `
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #fff; padding: 20px; border-radius: 5px;">
+            <h2>Silent Printing Settings</h2>
+            <label>
+                <input type="checkbox" id="enableSilentPrinting">Automatiškai uždaryti spaudinimo langą (kai įgalintas tylusis spausdinimas)
+            </label>
+            <br><br>
+            <button id="saveSettings">Išsaugoti</button>
+            <button id="closeModal">Uždaryti</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Function to open modal
+    function openSettingsModal() {
+        modal.style.display = 'block';
+    }
+
+    // Function to close modal
+    function closeSettingsModal() {
+        modal.style.display = 'none';
+    }
+
+    // Load saved settings from local storage when the page loads
+    window.addEventListener('DOMContentLoaded', function() {
+        this.setTimeout(() => { // Timeout is needed because the settings button is created after the DOMContentLoaded event, perhaps not efficient way to do this
+            const savedEnableSilentPrinting = localStorage.getItem('enableSilentPrinting');
+            document.getElementById('enableSilentPrinting').checked = (savedEnableSilentPrinting === 'true');
+        }, 2000);
+    });
+    // Save button click event
+    document.getElementById('saveSettings').addEventListener('click', function() {
+        const enableSilentPrinting = document.getElementById('enableSilentPrinting').checked;        
+        localStorage.setItem('enableSilentPrinting', enableSilentPrinting);
+
+        console.log('Silent Printing Enabled:', enableSilentPrinting);
+        closeSettingsModal();
+    });
+
+    // Close modal button click event
+    document.getElementById('closeModal').addEventListener('click', closeSettingsModal);
+
+    // Styles for the label printing
     const labelStyles = `
         .label {
             position: relative;
@@ -113,23 +184,27 @@
 
     // Helper function to split price into whole and decimal parts
     function splitPrice(price) {
-        const parts = price.toFixed(2).toString().split('.');
+        const parts = parseFloat(price).toFixed(2).toString().split('.');
         const wholePart = parts[0];
         const decimalPart = parts[1];
         return { wholePart, decimalPart };
     }
 
     // Helper function to extract data from the Angular controller
+    // reference-book/items
     function extractDataFromAngular() {
         const selectedRows = angular.element(document.querySelector(".data-rows")).controller().grid.data.filter(a => a._select);
+        isEverythingActive = true;
         const extractedData = selectedRows.map(row => {
             const { wholePart, decimalPart } = splitPrice(row.priceWithVat || 0);
             // Calculate the whole unit price, (a can of soda) 1.49/0.330 = 4.51eur/l
             // const unitPrice = (row.priceWithVat && row.minQuantity) ? (row.priceWithVat / row.minQuantity).toFixed(2) + "&euro;/" + row.measurementUnitName : "";
+            if (!row.isActive) isEverythingActive = false;
             return {
-                title: row.name,
+                name: row.name,
                 barcode: row.barcode,
                 code: row.code,
+                priceWithVat: row.priceWithVat,
                 price: { wholePart, decimalPart },
                 ageLimit: row.ageLimit,
                 packageCode: row.packageCode,
@@ -139,6 +214,25 @@
             };
         });
         return extractedData;
+    }
+
+    function getBarcodeType(barcode) {
+        if (/^\d+$/.test(barcode)) {
+            return 'code128';
+        } else if (barcode.length === 8) {
+            return '8';
+        } else if (barcode.length === 13) {
+            return '13';
+        } else {
+            return 'code128';
+        }
+    }
+
+    // if the text is in quotes, or is a word with at least 3 capital letters, make it bold
+    function makeUpperCaseBold(text) {
+        const regex = /("[^"]+"|[A-ZŽĄČĘĖĮŠŲŪ]{3,})/g;
+    
+        return text.replace(regex, '<b>$1</b>');
     }
 
     // Helper function to generate a label for a single row
@@ -158,7 +252,8 @@
     
         const item = document.createElement('div');
         item.className = 'item';
-        item.textContent = data.title;
+        // item.textContent = data.name;
+        item.innerHTML = makeUpperCaseBold(data.name);
     
         if (data.barcode || data.code) {
             const barcode = document.createElement('div');
@@ -166,21 +261,23 @@
             const barcodeText = document.createElement('div');
             barcodeText.textContent = (data.barcode || "") + ((data.code && data.barcode) ? ' (' + data.code + ')' : " " + (data.code || ""));
             const barcodeImage = document.createElement('img');
-            barcodeImage.src = `https://barcode.orcascan.com/?type=code128&data=${data.barcode || data.code}`;
+            barcodeImage.src = `https://barcodeapi.org/api/${ getBarcodeType(data.barcode || data.code)}/${data.barcode || data.code}`;
             barcode.appendChild(barcodeText);
             barcode.appendChild(barcodeImage);
             label.appendChild(barcode);
         }
-        
-        const price = document.createElement('div');
-        price.className = 'price';
-        const whole = document.createElement('span');
-        whole.className = 'whole';
-        whole.textContent = data.price.wholePart;
-        const sup = document.createElement('sup');
-        sup.textContent = data.price.decimalPart;
-        price.appendChild(whole);
-        price.appendChild(sup);
+        if (data.priceWithVat) {
+            const price = document.createElement('div');
+            price.className = 'price';
+            const whole = document.createElement('span');
+            whole.className = 'whole';
+            whole.textContent = data.price.wholePart;
+            const sup = document.createElement('sup');
+            sup.textContent = data.price.decimalPart;
+            price.appendChild(whole);
+            price.appendChild(sup);
+            label.appendChild(price);
+        }
     
         if (data.packageCode?.length > 0) {
             const deposit = document.createElement('div');
@@ -201,14 +298,13 @@
         }
 
         label.appendChild(item);
-        label.appendChild(price);
 
         return label;
     }
     
 
-    function addPrintButton() {
-        const buttonsLeft = document.querySelector('.buttons-left');
+    function addPrintButton(parentSelector = '.buttons-left') {
+        const buttonsLeft = document.querySelector(parentSelector);
         if (!buttonsLeft || document.querySelector('.print')) return;
         const printDiv = document.createElement('div');
         printDiv.className = 'print';
@@ -239,6 +335,9 @@
             alert('Nepasirinkote jokių prekių');
             return;
         }
+        if (!isEverythingActive && !confirm('Nevisos spausdinamos etiketės aktyvios, ar tęsti?')) {
+            return;
+        }
 
         const labels = data.map(generateLabel);
 
@@ -255,11 +354,45 @@
         });
 
         popup.print();
+        if (localStorage.getItem('enableSilentPrinting') === 'true') {
+            setTimeout(() => {
+                popup.close();
+            }, 500);
+        }
     }
+
+    function processEditingView() {
+        var data = angular.element(document.querySelector("ng-form")).controller().model;
+        if (!data.name && (!data.barcode || !data.code) && !data.priceWithVat) {
+            alert('Etiketė negali būti sugeneruota, nes trūksta duomenų');
+            return;
+        }
+        data.price = splitPrice(data.priceWithVat || 0);
+
+        const label = generateLabel(data);
+        const style = document.createElement('style');
+        style.innerHTML = labelStyles;
+
+        const popup = window.open('', '_blank', 'width=700,height=700');
+        popup.document.title = 'Etiketės spausdinimas';
+        popup.document.head.appendChild(style);
+        popup.document.body.appendChild(label);
+
+        popup.print();
+        if (localStorage.getItem('enableSilentPrinting') === 'true') {
+            setTimeout(() => {
+                popup.close();
+            }, 500);
+        }
+    }
+
     function waitAndAddPrintButton() {
         var interval = setInterval(function() {
             if (window.location.pathname === "/reference-book/items") {
                 addPrintButton();
+            }
+            else if (window.location.pathname === "/reference-book/items/edit") {
+                addPrintButton('.btn-ctrl');
             }
         }, 2000);
     }
@@ -273,6 +406,10 @@
         if (event.target.closest('.buttons-left .print')) { 
             event.preventDefault();
             processSelectedRows();
+        }
+        else if (event.target.closest('.btn-ctrl .print')) {
+            event.preventDefault();
+            processEditingView();
         }
     });
 })();
