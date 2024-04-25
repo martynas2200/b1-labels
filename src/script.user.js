@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @description  Generate labels for selected rows of the items in the reference book.
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
@@ -129,8 +129,6 @@
 
     // Styles for the label printing
     const labelStyles = `
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap');
-
         body {
             margin: 0;
             padding: 0;
@@ -142,7 +140,7 @@
             height: 31.75mm;
             width: 57.15mm;
             border: 0.5px solid #ffdfd4;
-            margin: 10px;
+            margin: 0px;
             box-sizing: border-box;
             overflow: hidden;
         }
@@ -179,17 +177,14 @@
         .price {
             position: absolute;
             bottom: 22px;
-            font-size: 45px;
+            font-size: 50px;
             right: 0;
             overflow: hidden;
             object-position: center;
             margin-right: 3px;
             line-height: 1em;
-            font-family: "Noto Sans", sans-serif;
-            font-optical-sizing: auto;
-            font-weight: 600;
-            font-style: normal;
-            font-variation-settings: "wdth" 100;
+            font-family: "Book Antiqua", serif;
+            padding-right: 10px;
         }
         .deposit {
             position: absolute;
