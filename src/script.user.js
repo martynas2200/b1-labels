@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  Generate labels for selected rows of the items in the reference book.
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
@@ -129,21 +129,28 @@
 
     // Styles for the label printing
     const labelStyles = `
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
         .label {
             position: relative;
             background:white;
             color: black;
-            height: 32mm;
-            width: 57mm;
+            height: 31.75mm;
+            width: 57.15mm;
             border: 0.5px solid #ffdfd4;
             margin: 10px;
             box-sizing: border-box;
-            position: relative;
+            overflow: hidden;
         }
         .item {
             height: 19mm;
             overflow: hidden;
-            margin: 4px;
+            padding: 4px;
+            font-family: Arial,sans-serif;
         }
 
         .barcode {
@@ -154,11 +161,16 @@
         }
 
         .barcode div {
-            font-size: 7;
+            font-size: 8px;
             font-family: monospace;
-            margin-left: 15px;
+            margin-left: 10px;
+            line-height: 1em;
         }
-
+        .barcode div small{
+            color: #888;
+            font-size: 6px;
+            display: block;
+        }
         .barcode img {
             width: 35mm;
             height: 4mm;
@@ -166,21 +178,26 @@
         }
         .price {
             position: absolute;
-            bottom: 2px;
-            font-family: Open Sans,Arial,sans-serif;
-            font-weight: bold;
-            font-size: 60px;
+            bottom: 22px;
+            font-size: 45px;
             right: 0;
             overflow: hidden;
             object-position: center;
             margin-right: 3px;
+            line-height: 1em;
+            font-family: "Noto Sans", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 600;
+            font-style: normal;
+            font-variation-settings: "wdth" 100;
         }
         .deposit {
             position: absolute;
-            right: 3px;
+            right: 2px;
             bottom: 3px;
             font-family: math;
-            font-size: 11px;
+            font-size: 14px;
+            font-weight: 700;
         }
         .age {
             border: 1.2px solid black;
@@ -225,12 +242,60 @@
 
     `;
 
-    // Helper function to split price into whole and decimal parts
-    function splitPrice(price) {
-        const parts = parseFloat(price).toFixed(2).toString().split('.');
-        const wholePart = parts[0];
-        const decimalPart = parts[1];
-        return { wholePart, decimalPart };
+    function addFormStyles(){
+        var style = document.createElement('style');
+        style.textContent = `
+        input[name=priceWithVat], 
+        input[name=name], 
+        input[name=manufacturerName], 
+        input[name=barcode],
+        input[name=packageCode],
+        input[name=ageLimit]{
+            background: beige;
+        }
+        textarea.form-control.input-sm.ng-pristine.ng-untouched.ng-valid.ng-not-empty {
+            height: 50px;
+        }
+        
+        input[name=isActive].ace:checked + span{
+            background: beige !important;
+            font-weight: bold;
+            color: black;
+        }
+        input[name=isActive].ace + span{
+            background: #ff1c00 !important;
+            color: white;
+            padding: 1em 10em 1em 0em;
+            font-weight: bold;
+        }
+        h5.header.blue {
+            background: red;
+            display: none;
+        }
+        .shift-up{
+            top: -65px;
+            position: relative;
+        }
+        .shift-up-twice{
+            top: --132px;
+            position: relative;
+        }
+        input[name=packageCode],
+        input[name=ageLimit] {
+            width: 50px;
+        }
+        input[name=priceWithVat] {
+            width: 80px;
+        }
+        .simplify-button {
+            margin: 0 3px;
+        }
+        .flex-space-between {
+            display: flex;
+            gap: 15px;
+        }
+        `;
+        document.head.appendChild(style);
     }
 
     // Helper function to extract data from the Angular controller
@@ -314,7 +379,6 @@
     // if the text is in quotes, or is a word with at least 3 capital letters, make it bold
     function makeUpperCaseBold(text) {
         const regex = /("[^"]+"|[A-ZŽĄČĘĖĮŠŲŪ]{3,})/g;
-
         return text.replace(regex, '<b>$1</b>');
     }
 
@@ -345,7 +409,7 @@
             const barcode = document.createElement('div');
             barcode.className = 'barcode';
             const barcodeText = document.createElement('div');
-            barcodeText.textContent = (data.barcode || "") + ((data.code && data.barcode) ? ' (' + data.code + ')' : " " + (data.code || ""));
+            barcodeText.innerHTML = ((data.code) ? '<small>' + data.code : "</small>") +  (data.barcode || "");
             const barcodeImage = document.createElement('img');
             barcodeImage.src = `https://barcodeapi.org/api/${ getBarcodeType(data.barcode || data.code)}/${data.barcode || data.code}`;
             barcode.appendChild(barcodeText);
@@ -353,16 +417,9 @@
             label.appendChild(barcode);
         }
         if (data.priceWithVat) {
-            const { wholePart, decimalPart } = splitPrice(data.priceWithVat);
             const price = document.createElement('div');
             price.className = 'price';
-            const whole = document.createElement('span');
-            whole.className = 'whole';
-            whole.textContent = wholePart;
-            const sup = document.createElement('sup');
-            sup.textContent = decimalPart;
-            price.appendChild(whole);
-            price.appendChild(sup);
+            price.textContent = parseFloat(data.priceWithVat).toFixed(2).toString();
             label.appendChild(price);
         }
 
@@ -464,6 +521,139 @@
         printLabels([data]);
     }
 
+    //axillary function to find the form-group element by the input name
+    function findFormGroupByInputName(inputName) {
+        if(inputName.includes("Status")){
+        var inputElement = document.querySelector('select[name="' + inputName + '"]');
+        }
+        else{
+        var inputElement = document.querySelector('input[name="' + inputName + '"]');
+        }
+        // can return null if the input element is not found
+        return inputElement.closest('.form-group');
+    }
+
+    function hideFormGroupByInputName(inputName) {
+        var inputElement = findFormGroupByInputName(inputName);
+        if (inputElement) {
+            // Get the parent .form-group element and hide it
+            var formGroup = inputElement.closest('.form-group');
+            if (formGroup) {
+                formGroup.style.display = 'none';
+
+                // also hide the parent of .form-group element if the parent doesnt contain col-lg-12 class
+                var parent = formGroup.parentElement;
+                if (parent && !parent.classList.contains('col-lg-12')) {
+                    parent.style.display = 'none';
+                }
+            }
+        }
+    }
+
+    // Call the function to hide the form-group containing the input field with name="vatRate"
+    function hideFields() {
+        hideFormGroupByInputName('attributeName');
+        hideFormGroupByInputName('vatRate');
+        hideFormGroupByInputName('priceWithoutVat');
+        hideFormGroupByInputName('minQuantity');
+        hideFormGroupByInputName('netWeight');
+        hideFormGroupByInputName('grossWeight');
+        hideFormGroupByInputName('expenseCorrespondenceAccountCode');
+        hideFormGroupByInputName('saleCorrespondenceAccountCode');
+        hideFormGroupByInputName('purchaseCorrespondenceAccountCode');
+        hideFormGroupByInputName('externalId');
+        hideFormGroupByInputName('isRefundable');
+        hideFormGroupByInputName('isCommentRequired');
+        hideFormGroupByInputName('defaultSaleService');
+        hideFormGroupByInputName('countryOfOriginName');
+        hideFormGroupByInputName('intrastatShortDescription');
+        hideFormGroupByInputName('intrastatCode');
+        hideFormGroupByInputName('freePrice');
+        hideFormGroupByInputName('priceFrom');
+        hideFormGroupByInputName('priceUntil');
+        hideFormGroupByInputName('minPriceWithVat');
+        hideFormGroupByInputName('priceMinQuantity');
+        hideFormGroupByInputName('discountStatus');
+        hideFormGroupByInputName('maxDiscount');
+        hideFormGroupByInputName('discountPointsStatus');
+        hideFormGroupByInputName('departmentNumber');
+        hideFormGroupByInputName('certificateDate');
+        hideFormGroupByInputName('certificateNumber');
+        hideFormGroupByInputName('validFrom');
+        hideFormGroupByInputName('validUntil');
+        hideFormGroupByInputName('packageQuantity');
+        hideFormGroupByInputName('cost');
+        hideFormGroupByInputName('stock');
+    }
+
+    function simplifyForm(){
+        hideFields();
+        shiftElements();
+    }
+
+    function shiftElements(){
+        var priceWithVat = document.querySelector('input[name="priceWithVat"]').parentElement.parentElement;
+        priceWithVat.classList.add('flex-space-between');
+        priceWithVat.appendChild(document.querySelector('input[name="packageCode"]').parentElement);
+        priceWithVat.appendChild(document.querySelector('input[name="ageLimit"]').parentElement);
+    }
+
+    // function that returns created html button
+    function createHideFieldsButton(){
+        var button = document.createElement('button');
+        button.className = 'btn btn-sm btn-purple simplify-button';
+        button.type = 'button';
+        if (localStorage.getItem('simplifyForm') === 'true') {
+            button.textContent = 'Atkurti laukus';
+            simplifyForm();
+        }
+        else {
+            button.textContent = 'Paprasta forma';
+        }
+        //onclick event listener, we will add the logic later
+        button.addEventListener('click', function() {
+            if (localStorage.getItem('simplifyForm') === 'true') {
+                localStorage.setItem('simplifyForm', 'false');
+                location.reload();
+            }
+            else {
+                localStorage.setItem('simplifyForm', 'true');
+                button.textContent = 'Atkurti laukus';
+                simplifyForm();
+            }
+        });
+        return button;
+    }
+    
+    function createStylesButton(){
+        var button = document.createElement('button');
+        button.className = 'btn btn-sm btn-purple simplify-button';
+        button.type = 'button';
+        if (localStorage.getItem('addFormStyles') === 'true') {
+            button.textContent = 'Atkurti stilių';
+            addFormStyles();
+        }
+        else {
+            button.textContent = 'Ryškus Stilius';
+        }
+        //onclick event listener, we will add the logic later
+        button.addEventListener('click', function() {
+            //based on local storage value we will change the text of the button
+            if (localStorage.getItem('addFormStyles') === 'true') {
+                localStorage.setItem('addFormStyles', 'false');
+                location.reload();
+            }
+            else {
+                localStorage.setItem('addFormStyles', 'true');
+                button.textContent = 'Atkurti stilių';
+                addFormStyles();
+            }
+        
+        });
+        return button;
+    }
+
+
     function waitAndAddPrintButton() {
         var interval = setInterval(function() {
             if (window.location.pathname === "/reference-book/items") {
@@ -471,6 +661,10 @@
             }
             else if (window.location.pathname === "/reference-book/items/edit") {
                 addPrintButton('.btn-ctrl');
+                if (!document.querySelector('.btn-ctrl .simplify-button')) {
+                    document.querySelector('.btn-ctrl').appendChild(createHideFieldsButton());
+                    document.querySelector('.btn-ctrl').appendChild(createStylesButton());
+                }
             }
             else if (window.location.pathname === "/warehouse/purchases/edit") {
                 addPrintButton();
