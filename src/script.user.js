@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.6.5
 // @description  Generate labels for selected rows of the items in the reference book.
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
@@ -33,16 +33,26 @@
             'oldPrice': 'Old price',
             'print': 'Print',
             'printSettings': 'Print Settings',
-            'save': 'Save'
+            'save': 'Save',
+            'notAllItemsActive': 'Not all selected items are active. Do you want to continue?',
+            'noItemsSelected': 'No items selected!',
+            'noData': 'No data to print!',
+            'simplifyForm': 'Simplify Form',
+            'brightStyle': 'Make it bright',
+            'resetStyles': 'Reset styles',
+            'resetForm': 'Reset form',
+            'enterPriceItemIs': 'Enter the new price for the item that is ',
+            'withThePrice': ' with the price ',
+            'enterName': 'Enter the name',
+            'enterManufacturerName': 'Enter the manufacturer name',
+            'enterPrice': 'Enter the price',
+            'inactiveItem': 'The item is inactive. Do you want to continue?',
+            'invalidBarcodes': 'Invalid barcodes:'
         },
         'lt': {
             'alternativeLabelFormat': 'Įgalinti alternatyvų etiketės formatą',
             'askingForDepositAndAge': 'Ar yra pasirinktų prekių, kurios turi taros kodą arba amžiaus apribojimą?',
             'aboutToCheckDepositAndAge': 'Bus atliekamas tikrinimas dėl taros kodo ir amžiaus apribojimo, tai gali užtrukti',
-            // 'Nevisos spausdinamos etiketės aktyvios, ar tęsti?'
-            // 'Etiketė negali būti sugeneruota, nes trūksta duomenų'
-            // 'Ši prekė neaktyvi, ar tęsti?'
-            // 'inactiv
             'close': 'Uždaryti',
             'deposit': 'Tara',
             'enterBarcode': 'Įveskite brūkšninį kodą arba rašykite stop:',
@@ -58,7 +68,21 @@
             'oldPrice': 'Senas kainos',
             'print': 'Spausdinti',
             'printSettings': 'Spausdinimo nustatymai',
-            'save': 'Išsaugoti'
+            'save': 'Išsaugoti',
+            'notAllItemsActive': 'Ne visos pasirinktos prekės yra aktyvios. Ar norite tęsti?',
+            'noItemsSelected': 'Nepasirinkta jokių prekių!',
+            'noData': 'Nepakanka duomenų spausdinimui!',
+            'simplifyForm': 'Paprasta forma',
+            'brightStyle': 'Ryškus stilius',
+            'resetStyles': 'Atkurti stilių',
+            'resetForm': 'Atkurti formą',
+            'enterPriceItemIs': 'Įveskite naują kainą prekei, kuri yra ',
+            'withThePrice': '. Sena kaina buvo ',
+            'enterName': 'Įveskite pavadinimą',
+            'enterManufacturerName': 'Įveskite gamintojo pavadinimą',
+            'enterPrice': 'Įveskite kainą',
+            'inactiveItem': 'Prekė yra neaktyvi. Ar norite tęsti?',
+            'invalidBarcodes': 'Neteisingi ar neegzistuojantys brūkšniniai kodai:'
         }
     };
     
@@ -72,7 +96,7 @@
     function addModalbuttons() {
         const navbarShortcuts = document.querySelector('.breadcrumbs');
         if (!navbarShortcuts) {
-            console.error('Navbar shortcuts not found!');
+            console.error('No navbar shortcuts found. Retrying in 1 second.');
             setTimeout(addModalbuttons, 1000);
             return;
         }
@@ -82,12 +106,12 @@
 
         const fastPrintButton = document.createElement('button');
         fastPrintButton.textContent = i18n('fastPrintButton');
-        fastPrintButton.addEventListener('click', prompOnRepeatAndPrintLabel);
+        fastPrintButton.addEventListener('click', prompOnRepeatAndPrintLabels);
 
         const fastNewPriceButton = document.createElement('button');
         fastNewPriceButton.textContent = i18n('fastNewPriceButton');
         fastNewPriceButton.addEventListener('click', updateThePrice);
-        console.log("the buttons are added to the navbar shortcuts");
+        console.log("the buttons were added to the navbar shortcuts");
         navbarShortcuts.appendChild(settingsButton);
         navbarShortcuts.appendChild(fastPrintButton);
         navbarShortcuts.appendChild(fastNewPriceButton);
@@ -159,21 +183,49 @@
         }
 
         .barcode div {
-            font-size: 8px;
+            font-size: 10px;
             font-family: monospace;
             margin-left: 10px;
             line-height: 1em;
         }
         .barcode div small{
             color: #888;
-            font-size: 6px;
+            font-size: 8px;
             display: block;
         }
         .barcode img {
             width: 35mm;
             height: 4mm;
             object-fit: cover;
+            object-position: top;
         }
+
+        .alternative .barcode {
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .alternative .price {
+            display: none;
+        }
+        
+        .alternative .barcode img {
+            width: 50mm;
+            height: 12mm;
+        }
+        .alternative .barcode div {
+        margin-left: 0;
+        }
+        .alternative .barcode div {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between
+        }
+        .alternative .barcode div small {
+            color: black;
+            font-size: 9px;
+        }
+
         .price {
             position: absolute;
             bottom: 22px;
@@ -191,7 +243,7 @@
             right: 2px;
             bottom: 3px;
             font-family: math;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 700;
         }
         .age {
@@ -316,8 +368,8 @@
     async function extractDataFromAngularPurchaseView() {
         const selectedRows = angular.element(document.querySelector(".data-rows")).controller().data.filter(a => a._select);
         const extractedData = [];
-        if (confirm('Ar yra pasirinktų prekių, kurios turi taros kodą arba amžiaus apribojimą?')) {
-            window.alert('Bus atliekamas tikrinimas dėl taros kodo ir amžiaus apribojimo, tai gali užtrukti');
+        if (confirm(i18n('askingForDepositAndAge'))) {
+            window.alert(i18n('aboutToCheckDepositAndAge'));
             isEverythingActive = true;
             // get only barcodes
             const barcodes = selectedRows.map(row => row.itemBarcode);
@@ -404,7 +456,7 @@
             const barcode = document.createElement('div');
             barcode.className = 'barcode';
             const barcodeText = document.createElement('div');
-            barcodeText.innerHTML = ((data.code) ? '<small>' + data.code : "</small>") +  (data.barcode || "");
+            barcodeText.innerHTML = ((data.code) ? '<small>' + data.code + "</small>" : "") +  (data.barcode || "");
             const barcodeImage = document.createElement('img');
             barcodeImage.src = `https://barcodeapi.org/api/${ getBarcodeType(data.barcode || data.code)}/${data.barcode || data.code}`;
             barcode.appendChild(barcodeText);
@@ -421,7 +473,7 @@
         if (data.packageCode?.length > 0) {
             const deposit = document.createElement('div');
             deposit.className = 'deposit';
-            deposit.textContent = 'Tara +0,10€';
+            deposit.textContent = 'Tara +0,10';
             label.appendChild(deposit);
         }
         if (data.ageLimit > 0) {
@@ -442,14 +494,14 @@
     }
 
 
-    function addPrintButton(parentSelector = '.buttons-left') {
+    function addPrintButton(parentSelector = '.buttons-right') {
         const buttonsLeft = document.querySelector(parentSelector);
         if (!buttonsLeft || document.querySelector('.print')) return;
         const printDiv = document.createElement('div');
         printDiv.className = 'print';
 
         const button = document.createElement('button');
-        button.title = 'Spausdinti';
+        button.title = i18n('print');
         button.type = 'button';
         button.className = 'btn btn-sm btn-purple';
 
@@ -470,7 +522,7 @@
         const labels = data.map(generateLabel);
 
         const popup = window.open('', '_blank', 'width=700,height=700');
-        popup.document.title = labels.length + ' etiketės spausdinimui';
+        popup.document.title = labels.length + i18n('nlabelsToBePrinted');
 
         const style = document.createElement('style');
         style.innerHTML = labelStyles;
@@ -478,6 +530,21 @@
 
         labels.forEach(label => {
             popup.document.body.appendChild(label);
+        });
+
+        await new Promise(resolve => {
+            const images = popup.document.querySelectorAll('.barcode img');
+            let counter = 0;
+            images.forEach(image => {
+                image.onload = () => {
+                    counter++;
+                    if (counter === images.length) {
+                        resolve();
+                    }
+                }
+            });
+            //default timeout
+            setTimeout(resolve, 5000);
         });
 
         popup.print();
@@ -494,10 +561,10 @@
         const data = window.location.pathname === "/warehouse/purchases/edit" ? extractDataFromAngularPurchaseView() : extractDataFromAngular();
 
         if (data.length === 0) {
-            alert('Nepasirinkote jokių prekių');
+            alert(i18n('noItemsSelected'));
             return;
         }
-        if (!isEverythingActive && !confirm('Nevisos spausdinamos etiketės aktyvios, ar tęsti?')) {
+        if (!isEverythingActive && !confirm(i18n('notAllItemsActive'))) {
             return;
         }
 
@@ -507,10 +574,10 @@
     function processEditingView() {
         var data = angular.element(document.querySelector("ng-form")).controller().model;
         if (!data.name && (!data.barcode || !data.code) && !data.priceWithVat) {
-            alert('Etiketė negali būti sugeneruota, nes trūksta duomenų');
+            alert(i18n('noData'));
             return;
         }
-        if (!data.isActive && !confirm('Ši prekė neaktyvi, ar tęsti?')) {
+        if (!data.isActive && !confirm(i18n('inactiveItem'))) {
             return;
         }
         printLabels([data]);
@@ -599,11 +666,11 @@
         button.className = 'btn btn-sm btn-purple simplify-button';
         button.type = 'button';
         if (localStorage.getItem('simplifyForm') === 'true') {
-            button.textContent = 'Atkurti laukus';
+            button.textContent = i18n('resetForm');
             simplifyForm();
         }
         else {
-            button.textContent = 'Paprasta forma';
+            button.textContent = i18n('simplifyForm');
         }
         //onclick event listener, we will add the logic later
         button.addEventListener('click', function() {
@@ -613,7 +680,7 @@
             }
             else {
                 localStorage.setItem('simplifyForm', 'true');
-                button.textContent = 'Atkurti laukus';
+                button.textContent = i18n('resetForm');
                 simplifyForm();
             }
         });
@@ -625,11 +692,11 @@
         button.className = 'btn btn-sm btn-purple simplify-button';
         button.type = 'button';
         if (localStorage.getItem('addFormStyles') === 'true') {
-            button.textContent = 'Atkurti stilių';
+            button.textContent = i18n('resetStyles');
             addFormStyles();
         }
         else {
-            button.textContent = 'Ryškus Stilius';
+            button.textContent = i18n('brightStyle');
         }
         //onclick event listener, we will add the logic later
         button.addEventListener('click', function() {
@@ -640,7 +707,7 @@
             }
             else {
                 localStorage.setItem('addFormStyles', 'true');
-                button.textContent = 'Atkurti stilių';
+                button.textContent = i18n('resetStyles');
                 addFormStyles();
             }
         
@@ -664,7 +731,7 @@
             else if (window.location.pathname === "/warehouse/purchases/edit") {
                 addPrintButton();
             }
-        }, 2000);
+        }, 1500);
     }
 
     class Request {
@@ -761,60 +828,107 @@
 
             return response.code === 200 ? console.log(i18n('itemUpdated')) : console.error(i18n('failedToUpdateItem'));
         }
+        async createIem(data) {
+            this.path = '/reference-book/items/create';
+            this.getCookies();
+            const response = await this.fetchData('POST', this.path, data);
+            return response.code === 200 ? console.log(i18n('itemCreated')) : console.error(i18n('failedToCreateItem'));
+        }
     }
 
-
     async function updateThePrice() {
+        var invalidBarcodes = [];
         while (true) {
             var req = new Request();
             var barcode = window.prompt(i18n('enterBarcode'));
-            if (barcode == 'stop') {
+            
+            if (barcode.toLowerCase() === 'stop') {
                 break;
             } else if (!barcode) {
-              console.error(i18n('missingBarcode'));
-              continue;
-            }
-            var item = await req.searchItem(barcode);
-            if (!item) {
-              console.error(i18n('itemNotFound'));
+                console.error(i18n('missingBarcode'));
                 continue;
             }
+            barcode = lettersToNumbers(barcode);
+            
+            if (!req.isItDigits(barcode)) {
+                console.error(i18n('invalidBarcode'), barcode);
+                continue;
+            }
+            var item = await req.searchItem(barcode);
+            if (!item.name) {
+                alert(i18n('itemNotFound') + ' ' + barcode);
+                continue;
+            }
+
             
             //print out the name and the price of the item
-            console.log('Item:', item.name);
-            console.log('Sena:', item.priceWithVat);
-            var newPrice = window.prompt('Įveskite naują kainą. Prekė  ' + (item.ageLimit > 0 ? "[18+] " : "") + (item.packageCode > 0 ? "[TARA] " : "") + item.name + ', sena kaina: ' + item.priceWithVat + ' €');
+            console.log('Item:', item.name, item.priceWithVat);
+            var newPrice = window.prompt(i18n("enterPriceItemIs") + (item.ageLimit > 0 ? "[18+] " : "") + (item.packageCode > 0 ? "[TARA] " : "") + item.name + ', sena kaina: ' + item.priceWithVat + ' €');
             // ensuring the dot notation for the decimal part
             if (!newPrice) continue;
             newPrice = parseFloat(newPrice.replace(',', '.'));
-            console.log('Nauja:', newPrice);
+            console.log('New price:', newPrice);
+            if (isNaN(newPrice) || newPrice > 1000 || newPrice < 0) {
+                alert(i18n('invalidPrice'));
+                continue;
+            }
             await req.saveItem(item.id, { priceWithVat: newPrice, priceWithoutVat: newPrice / (1 + item.vatRate/100), isActive: true });
         }
+        console.log('Invalid barcodes:\n' + invalidBarcodes.join('\n'));
     }
-    async function prompOnRepeatAndPrintLabel() {
+    function lettersToNumbers(barcode) {
+        return barcode.replace(/ą/g, '1').replace(/č/g, '2').replace(/ę/g, '3').replace(/ė/g, '4').replace(/į/g, '5').replace(/š/g, '6').replace(/ų/g, '7').replace(/ū/g, '8').replace(/ž/g, '9');
+    }
+
+    async function prompOnRepeatAndPrintLabels() {
         var req = new Request();
         var barcodes = [];
         var items = [];
+        var invalidBarcodes = [];
     
         // Prompt loop to collect barcodes
         while (true) {
-            var barcode = window.prompt(i18n('enterBarcode'));
+            if (barcodes.length > 0) {
+                var barcode = window.prompt(i18n('enterBarcode') + ' / ' + barcodes.length);
+            } else {
+                var barcode = window.prompt(i18n('enterBarcode'));
+            }
+
             if (barcode === 'stop') {
                 break;
-            } else if (!barcode || !req.isItDigits(barcode)) {
+            } else if (!req.isItDigits(barcode)) {
                 console.error(i18n('incorrectBarcode'), barcode);
+                // if barcode contains letters of ąčęėįšųūž, the layout is set to Lithuanian keyboard, then we will convert these letters to numbers
+                // and add them to the barcodes array
+                var barcode = barcode.replace(/ą/g, '1').replace(/č/g, '2').replace(/ę/g, '3').replace(/ė/g, '4').replace(/į/g, '5').replace(/š/g, '6').replace(/ų/g, '7').replace(/ū/g, '8').replace(/ž/g, '9');
+                if (!req.isItDigits(barcode)) {
+                    console.error(i18n('invalidBarcode'), barcode);
+                    continue;
+                }
+            } else if (!barcode) {
+                console.error(i18n('missingBarcode'));
                 continue;
             }
+
             barcodes.push(barcode);
         }
-    
+        
         for (let barcode of barcodes) {
             var item = await req.searchItem(barcode);
             if (item) {
                 items.push(item);
             }
+            else {
+                invalidBarcodes.push(barcode);
+            }
+
             await new Promise(resolve => setTimeout(resolve, 100)); // 0.1 second delay
         }
+        if (invalidBarcodes.length > 0) {
+            console.log(i18n('invalidBarcodes') + '\n' + invalidBarcodes.join('\n'));
+            alert(i18n('invalidBarcodes') + '\n' + invalidBarcodes.join('\n'));
+        }
+
         if (items.length > 0) {
             await printLabels(items);
         }
@@ -828,7 +942,7 @@
     });
 
     document.addEventListener('click', function(event) {
-        if (event.target.closest('.buttons-left .print')) {
+        if (event.target.closest('.buttons-right .print')) {
             event.preventDefault();
             processSelectedRows();
         }
@@ -848,7 +962,6 @@
 
     // Close modal button click event
     document.getElementById('closeModal').addEventListener('click', closeSettingsModal);
-
 
 
 })();
