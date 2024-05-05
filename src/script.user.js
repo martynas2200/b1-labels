@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      0.6.5
+// @version      0.7.0
 // @description  Generate labels for selected rows of the items in the reference book.
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
@@ -16,8 +16,8 @@
     const LANGUAGES = {
         'en': {
             'alternativeLabelFormat': 'Enable alternative label format',
-            'askingForDepositAndAge': 'Are there selected items with deposit code or age limit?',
-            'aboutToCheckDepositAndAge': 'Deposit code and age limit will be checked, this may take a while',
+            'askingForPackageCode': 'Are there any selected items that have a package code?',
+            'aboutToCheckPackageCode': 'A check for the package codes will be performed, this may take a while',
             'close': 'Close',
             'deposit': 'Deposit',
             'enterBarcode': 'Enter the barcode or type stop:',
@@ -44,15 +44,14 @@
             'enterPriceItemIs': 'Enter the new price for the item that is ',
             'withThePrice': ' with the price ',
             'enterName': 'Enter the name',
-            'enterManufacturerName': 'Enter the manufacturer name',
             'enterPrice': 'Enter the price',
             'inactiveItem': 'The item is inactive. Do you want to continue?',
             'invalidBarcodes': 'Invalid barcodes:'
         },
         'lt': {
             'alternativeLabelFormat': 'Įgalinti alternatyvų etiketės formatą',
-            'askingForDepositAndAge': 'Ar yra pasirinktų prekių, kurios turi taros kodą arba amžiaus apribojimą?',
-            'aboutToCheckDepositAndAge': 'Bus atliekamas tikrinimas dėl taros kodo ir amžiaus apribojimo, tai gali užtrukti',
+            'askingForPackageCode': 'Ar yra pasirinktų prekių, kurios turi pakuotės kodą?',
+            'aboutToCheckPackageCode': 'Bus atliekamas pakuotės kodų tikrinimas, tai gali užtrukti',
             'close': 'Uždaryti',
             'deposit': 'Tara',
             'enterBarcode': 'Įveskite brūkšninį kodą arba rašykite stop:',
@@ -79,7 +78,6 @@
             'enterPriceItemIs': 'Įveskite naują kainą prekei, kuri yra ',
             'withThePrice': '. Sena kaina buvo ',
             'enterName': 'Įveskite pavadinimą',
-            'enterManufacturerName': 'Įveskite gamintojo pavadinimą',
             'enterPrice': 'Įveskite kainą',
             'inactiveItem': 'Prekė yra neaktyvi. Ar norite tęsti?',
             'invalidBarcodes': 'Neteisingi ar neegzistuojantys brūkšniniai kodai:'
@@ -243,36 +241,8 @@
             right: 2px;
             bottom: 3px;
             font-family: math;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 700;
-        }
-        .age {
-            border: 1.2px solid black;
-            background: white;
-            position: relative;
-            height: 25px;
-            width: 25px;
-            border-radius: 50%;
-            display: inline-block;
-            text-align: center;
-            line-height: 25px;
-            box-sizing:border-box;
-            font-family: monospace;
-            position: absolute;
-            bottom: 21px;
-            margin: 5px;
-        }
-        .age:after {
-            content: "+";
-            position: absolute;
-            width: 11px;
-            height: 11px;
-            right: -5px;
-            line-height: 8px;
-            font-family: sans-serif;
-            font-weight: bold;
-            background:white;
-            border-radius: 50%;
         }
         .inactive {
             height: 5px;
@@ -297,7 +267,7 @@
         input[name=manufacturerName], 
         input[name=barcode],
         input[name=packageCode],
-        input[name=ageLimit]{
+        input[name=departmentNumber]{
             background: beige;
         }
         textarea.form-control.input-sm.ng-pristine.ng-untouched.ng-valid.ng-not-empty {
@@ -316,7 +286,6 @@
             font-weight: bold;
         }
         h5.header.blue {
-            background: red;
             display: none;
         }
         .shift-up{
@@ -328,7 +297,7 @@
             position: relative;
         }
         input[name=packageCode],
-        input[name=ageLimit] {
+        input[name=departmentNumber] {
             width: 50px;
         }
         input[name=priceWithVat] {
@@ -337,7 +306,7 @@
         .simplify-button {
             margin: 0 3px;
         }
-        .flex-space-between {
+        .flex {
             display: flex;
             gap: 15px;
         }
@@ -357,7 +326,8 @@
                 barcode: row.barcode,
                 code: row.code,
                 priceWithVat: row.priceWithVat,
-                ageLimit: row.ageLimit,
+                measurementUnitName: row.measurementUnitName,
+                departmentNumber: row.departmentNumber,
                 packageCode: row.packageCode,
                 isActive: row.isActive,
                 discountStatus: row.discountStatus
@@ -368,8 +338,8 @@
     async function extractDataFromAngularPurchaseView() {
         const selectedRows = angular.element(document.querySelector(".data-rows")).controller().data.filter(a => a._select);
         const extractedData = [];
-        if (confirm(i18n('askingForDepositAndAge'))) {
-            window.alert(i18n('aboutToCheckDepositAndAge'));
+        if (confirm(i18n('askingForPackageCode'))) {
+            window.alert(i18n('aboutToCheckPackageCode'));
             isEverythingActive = true;
             // get only barcodes
             const barcodes = selectedRows.map(row => row.itemBarcode);
@@ -382,10 +352,11 @@
                         barcode: item.barcode,
                         code: item.code,
                         priceWithVat: item.priceWithVat,
-                        ageLimit: item.ageLimit,
-                        packageCode: item.packageCode,
+                        measurementUnitName: item.measurementUnitName,
+                        departmentNumber: item.departmentNumber,
                         isActive: item.isActive,
-                        discountStatus: item.discountStatus
+                        packageCode: item.packageCode,
+                        ageLimit: item.ageLimit
                     });
                     if (!item.isActive) isEverythingActive = false;
                 }
@@ -401,10 +372,7 @@
                     barcode: row.itemBarcode,
                     code: row.itemCode,
                     priceWithVat: row.itemPriceWithVat,
-                    // ageLimit: row.ageLimit,
-                    // packageCode: row.packageCode,
-                    isActive: false,
-                    discountStatus: false
+                    isActive: true
                 };
             });
         }
@@ -438,25 +406,17 @@
             label.classList.add('alternative');
         }
 
-        if (data.discountStatus) {
-            const theBallOuter = document.createElement('div');
-            theBallOuter.className = 'theBall-outer';
-            const theBall = document.createElement('div');
-            theBall.className = 'theBall';
-            theBallOuter.appendChild(theBall);
-            label.appendChild(theBallOuter);
-        }
 
         const item = document.createElement('div');
         item.className = 'item';
-        // item.textContent = data.name;
         item.innerHTML = makeUpperCaseBold(data.name);
 
         if (data.barcode || data.code) {
             const barcode = document.createElement('div');
             barcode.className = 'barcode';
             const barcodeText = document.createElement('div');
-            barcodeText.innerHTML = ((data.code) ? '<small>' + data.code + "</small>" : "") +  (data.barcode || "");
+            barcodeText.innerHTML = (data.code ? '<small>' + data.code + "</small>" : "") +
+            (data.departmentNumber > 0 ? 'S' + data.departmentNumber + ' ' : "") + (data.barcode || "");
             const barcodeImage = document.createElement('img');
             barcodeImage.src = `https://barcodeapi.org/api/${ getBarcodeType(data.barcode || data.code)}/${data.barcode || data.code}`;
             barcode.appendChild(barcodeText);
@@ -475,13 +435,13 @@
             deposit.className = 'deposit';
             deposit.textContent = 'Tara +0,10';
             label.appendChild(deposit);
+        } else if (data.measurementUnitName === 'kg'){
+            const deposit = document.createElement('div');
+            deposit.className = 'deposit';
+            deposit.textContent = '/ 1 ' + data.measurementUnitName;
+            label.appendChild(deposit);
         }
-        if (data.ageLimit > 0) {
-            const age = document.createElement('div');
-            age.className = 'age';
-            age.textContent = data.ageLimit;
-            label.appendChild(age);
-        }
+
         if (!data.isActive) {
             const inactive = document.createElement('div');
             inactive.className = 'inactive';
@@ -493,6 +453,20 @@
         return label;
     }
 
+    function handleInputChange(event) {
+        const inputField = event.target;
+        const inputValue = inputField.value;
+    
+        if (inputValue.length < 13) {
+            inputField.style.backgroundColor = 'beige';
+        } else if (inputValue.length === 13 || inputValue.length === 8) {
+            inputField.style.backgroundColor = 'lightgreen';
+        } else {
+            inputField.style.backgroundColor = 'orangered';
+        }
+        inputField.value = lettersToNumbers(inputValue);
+    }
+    
 
     function addPrintButton(parentSelector = '.buttons-right') {
         const buttonsLeft = document.querySelector(parentSelector);
@@ -548,12 +522,8 @@
         });
 
         popup.print();
-
-        return new Promise(resolve => {
-            popup.addEventListener('afterprint', function() {
-                popup.close();
-                resolve();
-            });
+        popup.addEventListener('afterprint', function() {
+            popup.close();
         });
     }
     
@@ -585,11 +555,11 @@
 
     //axillary function to find the form-group element by the input name
     function findFormGroupByInputName(inputName) {
-        if(inputName.includes("Status")){
-        var inputElement = document.querySelector('select[name="' + inputName + '"]');
+        if(inputName.includes("Status")) {
+            var inputElement = document.querySelector('select[name="' + inputName + '"]');
         }
-        else{
-        var inputElement = document.querySelector('input[name="' + inputName + '"]');
+        else {
+            var inputElement = document.querySelector('input[name="' + inputName + '"]');
         }
         // can return null if the input element is not found
         return inputElement.closest('.form-group');
@@ -638,7 +608,7 @@
         hideFormGroupByInputName('discountStatus');
         hideFormGroupByInputName('maxDiscount');
         hideFormGroupByInputName('discountPointsStatus');
-        hideFormGroupByInputName('departmentNumber');
+        hideFormGroupByInputName('ageLimit');
         hideFormGroupByInputName('certificateDate');
         hideFormGroupByInputName('certificateNumber');
         hideFormGroupByInputName('validFrom');
@@ -655,9 +625,9 @@
 
     function shiftElements(){
         var priceWithVat = document.querySelector('input[name="priceWithVat"]').parentElement.parentElement;
-        priceWithVat.classList.add('flex-space-between');
+        priceWithVat.classList.add('flex');
         priceWithVat.appendChild(document.querySelector('input[name="packageCode"]').parentElement);
-        priceWithVat.appendChild(document.querySelector('input[name="ageLimit"]').parentElement);
+        priceWithVat.appendChild(document.querySelector('input[name="departmentNumber"]').parentElement);
     }
 
     // function that returns created html button
@@ -715,7 +685,7 @@
         return button;
     }
 
-
+    // TODO: need a better way to detect
     function waitAndAddPrintButton() {
         var interval = setInterval(function() {
             if (window.location.pathname === "/reference-book/items") {
@@ -726,6 +696,13 @@
                 if (!document.querySelector('.btn-ctrl .simplify-button')) {
                     document.querySelector('.btn-ctrl').appendChild(createHideFieldsButton());
                     document.querySelector('.btn-ctrl').appendChild(createStylesButton());
+                }
+                if (document.querySelector('.handle-input') === null) {
+                    const barcodeInput = document.querySelector('input[name="barcode"]');
+                    if (barcodeInput) {
+                        barcodeInput.addEventListener('input', handleInputChange);
+                        barcodeInput.classList.add('handle-input');
+                    }
                 }
             }
             else if (window.location.pathname === "/warehouse/purchases/edit") {
@@ -837,16 +814,15 @@
     }
 
     async function updateThePrice() {
-        var invalidBarcodes = [];
         while (true) {
             var req = new Request();
             var barcode = window.prompt(i18n('enterBarcode'));
             
-            if (barcode.toLowerCase() === 'stop') {
-                break;
-            } else if (!barcode) {
+            if (!barcode) {
                 console.error(i18n('missingBarcode'));
                 continue;
+            } else if (barcode.toLowerCase() === 'stop') {
+                break;
             }
             barcode = lettersToNumbers(barcode);
             
@@ -855,17 +831,16 @@
                 continue;
             }
             var item = await req.searchItem(barcode);
-            if (!item.name) {
+            if (!item) {
                 alert(i18n('itemNotFound') + ' ' + barcode);
                 continue;
             }
 
-            
             //print out the name and the price of the item
             console.log('Item:', item.name, item.priceWithVat);
             var newPrice = window.prompt(i18n("enterPriceItemIs") + (item.ageLimit > 0 ? "[18+] " : "") + (item.packageCode > 0 ? "[TARA] " : "") + item.name + ', sena kaina: ' + item.priceWithVat + ' €');
-            // ensuring the dot notation for the decimal part
             if (!newPrice) continue;
+            // ensuring the dot notation for the decimal part
             newPrice = parseFloat(newPrice.replace(',', '.'));
             console.log('New price:', newPrice);
             if (isNaN(newPrice) || newPrice > 1000 || newPrice < 0) {
@@ -874,7 +849,6 @@
             }
             await req.saveItem(item.id, { priceWithVat: newPrice, priceWithoutVat: newPrice / (1 + item.vatRate/100), isActive: true });
         }
-        console.log('Invalid barcodes:\n' + invalidBarcodes.join('\n'));
     }
     function lettersToNumbers(barcode) {
         return barcode.replace(/ą/g, '1').replace(/č/g, '2').replace(/ę/g, '3').replace(/ė/g, '4').replace(/į/g, '5').replace(/š/g, '6').replace(/ų/g, '7').replace(/ū/g, '8').replace(/ž/g, '9');
@@ -888,26 +862,20 @@
     
         // Prompt loop to collect barcodes
         while (true) {
-            if (barcodes.length > 0) {
-                var barcode = window.prompt(i18n('enterBarcode') + ' / ' + barcodes.length);
-            } else {
-                var barcode = window.prompt(i18n('enterBarcode'));
-            }
-
-            if (barcode === 'stop') {
+            var barcode = window.prompt(i18n('enterBarcode') + ' / ' + barcodes.length);
+            if (!barcode) {
+                console.error(i18n('missingBarcode'));
+                continue;
+            } else if (barcode.toLowerCase() === 'stop') {
                 break;
             } else if (!req.isItDigits(barcode)) {
                 console.error(i18n('incorrectBarcode'), barcode);
-                // if barcode contains letters of ąčęėįšųūž, the layout is set to Lithuanian keyboard, then we will convert these letters to numbers
-                // and add them to the barcodes array
-                var barcode = barcode.replace(/ą/g, '1').replace(/č/g, '2').replace(/ę/g, '3').replace(/ė/g, '4').replace(/į/g, '5').replace(/š/g, '6').replace(/ų/g, '7').replace(/ū/g, '8').replace(/ž/g, '9');
+                // if the barcode contains letters of ąčęėįšųūž, the layout is set to Lithuanian keyboard, we could convert these letters to numbers
+                barcode = lettersToNumbers(barcode);
                 if (!req.isItDigits(barcode)) {
                     console.error(i18n('invalidBarcode'), barcode);
                     continue;
                 }
-            } else if (!barcode) {
-                console.error(i18n('missingBarcode'));
-                continue;
             }
 
             barcodes.push(barcode);
