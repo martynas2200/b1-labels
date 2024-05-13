@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      0.7.0
-// @description  Generate labels for selected rows of the items in the reference book.
+// @version      0.7.1
+// @description  Generate labels for the selected items on the b1.lt website, quickly change the price of the item, and print the labels by barcodes or by the selected items in the list. The script also simplifies the item form by hiding unnecessary fields, shifting and styling the form elements. The script is available in English and Lithuanian languages.
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
 // @downloadURL  https://raw.githubusercontent.com/martynas2200/b1-labels/main/src/script.user.js
@@ -298,10 +298,14 @@
         }
         input[name=packageCode],
         input[name=departmentNumber] {
-            width: 50px;
+            width: 60px;
         }
         input[name=priceWithVat] {
             width: 80px;
+        }
+        input[readonly] {
+            width: 70px;
+            border: none;
         }
         .simplify-button {
             margin: 0 3px;
@@ -457,10 +461,10 @@
         const inputField = event.target;
         const inputValue = inputField.value;
     
-        if (inputValue.length < 13) {
-            inputField.style.backgroundColor = 'beige';
-        } else if (inputValue.length === 13 || inputValue.length === 8) {
+        if (inputValue.length === 13 || inputValue.length === 8) {
             inputField.style.backgroundColor = 'lightgreen';
+        } else if (inputValue.length < 13) {
+            inputField.style.backgroundColor = 'beige';
         } else {
             inputField.style.backgroundColor = 'orangered';
         }
@@ -572,17 +576,15 @@
             var formGroup = inputElement.closest('.form-group');
             if (formGroup) {
                 formGroup.style.display = 'none';
-
-                // also hide the parent of .form-group element if the parent doesnt contain col-lg-12 class
+                // also hide the parent of .form-group element if the parent doesnt contain col-lg-12 class, so the form is more compact
                 var parent = formGroup.parentElement;
-                if (parent && !parent.classList.contains('col-lg-12')) {
+                if (parent && !parent.classList.contains('col-lg-12') && !parent.classList.contains('ng-pristine')) {
                     parent.style.display = 'none';
                 }
             }
         }
     }
 
-    // Call the function to hide the form-group containing the input field with name="vatRate"
     function hideFields() {
         hideFormGroupByInputName('attributeName');
         hideFormGroupByInputName('vatRate');
@@ -614,8 +616,9 @@
         hideFormGroupByInputName('validFrom');
         hideFormGroupByInputName('validUntil');
         hideFormGroupByInputName('packageQuantity');
-        hideFormGroupByInputName('cost');
-        hideFormGroupByInputName('stock');
+        hideFormGroupByInputName('attribute1');
+        hideFormGroupByInputName('attribute2');
+        hideFormGroupByInputName('attribute3');
     }
 
     function simplifyForm(){
@@ -628,6 +631,8 @@
         priceWithVat.classList.add('flex');
         priceWithVat.appendChild(document.querySelector('input[name="packageCode"]').parentElement);
         priceWithVat.appendChild(document.querySelector('input[name="departmentNumber"]').parentElement);
+        priceWithVat.appendChild(document.querySelector('input[name="cost"]').parentElement);
+        priceWithVat.appendChild(document.querySelector('input[name="stock"]').parentElement);
     }
 
     // function that returns created html button
@@ -838,7 +843,7 @@
 
             //print out the name and the price of the item
             console.log('Item:', item.name, item.priceWithVat);
-            var newPrice = window.prompt(i18n("enterPriceItemIs") + (item.ageLimit > 0 ? "[18+] " : "") + (item.packageCode > 0 ? "[TARA] " : "") + item.name + ', sena kaina: ' + item.priceWithVat + ' €');
+            var newPrice = window.prompt(i18n('enterPriceItemIs') + item.name + i18n('withThePrice') + item.priceWithVat + ' €' + (item.packageCode ? ' +0,10 €' : ''));
             if (!newPrice) continue;
             // ensuring the dot notation for the decimal part
             newPrice = parseFloat(newPrice.replace(',', '.'));
