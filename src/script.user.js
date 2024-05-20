@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      0.7.1
+// @version      0.7.2
 // @description  Generate labels for the selected items on the b1.lt website, quickly change the price of the item, and print the labels by barcodes or by the selected items in the list. The script also simplifies the item form by hiding unnecessary fields, shifting and styling the form elements. The script is available in English and Lithuanian languages.
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
@@ -260,7 +260,7 @@
     `;
 
     function addFormStyles(){
-        var style = document.createElement('style');
+        let style = document.createElement('style');
         style.textContent = `
         input[name=priceWithVat], 
         input[name=name], 
@@ -341,41 +341,30 @@
     }
     async function extractDataFromAngularPurchaseView() {
         const selectedRows = angular.element(document.querySelector(".data-rows")).controller().data.filter(a => a._select);
-        const extractedData = [];
-        if (confirm(i18n('askingForPackageCode'))) {
+        let extractedData = [];
+        if (confirm(i18n('askingForPackageCode'))) { // Get full item data from the server
             window.alert(i18n('aboutToCheckPackageCode'));
             isEverythingActive = true;
-            // get only barcodes
             const barcodes = selectedRows.map(row => row.itemBarcode);
             const req = new Request();
             for (let barcode of barcodes) {
-                const item = req.searchItem(barcode);
+                const item = await req.searchItem(barcode);
                 if (item) {
-                    extractedData.push({
-                        name: item.name,
-                        barcode: item.barcode,
-                        code: item.code,
-                        priceWithVat: item.priceWithVat,
-                        measurementUnitName: item.measurementUnitName,
-                        departmentNumber: item.departmentNumber,
-                        isActive: item.isActive,
-                        packageCode: item.packageCode,
-                        ageLimit: item.ageLimit
-                    });
+                    extractedData.push(item);
                     if (!item.isActive) isEverythingActive = false;
                 }
                 await new Promise(resolve => setTimeout(resolve, 100)); // 0.1 second delay
             }
         }
-        else {
+        else { // Use the limited data from the view
             isEverythingActive = true;
             extractedData = selectedRows.map(row => {
-                if (!row.isActive) isEverythingActive = false;
                 return {
                     name: row.itemName,
                     barcode: row.itemBarcode,
                     code: row.itemCode,
                     priceWithVat: row.itemPriceWithVat,
+                    measurementUnitName: row.measurementUnitName,
                     isActive: true
                 };
             });
@@ -531,8 +520,8 @@
         });
     }
     
-    function processSelectedRows() {
-        const data = window.location.pathname === "/warehouse/purchases/edit" ? extractDataFromAngularPurchaseView() : extractDataFromAngular();
+    async function processSelectedRows() {
+        const data = window.location.pathname === "/warehouse/purchases/edit" ? await extractDataFromAngularPurchaseView() : extractDataFromAngular();
 
         if (data.length === 0) {
             alert(i18n('noItemsSelected'));
@@ -546,7 +535,7 @@
     }
 
     function processEditingView() {
-        var data = angular.element(document.querySelector("ng-form")).controller().model;
+        let data = angular.element(document.querySelector("ng-form")).controller().model;
         if (!data.name && (!data.barcode || !data.code) && !data.priceWithVat) {
             alert(i18n('noData'));
             return;
@@ -560,24 +549,24 @@
     //axillary function to find the form-group element by the input name
     function findFormGroupByInputName(inputName) {
         if(inputName.includes("Status")) {
-            var inputElement = document.querySelector('select[name="' + inputName + '"]');
+            let inputElement = document.querySelector('select[name="' + inputName + '"]');
         }
         else {
-            var inputElement = document.querySelector('input[name="' + inputName + '"]');
+            let inputElement = document.querySelector('input[name="' + inputName + '"]');
         }
         // can return null if the input element is not found
         return inputElement.closest('.form-group');
     }
 
     function hideFormGroupByInputName(inputName) {
-        var inputElement = findFormGroupByInputName(inputName);
+        let inputElement = findFormGroupByInputName(inputName);
         if (inputElement) {
             // Get the parent .form-group element and hide it
-            var formGroup = inputElement.closest('.form-group');
+            let formGroup = inputElement.closest('.form-group');
             if (formGroup) {
                 formGroup.style.display = 'none';
                 // also hide the parent of .form-group element if the parent doesnt contain col-lg-12 class, so the form is more compact
-                var parent = formGroup.parentElement;
+                let parent = formGroup.parentElement;
                 if (parent && !parent.classList.contains('col-lg-12') && !parent.classList.contains('ng-pristine')) {
                     parent.style.display = 'none';
                 }
@@ -627,7 +616,7 @@
     }
 
     function shiftElements(){
-        var priceWithVat = document.querySelector('input[name="priceWithVat"]').parentElement.parentElement;
+        let priceWithVat = document.querySelector('input[name="priceWithVat"]').parentElement.parentElement;
         priceWithVat.classList.add('flex');
         priceWithVat.appendChild(document.querySelector('input[name="packageCode"]').parentElement);
         priceWithVat.appendChild(document.querySelector('input[name="departmentNumber"]').parentElement);
@@ -637,7 +626,7 @@
 
     // function that returns created html button
     function createHideFieldsButton(){
-        var button = document.createElement('button');
+        let button = document.createElement('button');
         button.className = 'btn btn-sm btn-purple simplify-button';
         button.type = 'button';
         if (localStorage.getItem('simplifyForm') === 'true') {
@@ -663,7 +652,7 @@
     }
     
     function createStylesButton(){
-        var button = document.createElement('button');
+        let button = document.createElement('button');
         button.className = 'btn btn-sm btn-purple simplify-button';
         button.type = 'button';
         if (localStorage.getItem('addFormStyles') === 'true') {
@@ -692,7 +681,7 @@
 
     // TODO: need a better way to detect
     function waitAndAddPrintButton() {
-        var interval = setInterval(function() {
+        let interval = setInterval(function() {
             if (window.location.pathname === "/reference-book/items") {
                 addPrintButton();
             }
@@ -820,8 +809,8 @@
 
     async function updateThePrice() {
         while (true) {
-            var req = new Request();
-            var barcode = window.prompt(i18n('enterBarcode'));
+            let req = new Request();
+            let barcode = window.prompt(i18n('enterBarcode'));
             
             if (!barcode) {
                 console.error(i18n('missingBarcode'));
@@ -835,7 +824,7 @@
                 console.error(i18n('invalidBarcode'), barcode);
                 continue;
             }
-            var item = await req.searchItem(barcode);
+            let item = await req.searchItem(barcode);
             if (!item) {
                 alert(i18n('itemNotFound') + ' ' + barcode);
                 continue;
@@ -843,7 +832,7 @@
 
             //print out the name and the price of the item
             console.log('Item:', item.name, item.priceWithVat);
-            var newPrice = window.prompt(i18n('enterPriceItemIs') + item.name + i18n('withThePrice') + item.priceWithVat + ' €' + (item.packageCode ? ' +0,10 €' : ''));
+            let newPrice = window.prompt(i18n('enterPriceItemIs') + item.name + i18n('withThePrice') + item.priceWithVat + ' €' + (item.packageCode ? ' +0,10 €' : ''));
             if (!newPrice) continue;
             // ensuring the dot notation for the decimal part
             newPrice = parseFloat(newPrice.replace(',', '.'));
@@ -860,14 +849,12 @@
     }
 
     async function prompOnRepeatAndPrintLabels() {
-        var req = new Request();
-        var barcodes = [];
-        var items = [];
-        var invalidBarcodes = [];
-    
-        // Prompt loop to collect barcodes
+        let req = new Request();
+        let items = [];
+        let invalidBarcodes = [];
+
         while (true) {
-            var barcode = window.prompt(i18n('enterBarcode') + ' / ' + barcodes.length);
+            let barcode = window.prompt(i18n('enterBarcode') + ' / ' + items.length);
             if (!barcode) {
                 console.error(i18n('missingBarcode'));
                 continue;
@@ -883,22 +870,18 @@
                 }
             }
 
-            barcodes.push(barcode);
+            items.push(req.searchItem(barcode).then(item => {
+                if (!item) {
+                    invalidBarcodes.push(barcode);
+                }
+                return item;
+            }));
         }
         
-        for (let barcode of barcodes) {
-            var item = await req.searchItem(barcode);
-            if (item) {
-                items.push(item);
-            }
-            else {
-                invalidBarcodes.push(barcode);
-            }
+        items = await Promise.all(items);
+        items = items.filter(item => item);
 
-            await new Promise(resolve => setTimeout(resolve, 100)); // 0.1 second delay
-        }
         if (invalidBarcodes.length > 0) {
-            console.log(i18n('invalidBarcodes') + '\n' + invalidBarcodes.join('\n'));
             alert(i18n('invalidBarcodes') + '\n' + invalidBarcodes.join('\n'));
         }
 
@@ -935,6 +918,5 @@
 
     // Close modal button click event
     document.getElementById('closeModal').addEventListener('click', closeSettingsModal);
-
 
 })();
