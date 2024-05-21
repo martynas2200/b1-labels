@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      0.7.2
+// @version      0.8.2
 // @description  Generate labels for the selected items on the b1.lt website, quickly change the price of the item, and print the labels by barcodes or by the selected items in the list. The script also simplifies the item form by hiding unnecessary fields, shifting and styling the form elements. The script is available in English and Lithuanian languages.
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
@@ -32,7 +32,7 @@
             'newPrice': 'Enter the new price',
             'oldPrice': 'Old price',
             'print': 'Print',
-            'printSettings': 'Print Settings',
+            'printSettings': 'Settings',
             'save': 'Save',
             'notAllItemsActive': 'Not all selected items are active. Do you want to continue?',
             'noItemsSelected': 'No items selected!',
@@ -46,7 +46,9 @@
             'enterName': 'Enter the name',
             'enterPrice': 'Enter the price',
             'inactiveItem': 'The item is inactive. Do you want to continue?',
-            'invalidBarcodes': 'Invalid barcodes:'
+            'invalidBarcodes': 'Invalid barcodes:',
+            'apiKeyMissing': 'API Key is missing!',
+            'priceCheckButton': 'Price Check'
         },
         'lt': {
             'alternativeLabelFormat': 'Įgalinti alternatyvų etiketės formatą',
@@ -56,7 +58,7 @@
             'deposit': 'Tara',
             'enterBarcode': 'Įveskite brūkšninį kodą arba rašykite stop:',
             'failedToUpdateItem': 'Nepavyko atnaujinti prekės!',
-            'fastNewPriceButton': 'Greitas kainos keitimas',
+            'fastNewPriceButton': 'Kainos keitimas',
             'fastPrintButton': 'Greitas spausdinimas',
             'invalidBarcode': 'Neteisingas brūkšninis kodas',
             'itemNotFound': 'Prekė nerasta!',
@@ -66,7 +68,7 @@
             'newPrice': 'Įveskite naują kainą',
             'oldPrice': 'Senas kainos',
             'print': 'Spausdinti',
-            'printSettings': 'Spausdinimo nustatymai',
+            'printSettings': 'Nustatymai',
             'save': 'Išsaugoti',
             'notAllItemsActive': 'Ne visos pasirinktos prekės yra aktyvios. Ar norite tęsti?',
             'noItemsSelected': 'Nepasirinkta jokių prekių!',
@@ -80,7 +82,9 @@
             'enterName': 'Įveskite pavadinimą',
             'enterPrice': 'Įveskite kainą',
             'inactiveItem': 'Prekė yra neaktyvi. Ar norite tęsti?',
-            'invalidBarcodes': 'Neteisingi ar neegzistuojantys brūkšniniai kodai:'
+            'invalidBarcodes': 'Neteisingi ar neegzistuojantys brūkšniniai kodai:',
+            'apiKeyMissing': 'Trūksta API rakto!',
+            'priceCheckButton': 'Kainos tikrinimas balsu'
         }
     };
     
@@ -98,6 +102,10 @@
             setTimeout(addModalbuttons, 1000);
             return;
         }
+        const voicePriceButton = document.createElement('button');
+        voicePriceButton.textContent = i18n('priceCheckButton');
+        voicePriceButton.addEventListener('click', priceCheck);
+
         const settingsButton = document.createElement('button');
         settingsButton.textContent = i18n('printSettings');
         settingsButton.addEventListener('click', openSettingsModal);
@@ -109,14 +117,13 @@
         const fastNewPriceButton = document.createElement('button');
         fastNewPriceButton.textContent = i18n('fastNewPriceButton');
         fastNewPriceButton.addEventListener('click', updateThePrice);
-        console.log("the buttons were added to the navbar shortcuts");
+        navbarShortcuts.appendChild(voicePriceButton);
         navbarShortcuts.appendChild(settingsButton);
         navbarShortcuts.appendChild(fastPrintButton);
         navbarShortcuts.appendChild(fastNewPriceButton);
-
     }
+
     // Create modal to hold the settings
-    
     const modal = document.createElement('div');
     modal.style.display = 'none';
     modal.style.position = 'fixed';
@@ -132,6 +139,9 @@
             <label>
                 <input type="checkbox" id="alternativeLabelFormat"> ${i18n('alternativeLabelFormat')}
             </label>
+            <label>
+                API Key: <input type="text" id="apiKey">
+            </label>
             <br>
             <button id="saveSettings">${i18n('save')}</button>
             <button id="closeModal">${i18n('close')}</button>
@@ -142,6 +152,10 @@
     // Function to open modal
     function openSettingsModal() {
         modal.style.display = 'block';
+        const apiKey = localStorage.getItem('apiKey');
+        if (apiKey) {
+            document.getElementById('apiKey').value = apiKey;
+        }
     }
 
     // Function to close modal
@@ -548,12 +562,7 @@
 
     //axillary function to find the form-group element by the input name
     function findFormGroupByInputName(inputName) {
-        if(inputName.includes("Status")) {
-            let inputElement = document.querySelector('select[name="' + inputName + '"]');
-        }
-        else {
-            let inputElement = document.querySelector('input[name="' + inputName + '"]');
-        }
+        let inputElement = inputName.includes("Status") ? document.querySelector('select[name="' + inputName + '"]') : document.querySelector('input[name="' + inputName + '"]');
         // can return null if the input element is not found
         return inputElement.closest('.form-group');
     }
@@ -632,8 +641,7 @@
         if (localStorage.getItem('simplifyForm') === 'true') {
             button.textContent = i18n('resetForm');
             simplifyForm();
-        }
-        else {
+        } else {
             button.textContent = i18n('simplifyForm');
         }
         //onclick event listener, we will add the logic later
@@ -641,8 +649,7 @@
             if (localStorage.getItem('simplifyForm') === 'true') {
                 localStorage.setItem('simplifyForm', 'false');
                 location.reload();
-            }
-            else {
+            } else {
                 localStorage.setItem('simplifyForm', 'true');
                 button.textContent = i18n('resetForm');
                 simplifyForm();
@@ -707,6 +714,7 @@
 
     class Request {
         constructor() {
+            this.items = {};
             this.baseUrl = 'https://www.b1.lt';
             this.path = '/reference-book/items/search';
             this.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -762,6 +770,10 @@
                 console.error('Invalid barcode:', barcode);
                 return { data: [] };
             }
+            // Check if the item is already in the cache
+            if (this.items[barcode]) {
+                return this.items[barcode];
+            }
             // Prapare the request
             this.path = '/reference-book/items/search';
             this.getCookies();
@@ -780,23 +792,20 @@
 
 
             const data = await this.fetchData('POST', this.path, body);
+            this.items[barcode] = data.data[0] || null; // Cache the found item
             return data.data[0];
         }
         async saveItem(id, data) {
-            // Check if the id is provided and it consists of digits only
             if (!this.isItDigits(id)) {
-                console.error('Invalid ID for saving:', id);
+                console.error('Invalid id:', id);
                 return;
             }
 
-            // Prepare the request
             this.path = `/reference-book/items/update?id=${id}`;
             this.headers.referer = `${this.baseUrl}/reference-book/items/edit?id=${id}`;
 
             this.getCookies();
-
             const response = await this.fetchData('POST', this.path, data);
-
             return response.code === 200 ? console.log(i18n('itemUpdated')) : console.error(i18n('failedToUpdateItem'));
         }
         async createIem(data) {
@@ -889,7 +898,185 @@
             await printLabels(items);
         }
     }
+
+    // Interesting function to say the least for pricing weighted and packaged items
+    // Only in Lithuanian for now
+    async function getAudioUrl(text) {
+        const apiKey = localStorage.getItem('apiKey');
+        const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                input: { text: text },
+                voice: { languageCode: 'lt-LT', ssmlGender: 'MALE' },
+                audioConfig: { audioEncoding: 'MP3' }
+            })
+        });
+        const data = await response.json();
+        const audioContent = data.audioContent;
+        const audioBlob = new Blob([Uint8Array.from(atob(audioContent), c => c.charCodeAt(0))], { type: 'audio/mp3' });
+        return URL.createObjectURL(audioBlob);
+    }
     
+    async function playAudio(text) {
+        const audio = new Audio(await getAudioUrl(text));
+        await audio.play();
+    }
+
+    function removeModal() {
+        const prevModal = document.querySelector('.modal-user-script');
+        if (prevModal) {
+            document.body.removeChild(prevModal);
+        }
+    }
+    
+    function showModal(logs) {
+        removeModal();
+        const modal = document.createElement('div');
+        // TODO: add styles
+        modal.className = 'modal-user-script';
+        modal.style.display = 'block';
+        modal.style.position = 'fixed';
+        modal.style.top = '10%';
+        modal.style.left = '10%';
+        modal.style.padding = '20px';
+        modal.style.backgroundColor = 'beige';
+        modal.style.border = '1px solid black';
+        modal.style.zIndex = 1000;
+        modal.innerHTML = logs.join('<br>');
+        
+        const closeButton = document.createElement('button');
+        closeButton.textContent = i18n('close');
+        closeButton.onclick = () => document.body.removeChild(modal);
+        modal.appendChild(closeButton);
+        
+        document.body.appendChild(modal);
+    }
+    function numberToWords(number) {
+        const units = ['', 'vienas', 'du', 'trys', 'keturi', 'penki', 'šeši', 'septyni', 'aštuoni', 'devyni'];
+        const teens = ['dešimt', 'vienuolika', 'dvylika', 'trylika', 'keturiolika', 'penkiolika', 'šešiolika', 'septyniolika', 'aštuoniolika', 'devyniolika'];
+        const tens = ['', '', 'dvidešimt', 'trisdešimt', 'keturiasdešimt', 'penkiasdešimt', 'šešiasdešimt', 'septyniasdešimt', 'aštuoniasdešimt', 'devyniasdešimt'];
+        const hundreds = ['', 'šimtas', 'du šimtai', 'trys šimtai', 'keturi šimtai', 'penki šimtai', 'šeši šimtai', 'septyni šimtai', 'aštuoni šimtai', 'devyni šimtai'];
+        
+        let words = [];
+        if (number === 0) {
+            words.push('nulis');
+        } else {
+            let unitsPart = number % 10;
+            let tensPart = Math.floor(number / 10) % 10;
+            let hundredsPart = Math.floor(number / 100);
+            if (hundredsPart > 0) {
+                words.push(hundreds[hundredsPart]);
+            }
+            if (tensPart > 1) {
+                words.push(tens[tensPart]);
+            }
+            if (tensPart === 1) {
+                words.push(teens[unitsPart]);
+            } else {
+                words.push(units[unitsPart]);
+            }
+        }
+        words = words.filter(word => word);
+        return words.join(' ');
+    }
+
+    function digitsToPrice(number) {
+        const integer = Math.floor(number);
+        const decimal = Math.round((number - integer) * 100);
+        let words = [];
+        if (integer > 0) {
+            words.push(numberToWords(integer));
+        }
+
+        if (decimal > 0) {
+            // euras, eurai, eurų
+            if (integer !== 0) {
+                if (integer === 1 || (integer % 10 === 1 && integer % 100 !== 11)) {
+                    words.push('euras');
+                } else if (integer % 10 === 0 || integer % 10 >= 10 || (integer % 100 >= 10 && integer % 100 <= 20)) {
+                    words.push('eurų');
+                } else {
+                    words.push('eurai');
+                }
+                words.push('ir');
+            }
+            words.push(numberToWords(decimal));
+            // centas, centai, centų
+            if (decimal === 1 || (decimal % 10 === 1 && decimal % 100 !== 11)) {
+                words.push('centas');
+            } else if (decimal % 10 === 0 || decimal % 10 >= 10 || (decimal % 100 >= 10 && decimal % 100 <= 20)) {
+                words.push('centų');
+            } else {
+                words.push('centai');
+            }
+        }
+        words = words.filter(word => word);
+        return words.join(' ');
+    }
+
+    async function priceCheck() {
+        const req = new Request();
+        const logs = [];
+        let previousBarcode = '';
+        if (localStorage.getItem("apiKey") === null) {
+            alert(i18n('apiKeyMissing'));
+            return;
+        }
+        await playAudio('Skenuokite arba įveskite "stop" jei norite baigti.');
+        while (true) {
+            const barcode = window.prompt(i18n('enterBarcode'));
+            if (!barcode) {
+                console.error(i18n('missingBarcode'));
+                continue;
+            } else if (barcode.toLowerCase() === 'stop') {
+                await playAudio('Kainavimas baigtas');
+                break;
+            } else if (!req.isItDigits(barcode)) {
+                console.error(i18n('incorrectBarcode'), barcode);
+                barcode = lettersToNumbers(barcode);
+                if (!req.isItDigits(barcode)) {
+                    console.error(i18n('invalidBarcode'), barcode);
+                    await playAudio('Neteisingas brūkšninis kodas, bandykite dar kartą. Arba įveskite "stop" jei norite baigti kainavimą.');
+                    continue;
+                }
+            }
+    
+            let item = null;
+            let weightPart = 1000;
+            // Assuming that the barcode is 13 digits and it is a weighted and packaged item
+            if (barcode.length === 13 ) {
+                const barcodePart = barcode.slice(0, 8);
+                weightPart = parseInt(barcode.slice(8, 12), 10);
+                item = await req.searchItem(barcodePart);
+            }
+
+            if (item) {
+                const totalPrice = (item.priceWithVat * weightPart) / 1000; 
+                const totalFinalPrice = Math.round((totalPrice + Number.EPSILON) * 100) / 100;
+                logs.push(`${item.name}, <b>${totalFinalPrice}</b>, ${weightPart/1000}*${item.priceWithVat}=${totalPrice.toFixed(5)}, ${barcode}`);
+                showModal(logs);
+                if (barcode === previousBarcode) { // full response
+                    await playAudio('Kaip ir sakiau, kaina yra ' + digitsToPrice(totalFinalPrice) + '. Svoris  ' + numberToWords(weightPart) + ' g. Tai ' + item.name);
+                } else {
+                    await playAudio("Kaina " + digitsToPrice(totalFinalPrice));
+                }
+            } else { // perhaps it is a regular item
+                item = await req.searchItem(barcode);
+                if (item) {
+                    logs.push(`${item.name}, kaina: ${item.priceWithVat}, ${barcode}`);
+                    showModal(logs);
+                    await playAudio(((barcode === previousBarcode)? "Kaip ir sakiau, " : "") + "kaina yra " + digitsToPrice(item.priceWithVat) + ". Tai " + item.name);
+                } else {
+                    await playAudio("Nerasta");
+                }
+            }
+            previousBarcode = barcode;
+        }
+    }
+
     window.addEventListener('load', function() {
         waitAndAddPrintButton();
         addModalbuttons();
@@ -913,9 +1100,12 @@
     document.getElementById('saveSettings').addEventListener('click', function() {
         const alternativeLabelFormat = document.getElementById('alternativeLabelFormat').checked;
         localStorage.setItem('alternativeLabelFormat', alternativeLabelFormat);
+        const apiKey = document.getElementById('apiKey').value;
+        localStorage.setItem('apiKey', apiKey);
         closeSettingsModal();
     });
 
+    // TODO: styles for the modal
     // Close modal button click event
     document.getElementById('closeModal').addEventListener('click', closeSettingsModal);
 
