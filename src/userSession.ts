@@ -25,12 +25,14 @@ export class UserSession {
       return false
     }
     const controller = angular.element(dropdownToggle).controller()
-    if (controller.user.length !== 0) {
+    if (controller.user.name != null) {
       this.user = controller.user
       this.isLoggedIn = true
       // typeId is 1 for admin, 2 for accountant, 3 for manager, 4 for salesperson
       // No need to check for null, because we already checked for the length, but the linter doesn't know that ?...
-      if (this.user !== null) this.admin = this.user.typeId <= 3
+      this.admin = (this.user != null) ? this.user.typeId <= 3 : false
+    } else {
+      this.isLoggedIn = false
     }
     return this.isLoggedIn
   }

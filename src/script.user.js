@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      1.0.0
+// @version      1.0.1
 // @description  Generate labels for the selected items on the b1.lt website
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
@@ -35,11 +35,13 @@
                 return false;
             }
             const controller = angular.element(dropdownToggle).controller();
-            if (controller.user.length !== 0) {
+            if (controller.user.name != null) {
                 this.user = controller.user;
                 this.isLoggedIn = true;
-                if (this.user !== null)
-                    this.admin = this.user.typeId <= 3;
+                this.admin = (this.user != null) ? this.user.typeId <= 3 : false;
+            }
+            else {
+                this.isLoggedIn = false;
             }
             return this.isLoggedIn;
         }
@@ -877,7 +879,7 @@ margin-left: 0;
             else {
                 this.items.push(item);
                 if (item.priceWithVat !== 0) {
-                    void this.playAudio('Kaina ' + this.digitsToPrice(item.priceWithVat));
+                    void this.playAudio('Kaina ' + this.digitsToPrice(item.finalPrice ?? item.priceWithVat));
                 }
                 else {
                     void this.playAudio('Kaina nėra nustatyta');
@@ -1231,6 +1233,7 @@ margin-left: 0;
             });
         }
         async handleUrlChange(previousUrl, currentUrl, tries = 0) {
+            console.log('Url has changed');
             this.pageReady = false;
             if (this.user.isLoggedIn && this.user.admin && !this.interface.isActive()) {
                 if (!this.wasInterfaceButtonAdded && this.interface.addActivateButton()) {

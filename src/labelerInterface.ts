@@ -344,7 +344,7 @@ export class LabelerInterface {
     } else {
       this.items.push(item)
       if (item.priceWithVat !== 0) {
-        void this.playAudio('Kaina ' + this.digitsToPrice(item.priceWithVat))
+        void this.playAudio('Kaina ' + this.digitsToPrice(item.finalPrice ?? item.priceWithVat))
       } else {
         void this.playAudio('Kaina nėra nustatyta')
       }

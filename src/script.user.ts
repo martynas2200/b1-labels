@@ -12,7 +12,6 @@ interface row extends item {
   _select: boolean
 }
 
-// eslint-disable-next-line no-undef
 declare const angular: angular.IAngularStatic
 declare let history: History
 declare let window: Window
@@ -67,6 +66,7 @@ class LabelsUserscript {
   }
 
   private async handleUrlChange (previousUrl: string | null, currentUrl: string, tries: number = 0): Promise<void> {
+    console.log('Url has changed')
     this.pageReady = false
     if (this.user.isLoggedIn && this.user.admin && !this.interface.isActive()) {
       if (!this.wasInterfaceButtonAdded && this.interface.addActivateButton()) {
