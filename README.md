@@ -6,9 +6,9 @@ A case-specific userscript for generating and printing labels designed for items
 - Label size: 32 mm x 57 mm (Dymo Medium label)
 - Designed for a tiny grocery store in my hometown
 - Could be used in combination with silent printing for faster operation
-- Future plans to add different label sizes and more customization options
+- Future plans to add different label sizes and more customization options, possible integration with DYMO LabelWriter SDK for non-blocking printing
 
-It is also facilitates the process of entering new items into the store's inventory by simplifying the forms, and activating the items after the new price is set.
+It is also facilitates the process of entering new items into the store's inventory by simplifying the forms and providing a user-friendly interface.
 
 ## Installation
 1. Install a userscript manager for your browser (e.g. Tampermonkey)
