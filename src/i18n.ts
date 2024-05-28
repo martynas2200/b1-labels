@@ -29,8 +29,6 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     noItemsSelected: 'No items selected!',
     noData: 'No data to print!',
     simplifyForm: 'Simplify Form',
-    brightStyle: 'Make it bright',
-    resetStyles: 'Reset styles',
     resetForm: 'Reset form',
     inactiveItem: 'The item is inactive. Do you want to continue?',
     apiKeyMissing: 'API Key is missing!',
@@ -43,7 +41,7 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     sayOutLoud: 'Say out loud',
     packagedGoodsWillBeScanned: 'Packaged goods will be scanned',
     kiloPrice: 'Kilogram Price',
-    department: 'Department',
+    departmentNumber: 'Department',
     packageCode: 'Package',
     searchSuccessful: 'Search successful',
     itemsFound: 'Items found',
@@ -54,7 +52,10 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     packageQuantity: 'Package Quantity',
     weight: 'Weight',
     cleanAll: 'Clean All',
-    weightedItem: 'Weighted item'
+    weightedItem: 'Weighted item',
+    login: 'Login',
+    autoLogin: 'Auto Login',
+    showLoginOptions: 'Other ways to login'
   },
   lt: {
     alternativeLabelFormat: 'Etiketėje tik brūkšninis kodas',
@@ -73,9 +74,7 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     notAllItemsActive: 'Ne visos pasirinktos prekės yra aktyvios. Ar norite tęsti?',
     noItemsSelected: 'Nepasirinkta jokių prekių!',
     noData: 'Nepakanka duomenų spausdinimui!',
-    simplifyForm: 'Paprasta forma',
-    brightStyle: 'Ryškus stilius',
-    resetStyles: 'Atkurti stilių',
+    simplifyForm: 'Supaprastinti formą',
     resetForm: 'Atkurti formą',
     inactiveItem: 'Prekė yra neaktyvi. Ar norite tęsti?',
     apiKeyMissing: 'Trūksta API rakto!',
@@ -88,7 +87,7 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     sayOutLoud: 'Sakyti kainas balsu',
     packagedGoodsWillBeScanned: 'Bus skenuojamos fasuotos/sveriamos prekės',
     kiloPrice: 'Kilogramo kaina',
-    department: 'S',
+    departmentNumber: 'S',
     packageCode: 'Pakuotė',
     searchSuccessful: 'Paieška sėkminga',
     itemsFound: ' rasta',
@@ -99,7 +98,10 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     packageQuantity: 'Pakuotės kiekis',
     weight: 'Svoris',
     cleanAll: 'Išvalyti',
-    weightedItem: 'Sveriama prekė'
+    weightedItem: 'Sveriama prekė',
+    login: 'Prisijungimas darbo vietoje',
+    autoLogin: 'Prisijungti automatiškai',
+    showLoginOptions: 'Kiti prisijungimo būdai'
   }
 }
 

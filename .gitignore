@@ -3,3 +3,5 @@ package-lock.json
 .DS_Store
 *.txt
 /__tests__
+
+/src/dymoPrinter.ts

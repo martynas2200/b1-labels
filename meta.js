@@ -29,7 +29,6 @@ const metadata = {
   match: "https://www.b1.lt/*",
   downloadURL: "https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/script.user.js",
   updateURL: "https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/script.user.js",
-  grant: "unsafeWindow",
   license: "GNU GPLv3"
 };
 
@@ -58,7 +57,9 @@ export default async function addUserScriptMetadata(overwrites = {}) {
 // @match        ${metadata.match}
 // @downloadURL  ${metadata.downloadURL}
 // @updateURL    ${metadata.updateURL}
-// @grant        ${metadata.grant}
+// @grant        GM.setValue
+// @grant        GM.getValue
+// @grant        unsafeWindow
 // @license      ${metadata.license}
 // ==/UserScript==\n\n`;
           bundle[fileName].code = metadataBlock + content;

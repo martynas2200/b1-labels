@@ -1,5 +1,7 @@
-declare let angular: angular.IAngularStatic
+import { i18n } from "./i18n"
 
+declare let angular: angular.IAngularStatic
+declare let GM: any
 export class UserSession {
   interfaceInUse: boolean
   isLoggedIn: boolean
@@ -43,12 +45,11 @@ export class UserSession {
 
     const formElement = document.querySelector('form')
     const html = `
-            <h5 class="header blue">Prisijungimas darbo vietoje</h5>
-            <div class="form-group text-center">
-            <button class="btn btn-success-2 btn-block " type="button" id="auto-login"><i class="fa fa-sign-in"></i> Prisijungti automatiškai</button>
-            <button class="btn-primary btn btn-block margin-top-8" type="button" id="show-login-options">Kiti būdai</button>
-            </div>
-        `
+      <h5 class="header blue">${ i18n('login') }</h5>
+      <div class="form-group text-center">
+      <button class="btn btn-success-2 btn-block " type="button" id="auto-login"><i class="fa fa-sign-in"></i>${ i18n('autoLogin') }</button>
+      <button class="btn-primary btn btn-block margin-top-8" type="button" id="show-login-options">${ i18n('showLoginOptions') }</button>
+      </div>`
     if (formElement !== null) {
       formElement.insertAdjacentHTML('beforebegin', html)
       formElement.style.display = 'none'
@@ -73,27 +74,76 @@ export class UserSession {
       form.style.display = 'block'
       optionsButton.style.display = 'none'
     })
-
-    autoLoginButton.addEventListener('click', function () {
-      const usernameInput: HTMLInputElement | null = form.querySelector('input[name="username"]')
-      const passwordInput: HTMLInputElement | null = form.querySelector('input[name="password"]')
-
-      if ((usernameInput === null) || (passwordInput === null)) {
-        console.error('Username or password input not found')
-        return
-      }
-
-      const username = localStorage.getItem('auto-username')
-      const password = localStorage.getItem('auto-password')
-
-      if ((username === null) || (password === null)) {
-        console.error('The data has been lost. Please enter your credentials manually.')
-        return
-      }
-      usernameInput.value = username
-      passwordInput.value = password
-      form.submit()
+    // bind auto login button to autoLogin function
+    autoLoginButton.addEventListener('click', () => {
+      void this.autoLogin()
     })
     return true // success
+  }
+
+  private async autoLogin (): Promise<boolean> {
+    const usernameInput: HTMLInputElement | null = document.querySelector('input[name="username"]')
+    const passwordInput: HTMLInputElement | null = document.querySelector('input[name="password"]')
+    if ((usernameInput === null) || (passwordInput === null)) {
+      alert('Username or password input not found')
+      return false
+    }
+    const username = await GM.getValue('username', '')
+    const password = await GM.getValue('password', '')
+    if (username === '' || password === '') {
+      // crazy idea to check what is in the fields and if they contain x's then ask to save the login details
+      alert('Login details not found')
+      if (usernameInput.value === 'x' && passwordInput.value === 'x') {
+        void this.saveLoginDetails()
+      }
+      return false
+    }
+    usernameInput.value = username
+    passwordInput.value = password
+    // trigger change event to make angular update the model
+    usernameInput.dispatchEvent(new Event('input', { bubbles: true }))
+    passwordInput.dispatchEvent(new Event('input', { bubbles: true }))
+
+    const form: HTMLFormElement | null = document.querySelector('form')
+    if (form === null) {
+      alert('Form not found')
+      return false
+    }
+    let key = form.getAttribute('ng-submit')
+    if (key === null) {
+      alert('Recaptcha key not found')
+      return false
+    }
+    const match = key.match(/"([^"]+)"/)
+    if (match === null) {
+      alert('Recaptcha key not found')
+      return false
+    }
+    key = match[1]
+    angular.element(form).controller().signIn(key)
+    return true
+  }
+
+  // function to prompt user to save login details
+  private async saveLoginDetails (): Promise<void> {
+    if (window.confirm('Do you want to save these login details?')) {
+      // prompt user to enter login details
+      const username = window.prompt('Enter your username')
+      const password = window.prompt('Enter your password')
+      if (username != null && password != null) {
+        await GM.setValue('username', username)
+        await GM.setValue('password', password)
+        alert('Login details saved')
+      }
+    }
+    if (!window.confirm('Do you want to save API key?')) {
+      return
+    }
+    const apiKey = window.prompt('Enter your API key')
+    if (apiKey === null) {
+      return
+    }
+    await GM.setValue('api-key', apiKey)
+    alert('API key saved')
   }
 };

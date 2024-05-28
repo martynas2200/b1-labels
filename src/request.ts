@@ -95,7 +95,10 @@ export class Request {
       pageSize: 20,
       filters: {
         groupOp: 'AND',
-        rules: { name: { data: name, field: 'name', op: 'cn' } }
+        rules: {
+          name: { data: name, field: 'name', op: 'cn' },
+          isActive: { data: true, field: 'isActive', op: 'eq' }
+        }
       },
       allSelected: false,
       asString: '',

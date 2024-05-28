@@ -91,6 +91,7 @@ margin-left: 0;
     font-family: math;
     font-size: 16px;
     font-weight: 700;
+    z-index: 10;
 }
 .inactive {
     height: 5px;

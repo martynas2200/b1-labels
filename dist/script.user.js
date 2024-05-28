@@ -2,18 +2,134 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      1.0.1
+// @version      1.0.2
 // @description  Generate labels for the selected items on the b1.lt website
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
 // @downloadURL  https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/script.user.js
 // @updateURL    https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/script.user.js
+// @grant        GM.setValue
+// @grant        GM.getValue
 // @grant        unsafeWindow
 // @license      GNU GPLv3
 // ==/UserScript==
 
 (function () {
     'use strict';
+
+    function lettersToNumbers(barcode) {
+        return barcode.replace(/ą/g, '1')
+            .replace(/č/g, '2')
+            .replace(/ę/g, '3')
+            .replace(/ė/g, '4')
+            .replace(/į/g, '5')
+            .replace(/š/g, '6')
+            .replace(/ų/g, '7')
+            .replace(/ū/g, '8')
+            .replace(/ž/g, '9');
+    }
+    const LANGUAGES = {
+        en: {
+            alternativeLabelFormat: 'Enable alternative label format',
+            askingForPackageCode: 'Are there any selected items that have a package code?',
+            aboutToCheckPackageCode: 'A check for the package codes will be performed, this may take a while',
+            close: 'Close',
+            deposit: 'Deposit',
+            enterBarcode: 'Enter the barcode',
+            invalidBarcode: 'Invalid barcode',
+            itemNotFound: 'Item not found!',
+            itemUpdated: 'Item updated successfully!',
+            missingBarcode: 'Barcode is required!',
+            nlabelsToBePrinted: ' labels to be printed',
+            print: 'Print',
+            save: 'Save',
+            notAllItemsActive: 'Not all selected items are active. Do you want to continue?',
+            noItemsSelected: 'No items selected!',
+            noData: 'No data to print!',
+            simplifyForm: 'Simplify Form',
+            resetForm: 'Reset form',
+            inactiveItem: 'The item is inactive. Do you want to continue?',
+            apiKeyMissing: 'API Key is missing!',
+            labelsAndPrices: 'Labels and Prices',
+            fullBarcode: 'Full Barcode',
+            searchByBarcode: 'Search by Barcode',
+            searchByName: 'Search by Name',
+            enterName: 'Enter Name',
+            search: 'Search',
+            sayOutLoud: 'Say out loud',
+            packagedGoodsWillBeScanned: 'Packaged goods will be scanned',
+            kiloPrice: 'Kilogram Price',
+            departmentNumber: 'Department',
+            packageCode: 'Package',
+            searchSuccessful: 'Search successful',
+            itemsFound: 'Items found',
+            clickToAdd: 'Click on the item to add it to the print list',
+            itemAdded: 'Item added',
+            noItemsFound: 'No items found',
+            done: 'Done',
+            packageQuantity: 'Package Quantity',
+            weight: 'Weight',
+            cleanAll: 'Clean All',
+            weightedItem: 'Weighted item',
+            login: 'Login',
+            autoLogin: 'Auto Login',
+            showLoginOptions: 'Other ways to login'
+        },
+        lt: {
+            alternativeLabelFormat: 'Etiketėje tik brūkšninis kodas',
+            askingForPackageCode: 'Ar yra pasirinktų prekių, kurios turi pakuotės kodą?',
+            aboutToCheckPackageCode: 'Bus atliekamas pakuotės kodų tikrinimas, tai gali užtrukti',
+            close: 'Uždaryti',
+            deposit: 'Tara',
+            enterBarcode: 'Įveskite brūkšninį kodą',
+            invalidBarcode: 'Neteisingas brūkšninis kodas',
+            itemNotFound: 'Prekė nerasta!',
+            itemUpdated: 'Prekė sėkmingai atnaujinta!',
+            missingBarcode: 'Brūkšninis kodas yra privalomas!',
+            nlabelsToBePrinted: ' etiketės bus spausdinamos',
+            print: 'Spausdinti',
+            save: 'Išsaugoti',
+            notAllItemsActive: 'Ne visos pasirinktos prekės yra aktyvios. Ar norite tęsti?',
+            noItemsSelected: 'Nepasirinkta jokių prekių!',
+            noData: 'Nepakanka duomenų spausdinimui!',
+            simplifyForm: 'Supaprastinti formą',
+            resetForm: 'Atkurti formą',
+            inactiveItem: 'Prekė yra neaktyvi. Ar norite tęsti?',
+            apiKeyMissing: 'Trūksta API rakto!',
+            labelsAndPrices: 'Etiketės ir kainos',
+            fullBarcode: 'Pilnas brūkšninis kodas',
+            searchByBarcode: 'Ieškoti pagal brūkšninį kodą',
+            searchByName: 'Ieškoti pagal pavadinimą',
+            enterName: 'Įveskite prekės pavadinimą',
+            search: 'Ieškoti',
+            sayOutLoud: 'Sakyti kainas balsu',
+            packagedGoodsWillBeScanned: 'Bus skenuojamos fasuotos/sveriamos prekės',
+            kiloPrice: 'Kilogramo kaina',
+            departmentNumber: 'S',
+            packageCode: 'Pakuotė',
+            searchSuccessful: 'Paieška sėkminga',
+            itemsFound: ' rasta',
+            clickToAdd: 'Paspauskite ant prekės, kad ją pridėtumėte į spausdinimo sąrašą',
+            itemAdded: 'Prekė pridėta',
+            noItemsFound: 'Nieko nerasta',
+            done: 'Atlikta',
+            packageQuantity: 'Pakuotės kiekis',
+            weight: 'Svoris',
+            cleanAll: 'Išvalyti',
+            weightedItem: 'Sveriama prekė',
+            login: 'Prisijungimas darbo vietoje',
+            autoLogin: 'Prisijungti automatiškai',
+            showLoginOptions: 'Kiti prisijungimo būdai'
+        }
+    };
+    let userLanguage = navigator.language.split('-')[0];
+    const currentUrl = window.location.pathname;
+    const languagePattern = /\/(en|ru)\//;
+    if (languagePattern.test(currentUrl)) {
+        userLanguage = 'en';
+    }
+    const currentLanguage = LANGUAGES[userLanguage] != null ? userLanguage : 'en';
+    const i18n = (key) => LANGUAGES[currentLanguage][key] ?? LANGUAGES.en[key] ?? key;
 
     class UserSession {
         interfaceInUse;
@@ -50,12 +166,11 @@
             h5Elements.forEach(element => { element.remove(); });
             const formElement = document.querySelector('form');
             const html = `
-            <h5 class="header blue">Prisijungimas darbo vietoje</h5>
-            <div class="form-group text-center">
-            <button class="btn btn-success-2 btn-block " type="button" id="auto-login"><i class="fa fa-sign-in"></i> Prisijungti automatiškai</button>
-            <button class="btn-primary btn btn-block margin-top-8" type="button" id="show-login-options">Kiti būdai</button>
-            </div>
-        `;
+      <h5 class="header blue">${i18n('login')}</h5>
+      <div class="form-group text-center">
+      <button class="btn btn-success-2 btn-block " type="button" id="auto-login"><i class="fa fa-sign-in"></i>${i18n('autoLogin')}</button>
+      <button class="btn-primary btn btn-block margin-top-8" type="button" id="show-login-options">${i18n('showLoginOptions')}</button>
+      </div>`;
             if (formElement !== null) {
                 formElement.insertAdjacentHTML('beforebegin', html);
                 formElement.style.display = 'none';
@@ -80,138 +195,71 @@
                 form.style.display = 'block';
                 optionsButton.style.display = 'none';
             });
-            autoLoginButton.addEventListener('click', function () {
-                const usernameInput = form.querySelector('input[name="username"]');
-                const passwordInput = form.querySelector('input[name="password"]');
-                if ((usernameInput === null) || (passwordInput === null)) {
-                    console.error('Username or password input not found');
-                    return;
-                }
-                const username = localStorage.getItem('auto-username');
-                const password = localStorage.getItem('auto-password');
-                if ((username === null) || (password === null)) {
-                    console.error('The data has been lost. Please enter your credentials manually.');
-                    return;
-                }
-                usernameInput.value = username;
-                passwordInput.value = password;
-                form.submit();
+            autoLoginButton.addEventListener('click', () => {
+                void this.autoLogin();
             });
             return true;
         }
-    }
-
-    function lettersToNumbers(barcode) {
-        return barcode.replace(/ą/g, '1')
-            .replace(/č/g, '2')
-            .replace(/ę/g, '3')
-            .replace(/ė/g, '4')
-            .replace(/į/g, '5')
-            .replace(/š/g, '6')
-            .replace(/ų/g, '7')
-            .replace(/ū/g, '8')
-            .replace(/ž/g, '9');
-    }
-    const LANGUAGES = {
-        en: {
-            alternativeLabelFormat: 'Enable alternative label format',
-            askingForPackageCode: 'Are there any selected items that have a package code?',
-            aboutToCheckPackageCode: 'A check for the package codes will be performed, this may take a while',
-            close: 'Close',
-            deposit: 'Deposit',
-            enterBarcode: 'Enter the barcode',
-            invalidBarcode: 'Invalid barcode',
-            itemNotFound: 'Item not found!',
-            itemUpdated: 'Item updated successfully!',
-            missingBarcode: 'Barcode is required!',
-            nlabelsToBePrinted: ' labels to be printed',
-            print: 'Print',
-            save: 'Save',
-            notAllItemsActive: 'Not all selected items are active. Do you want to continue?',
-            noItemsSelected: 'No items selected!',
-            noData: 'No data to print!',
-            simplifyForm: 'Simplify Form',
-            brightStyle: 'Make it bright',
-            resetStyles: 'Reset styles',
-            resetForm: 'Reset form',
-            inactiveItem: 'The item is inactive. Do you want to continue?',
-            apiKeyMissing: 'API Key is missing!',
-            labelsAndPrices: 'Labels and Prices',
-            fullBarcode: 'Full Barcode',
-            searchByBarcode: 'Search by Barcode',
-            searchByName: 'Search by Name',
-            enterName: 'Enter Name',
-            search: 'Search',
-            sayOutLoud: 'Say out loud',
-            packagedGoodsWillBeScanned: 'Packaged goods will be scanned',
-            kiloPrice: 'Kilogram Price',
-            department: 'Department',
-            packageCode: 'Package',
-            searchSuccessful: 'Search successful',
-            itemsFound: 'Items found',
-            clickToAdd: 'Click on the item to add it to the print list',
-            itemAdded: 'Item added',
-            noItemsFound: 'No items found',
-            done: 'Done',
-            packageQuantity: 'Package Quantity',
-            weight: 'Weight',
-            cleanAll: 'Clean All',
-            weightedItem: 'Weighted item'
-        },
-        lt: {
-            alternativeLabelFormat: 'Etiketėje tik brūkšninis kodas',
-            askingForPackageCode: 'Ar yra pasirinktų prekių, kurios turi pakuotės kodą?',
-            aboutToCheckPackageCode: 'Bus atliekamas pakuotės kodų tikrinimas, tai gali užtrukti',
-            close: 'Uždaryti',
-            deposit: 'Tara',
-            enterBarcode: 'Įveskite brūkšninį kodą',
-            invalidBarcode: 'Neteisingas brūkšninis kodas',
-            itemNotFound: 'Prekė nerasta!',
-            itemUpdated: 'Prekė sėkmingai atnaujinta!',
-            missingBarcode: 'Brūkšninis kodas yra privalomas!',
-            nlabelsToBePrinted: ' etiketės bus spausdinamos',
-            print: 'Spausdinti',
-            save: 'Išsaugoti',
-            notAllItemsActive: 'Ne visos pasirinktos prekės yra aktyvios. Ar norite tęsti?',
-            noItemsSelected: 'Nepasirinkta jokių prekių!',
-            noData: 'Nepakanka duomenų spausdinimui!',
-            simplifyForm: 'Paprasta forma',
-            brightStyle: 'Ryškus stilius',
-            resetStyles: 'Atkurti stilių',
-            resetForm: 'Atkurti formą',
-            inactiveItem: 'Prekė yra neaktyvi. Ar norite tęsti?',
-            apiKeyMissing: 'Trūksta API rakto!',
-            labelsAndPrices: 'Etiketės ir kainos',
-            fullBarcode: 'Pilnas brūkšninis kodas',
-            searchByBarcode: 'Ieškoti pagal brūkšninį kodą',
-            searchByName: 'Ieškoti pagal pavadinimą',
-            enterName: 'Įveskite prekės pavadinimą',
-            search: 'Ieškoti',
-            sayOutLoud: 'Sakyti kainas balsu',
-            packagedGoodsWillBeScanned: 'Bus skenuojamos fasuotos/sveriamos prekės',
-            kiloPrice: 'Kilogramo kaina',
-            department: 'S',
-            packageCode: 'Pakuotė',
-            searchSuccessful: 'Paieška sėkminga',
-            itemsFound: ' rasta',
-            clickToAdd: 'Paspauskite ant prekės, kad ją pridėtumėte į spausdinimo sąrašą',
-            itemAdded: 'Prekė pridėta',
-            noItemsFound: 'Nieko nerasta',
-            done: 'Atlikta',
-            packageQuantity: 'Pakuotės kiekis',
-            weight: 'Svoris',
-            cleanAll: 'Išvalyti',
-            weightedItem: 'Sveriama prekė'
+        async autoLogin() {
+            const usernameInput = document.querySelector('input[name="username"]');
+            const passwordInput = document.querySelector('input[name="password"]');
+            if ((usernameInput === null) || (passwordInput === null)) {
+                alert('Username or password input not found');
+                return false;
+            }
+            const username = await GM.getValue('username', '');
+            const password = await GM.getValue('password', '');
+            if (username === '' || password === '') {
+                alert('Login details not found');
+                if (usernameInput.value === 'x' && passwordInput.value === 'x') {
+                    void this.saveLoginDetails();
+                }
+                return false;
+            }
+            usernameInput.value = username;
+            passwordInput.value = password;
+            usernameInput.dispatchEvent(new Event('input', { bubbles: true }));
+            passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+            const form = document.querySelector('form');
+            if (form === null) {
+                alert('Form not found');
+                return false;
+            }
+            let key = form.getAttribute('ng-submit');
+            if (key === null) {
+                alert('Recaptcha key not found');
+                return false;
+            }
+            const match = key.match(/"([^"]+)"/);
+            if (match === null) {
+                alert('Recaptcha key not found');
+                return false;
+            }
+            key = match[1];
+            angular.element(form).controller().signIn(key);
+            return true;
         }
-    };
-    let userLanguage = navigator.language.split('-')[0];
-    const currentUrl = window.location.pathname;
-    const languagePattern = /\/(en|ru)\//;
-    if (languagePattern.test(currentUrl)) {
-        userLanguage = 'en';
+        async saveLoginDetails() {
+            if (window.confirm('Do you want to save these login details?')) {
+                const username = window.prompt('Enter your username');
+                const password = window.prompt('Enter your password');
+                if (username != null && password != null) {
+                    await GM.setValue('username', username);
+                    await GM.setValue('password', password);
+                    alert('Login details saved');
+                }
+            }
+            if (!window.confirm('Do you want to save API key?')) {
+                return;
+            }
+            const apiKey = window.prompt('Enter your API key');
+            if (apiKey === null) {
+                return;
+            }
+            await GM.setValue('api-key', apiKey);
+            alert('API key saved');
+        }
     }
-    const currentLanguage = LANGUAGES[userLanguage] != null ? userLanguage : 'en';
-    const i18n = (key) => LANGUAGES[currentLanguage][key] ?? LANGUAGES.en[key] ?? key;
 
     class Request {
         items = {};
@@ -301,7 +349,10 @@
                 pageSize: 20,
                 filters: {
                     groupOp: 'AND',
-                    rules: { name: { data: name, field: 'name', op: 'cn' } }
+                    rules: {
+                        name: { data: name, field: 'name', op: 'cn' },
+                        isActive: { data: true, field: 'isActive', op: 'eq' }
+                    }
                 },
                 allSelected: false,
                 asString: '',
@@ -410,6 +461,7 @@ margin-left: 0;
     font-family: math;
     font-size: 16px;
     font-weight: 700;
+    z-index: 10;
 }
 .inactive {
     height: 5px;
@@ -568,6 +620,7 @@ margin-left: 0;
         searchResultsElement = null;
         nameInput = null;
         itemList = null;
+        apiKey = null;
         constructor() {
             this.req = new Request();
             this.items = [];
@@ -577,6 +630,13 @@ margin-left: 0;
                 sayOutLoud: true,
                 packagedGoods: false
             };
+            void this.checkApiKey();
+        }
+        async checkApiKey() {
+            this.apiKey = await GM.getValue('api-key', null);
+            if (this.apiKey != null && this.apiKey.length < 20) {
+                this.apiKey = null;
+            }
         }
         isActive() {
             this.active = (document.querySelector('.look-up-container') !== null);
@@ -602,50 +662,52 @@ margin-left: 0;
             mainPage.insertAdjacentHTML('beforebegin', `
         <style>
         .form-section {
-            padding: 10px;
-            border: 1px solid #ddd;
-            margin-top: 10px;
-            // background-color: #eee;
+          padding: 10px;
+          border: 1px solid #ddd;
+          margin-top: 10px;
+          // background-color: #eee;
         }
         span.item-price {
-            font-weight: bold;
-            background: var(--theme-blue--dark-bg);
-            color: white;
-            padding: 2px 8px;
-            margin-right: 4px;
+          font-weight: bold;
+          background: var(--theme-blue--dark-bg);
+          color: white;
+          padding: 2px 8px;
+          margin-right: 4px;
+          border-radius: 4px;
         }
         .item-list {
-            padding: 10px;
-            max-height: calc(100vh - 60px);
-            overflow: auto;
+          padding: 10px;
+          max-height: calc(100vh - 60px);
+          overflow: auto;
         }
         .item {
-            font-size: 1.1em;
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            position: relative;
+          font-size: 1.1em;
+          border: 1px solid #ddd;
+          padding: 10px;
+          margin-bottom: 10px;
+          cursor: pointer;
+          position: relative;
         }
         .item:hover {
-            background-color: #f1f1f1;
+          background-color: #f1f1f1;
         }
         .item-labels {
-            font-size: 0.8em;
-            color: #666;
+          font-size: 0.8em;
+          color: #666;
         }
         .item *:empty:not(i) {
-            display: none;
+          display: none;
         }
         .item-labels span {
-            margin-right: 10px;
+          margin-right: 10px;
         }
         .corner-button {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            border: none;
-            margin: 5px;
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          border-radius: 4px;
+          border: none;
+          margin: 5px;
         }
         .modal-body .form-group {
             margin-bottom: 1rem;
@@ -780,11 +842,10 @@ margin-left: 0;
             this.itemList.innerHTML = '';
         }
         async getAudioUrl(text) {
-            const apiKey = localStorage.getItem('apiKey');
-            if (apiKey == null) {
+            if (this.apiKey == null) {
                 return;
             }
-            const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+            const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${this.apiKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -889,10 +950,6 @@ margin-left: 0;
         }
         async playAudio(text) {
             if (!this.settings.sayOutLoud) {
-                return;
-            }
-            if (localStorage.getItem('apiKey') == null) {
-                console.error('apiKey is not defined');
                 return;
             }
             const audio = new Audio(await this.getAudioUrl(text));
@@ -1060,6 +1117,7 @@ margin-left: 0;
             if (navbarShortcuts != null) {
                 const button = document.createElement('button');
                 button.textContent = i18n('labelsAndPrices');
+                button.className = 'btn btn-sm';
                 button.addEventListener('click', this.init.bind(this));
                 navbarShortcuts.appendChild(button);
             }
@@ -1252,7 +1310,7 @@ margin-left: 0;
                                 if (document.querySelector('.print') == null) {
                                     this.addPrintButton();
                                 }
-                            }, 2000);
+                            }, 1000);
                         }
                         break;
                     case '/reference-book/items/edit':

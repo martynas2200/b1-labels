@@ -3,6 +3,8 @@ import { Request } from './request.js'
 import { LabelGenerator } from './labelGenerator'
 import { type item, type packagedItem } from './item'
 
+declare let GM: any
+
 export class LabelerInterface {
   req: Request
   items: item[]
@@ -11,6 +13,7 @@ export class LabelerInterface {
   searchResultsElement: HTMLElement | null = null
   nameInput: HTMLInputElement | null = null
   itemList: HTMLElement | null = null
+  apiKey: string | null = null
   constructor () {
     this.req = new Request()
     this.items = []
@@ -19,6 +22,14 @@ export class LabelerInterface {
       alternativeLabelFormat: false,
       sayOutLoud: true,
       packagedGoods: false
+    }
+    void this.checkApiKey()
+  }
+
+  async checkApiKey (): Promise<void> {
+    this.apiKey = await GM.getValue('api-key', null)
+    if (this.apiKey != null && this.apiKey.length < 20) {
+      this.apiKey = null
     }
   }
 
@@ -50,50 +61,52 @@ export class LabelerInterface {
     mainPage.insertAdjacentHTML('beforebegin', `
         <style>
         .form-section {
-            padding: 10px;
-            border: 1px solid #ddd;
-            margin-top: 10px;
-            // background-color: #eee;
+          padding: 10px;
+          border: 1px solid #ddd;
+          margin-top: 10px;
+          // background-color: #eee;
         }
         span.item-price {
-            font-weight: bold;
-            background: var(--theme-blue--dark-bg);
-            color: white;
-            padding: 2px 8px;
-            margin-right: 4px;
+          font-weight: bold;
+          background: var(--theme-blue--dark-bg);
+          color: white;
+          padding: 2px 8px;
+          margin-right: 4px;
+          border-radius: 4px;
         }
         .item-list {
-            padding: 10px;
-            max-height: calc(100vh - 60px);
-            overflow: auto;
+          padding: 10px;
+          max-height: calc(100vh - 60px);
+          overflow: auto;
         }
         .item {
-            font-size: 1.1em;
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            position: relative;
+          font-size: 1.1em;
+          border: 1px solid #ddd;
+          padding: 10px;
+          margin-bottom: 10px;
+          cursor: pointer;
+          position: relative;
         }
         .item:hover {
-            background-color: #f1f1f1;
+          background-color: #f1f1f1;
         }
         .item-labels {
-            font-size: 0.8em;
-            color: #666;
+          font-size: 0.8em;
+          color: #666;
         }
         .item *:empty:not(i) {
-            display: none;
+          display: none;
         }
         .item-labels span {
-            margin-right: 10px;
+          margin-right: 10px;
         }
         .corner-button {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            border: none;
-            margin: 5px;
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          border-radius: 4px;
+          border: none;
+          margin: 5px;
         }
         .modal-body .form-group {
             margin-bottom: 1rem;
@@ -239,11 +252,10 @@ export class LabelerInterface {
   }
 
   async getAudioUrl (text: string): Promise<string | undefined> {
-    const apiKey = localStorage.getItem('apiKey')
-    if (apiKey == null) {
+    if (this.apiKey == null) {
       return
     }
-    const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+    const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${this.apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -354,10 +366,6 @@ export class LabelerInterface {
 
   async playAudio (text: string): Promise<void> {
     if (!this.settings.sayOutLoud) {
-      return
-    }
-    if (localStorage.getItem('apiKey') == null) {
-      console.error('apiKey is not defined')
       return
     }
     const audio = new Audio(await this.getAudioUrl(text))
@@ -531,6 +539,7 @@ export class LabelerInterface {
     if (navbarShortcuts != null) {
       const button = document.createElement('button')
       button.textContent = i18n('labelsAndPrices')
+      button.className = 'btn btn-sm'
       button.addEventListener('click', this.init.bind(this))
       navbarShortcuts.appendChild(button)
     }

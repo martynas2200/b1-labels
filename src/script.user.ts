@@ -86,7 +86,7 @@ class LabelsUserscript {
               if (document.querySelector('.print') == null) {
                 this.addPrintButton()
               }
-            }, 2000)
+            }, 1000)
           }
           break
 
