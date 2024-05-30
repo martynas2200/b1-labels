@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      1.0.2
+// @version      1.0.3
 // @description  Generate labels for the selected items on the b1.lt website
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
@@ -870,7 +870,7 @@ margin-left: 0;
             if (item.priceWithVat != 0) {
                 const itemPrice = document.createElement('span');
                 itemPrice.className = 'item-price';
-                itemPrice.textContent = (item.finalPrice ?? item.priceWithVat).toString();
+                itemPrice.textContent = (item.finalPrice ?? item.priceWithVat).toFixed(2).toString();
                 itemMain.appendChild(itemPrice);
             }
             const itemName = document.createElement('span');
@@ -1237,6 +1237,9 @@ margin-left: 0;
             inputField.value = lettersToNumbers(inputValue);
             if (!/^\d+$/.test(inputValue)) {
                 inputField.style.backgroundColor = 'orangered';
+            }
+            else if (inputValue.length === 13 || inputValue.length === 8) {
+                inputField.style.backgroundColor = 'lightgreen';
             }
             else if (inputValue.length < 13) {
                 inputField.style.backgroundColor = 'beige';

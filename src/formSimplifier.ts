@@ -119,6 +119,8 @@ export class FormSimplifier {
     inputField.value = lettersToNumbers(inputValue)
     if (!/^\d+$/.test(inputValue)) {
       inputField.style.backgroundColor = 'orangered'
+    } else if (inputValue.length === 13 || inputValue.length === 8) {
+      inputField.style.backgroundColor = 'lightgreen'
     } else if (inputValue.length < 13) {
       inputField.style.backgroundColor = 'beige'
     } else {

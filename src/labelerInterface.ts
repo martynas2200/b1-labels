@@ -281,7 +281,7 @@ export class LabelerInterface {
     if (item.priceWithVat != 0) {
       const itemPrice = document.createElement('span')
       itemPrice.className = 'item-price'
-      itemPrice.textContent = (item.finalPrice ?? item.priceWithVat).toString()
+      itemPrice.textContent = (item.finalPrice ?? item.priceWithVat).toFixed(2).toString()
       itemMain.appendChild(itemPrice)
     }
     const itemName = document.createElement('span')
