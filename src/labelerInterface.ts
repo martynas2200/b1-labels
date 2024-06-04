@@ -198,7 +198,9 @@ export class LabelerInterface {
                   <i class="fa fa-5x fa-b1-loader blue"></i>
                 </div>
               </div>
-              <div class="item-list"></div>
+              <div class="item-list">
+              <div class="alert alert-info alert-xs text-center">${i18n('noItemsScanned')}</div>
+              </div>
             </div>
             </div>
         </div>
@@ -315,7 +317,7 @@ export class LabelerInterface {
       console.error('itemList is not defined')
       return
     }
-    this.itemList.innerHTML = ''
+    this.itemList.innerHTML = `<div class="alert alert-info alert-xs text-center">${i18n('noItemsScanned')}</div>`
   }
 
   async getAudioUrl (text: string): Promise<string | undefined> {
@@ -412,6 +414,9 @@ export class LabelerInterface {
       void this.playAudio('Kaina ' + this.digitsToPrice(item.finalPrice ?? item.priceWithVat))
     } else {
       void this.playAudio('Kaina nėra nustatyta')
+    }
+    if (this.items.length === 0 && this.itemList != null) {
+      this.itemList.innerHTML = ''
     }
     this.items.push(item)
     this.addItemToView(item)
