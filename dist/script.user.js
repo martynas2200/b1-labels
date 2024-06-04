@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      1.0.3
+// @version      1.0.4
 // @description  Generate labels for the selected items on the b1.lt website
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
@@ -322,10 +322,10 @@
         }
         async getItem(barcode) {
             if (!this.isItDigits(barcode)) {
-                return [];
+                return null;
             }
             if (Object.keys(this.items).includes(barcode)) {
-                return this.items[barcode];
+                return JSON.parse(JSON.stringify(this.items[barcode]));
             }
             const body = {
                 pageSize: 20,
@@ -338,6 +338,9 @@
                 page: 1
             };
             const data = await this.fetchData('POST', this.path, body);
+            if (data.data == null) {
+                return null;
+            }
             this.items[barcode] = data.data[0];
             return data.data[0];
         }
@@ -614,17 +617,16 @@ margin-left: 0;
 
     class LabelerInterface {
         req;
-        items;
-        active;
+        items = [];
+        active = false;
         settings;
         searchResultsElement = null;
+        loadingIndicator = null;
         nameInput = null;
         itemList = null;
         apiKey = null;
         constructor() {
             this.req = new Request();
-            this.items = [];
-            this.active = false;
             this.settings = {
                 alternativeLabelFormat: false,
                 sayOutLoud: true,
@@ -643,29 +645,50 @@ margin-left: 0;
             return this.active;
         }
         init() {
-            if (this.isActive()) {
+            if (this.isActive())
                 return true;
-            }
             const mainPage = document.querySelector('.main-container');
             const navbarShortcuts = document.querySelector('.navbar-shortcuts');
             const footer = document.querySelector('.footer');
             if ((mainPage == null) || (navbarShortcuts == null) || (footer == null)) {
                 return false;
             }
-            navbarShortcuts.remove();
-            footer.remove();
+            this.removeElements(navbarShortcuts, footer);
+            this.hideDropdownMenuItems();
+            this.injectHtml(mainPage);
+            this.bindEvents();
+            this.cacheElements();
+            return true;
+        }
+        hideDropdownMenuItems() {
             document.querySelectorAll('.dropdown-menu li').forEach((li, index) => {
-                if (index < 9) {
+                if (index < 9)
                     li.style.display = 'none';
-                }
             });
+        }
+        removeElements(...elements) {
+            elements.forEach((el => { el.remove(); }));
+        }
+        injectHtml(mainPage) {
             mainPage.insertAdjacentHTML('beforebegin', `
         <style>
+      body {
+          background: #eee;
+      }
+      .look-up-container .form-section, .item, #barcode {
+          background: white;
+      }
+      .look-up-container .load-data {
+          padding: 10px;
+      }
+      .look-up-container load-overlay {
+          // background-color: hsla(0, 0%, 100%, .7);
+          background-color: rgb(238 238 238 / 80%);
+      }
         .form-section {
           padding: 10px;
           border: 1px solid #ddd;
           margin-top: 10px;
-          // background-color: #eee;
         }
         span.item-price {
           font-weight: bold;
@@ -676,7 +699,6 @@ margin-left: 0;
           border-radius: 4px;
         }
         .item-list {
-          padding: 10px;
           max-height: calc(100vh - 60px);
           overflow: auto;
         }
@@ -687,6 +709,7 @@ margin-left: 0;
           margin-bottom: 10px;
           cursor: pointer;
           position: relative;
+          animation: highlight 0.5s ease-out;
         }
         .item:hover {
           background-color: #f1f1f1;
@@ -711,6 +734,19 @@ margin-left: 0;
         }
         .modal-body .form-group {
             margin-bottom: 1rem;
+        }
+        @keyframes highlight {
+          from {     
+            background-color: var(--theme-blue--dark-bg);
+            color: white;
+            filter: opacity(0.5);
+          }
+        }
+        #barcode:focus {
+            background-color: hsl(85 60% 74% / 1);
+        }
+        #barcode {
+            transition: background-color 0.3s;
         }
     </style>
     <div class="container look-up-container">
@@ -747,20 +783,25 @@ margin-left: 0;
                     </label>
                 </div>
                 </div>
-                <div class="pull-right">
-                <button type="button" class="btn btn-purple" id="printButton">
-                <i class="fa fa-print"></i>&nbsp;${i18n('print')}</button>
-                <button type="button" class="btn btn-danger" id="cleanAllButton">${i18n('cleanAll')}</button>
+                <div class="clearfix">
+                  <div class="pull-right">
+                    <button type="button" class="btn btn-purple" id="printButton">
+                    <i class="fa fa-print"></i>&nbsp;${i18n('print')}</button>
+                    <button type="button" class="btn btn-danger" id="cleanAllButton">${i18n('cleanAll')}</button>
+                  </div>
                 </div>
             </div>
-            
-            <div class="col-md-8 item-list">
-                <!-- Items will be dynamically added here -->
+            <div class="col-md-8 load-data">
+              <div class="load-overlay" style="display:none" id="loadingOverlay">
+                <div>
+                  <i class="fa fa-5x fa-b1-loader blue"></i>
+                </div>
+              </div>
+              <div class="item-list"></div>
+            </div>
             </div>
         </div>
     </div>
-    
-    <!-- Modal for Search by Name -->
     <div class="modal fade" id="searchByNameModal" tabindex="-1" role="dialog" aria-labelledby="searchByNameModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -777,7 +818,6 @@ margin-left: 0;
                         </div>
                         <button type="button" class="btn btn-primary" id="searchNameButton">${i18n('search')}</button>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">${i18n('done')}</button>
-                    <!-- Items will be dynamically added here -->
                     <div id="search-results" class="margin-top-10"></div>
                 </div>
             </div>
@@ -785,49 +825,69 @@ margin-left: 0;
     </div>
         `);
             mainPage.remove();
+        }
+        bindEvents() {
             document.getElementById('searchBarcodeButton')?.addEventListener('click', this.searchByBarcode.bind(this));
             document.getElementById('searchNameButton')?.addEventListener('click', this.searchByName.bind(this));
             document.getElementById('cleanAllButton')?.addEventListener('click', this.cleanAll.bind(this));
-            document.getElementById('barcode')?.addEventListener('keypress', (event) => {
-                if (event.key == 'Enter') {
-                    this.searchByBarcode();
-                }
-            });
-            document.getElementById('barcode')?.addEventListener('focus', (event) => {
-                if (event.target instanceof HTMLInputElement) {
-                    event.target.style.backgroundColor = '#b0d877';
-                }
-            });
-            document.getElementById('barcode')?.addEventListener('blur', (event) => {
-                if (event.target instanceof HTMLInputElement) {
-                    event.target.style.backgroundColor = 'white';
-                }
-            });
-            document.getElementById('name')?.addEventListener('keypress', (event) => {
-                if (event.key == 'Enter') {
-                    void this.searchByName();
-                }
-            });
-            document.getElementById('alternativeLabelFormat')?.addEventListener('change', (event) => {
-                if (event.target instanceof HTMLInputElement) {
-                    this.settings.alternativeLabelFormat = event.target.checked;
-                }
-            });
-            document.getElementById('sayOutLoud')?.addEventListener('change', (event) => {
-                if (event.target instanceof HTMLInputElement) {
-                    this.settings.sayOutLoud = event.target.checked;
-                }
-            });
-            document.getElementById('packagedGoods')?.addEventListener('change', (event) => {
-                if (event.target instanceof HTMLInputElement) {
-                    this.settings.packagedGoods = event.target.checked;
-                }
-            });
             document.getElementById('printButton')?.addEventListener('click', this.print.bind(this));
+            const barcodeInput = document.getElementById('barcode');
+            if (barcodeInput != null) {
+                barcodeInput.addEventListener('keypress', this.handleEnterPress(this.searchByBarcode.bind(this)));
+                barcodeInput.focus();
+                const modals = document.querySelectorAll('.modal');
+                document.addEventListener('click', (event) => {
+                    let clickedInsideModal = false;
+                    modals.forEach(modal => {
+                        if (modal.contains(event.target)) {
+                            clickedInsideModal = true;
+                        }
+                    });
+                    if (!clickedInsideModal) {
+                        barcodeInput.focus();
+                    }
+                });
+            }
+            document.getElementById('name')?.addEventListener('keypress', this.handleEnterPress(this.searchByName.bind(this)));
+            this.bindCheckboxChange('alternativeLabelFormat', 'alternativeLabelFormat');
+            this.bindCheckboxChange('sayOutLoud', 'sayOutLoud');
+            this.bindCheckboxChange('packagedGoods', 'packagedGoods');
+        }
+        handleEnterPress(callback) {
+            return (event) => {
+                if (event.key == 'Enter')
+                    callback();
+            };
+        }
+        changeBackgroundColor(color) {
+            return (event) => {
+                if (event.target instanceof HTMLInputElement) {
+                    event.target.style.backgroundColor = color;
+                }
+            };
+        }
+        bindCheckboxChange(elementId, settingKey) {
+            document.getElementById(elementId)?.addEventListener('change', (event) => {
+                if (event.target instanceof HTMLInputElement) {
+                    this.settings[settingKey] = event.target.checked;
+                }
+            });
+        }
+        cacheElements() {
             this.itemList = document.querySelector('.item-list');
             this.searchResultsElement = document.getElementById('search-results');
             this.nameInput = document.getElementById('name');
-            return true;
+            this.loadingIndicator = document.getElementById('loadingOverlay');
+        }
+        async showLoading() {
+            if (this.loadingIndicator != null) {
+                this.loadingIndicator.style.display = 'flex';
+            }
+        }
+        async hideLoading() {
+            if (this.loadingIndicator != null) {
+                this.loadingIndicator.style.display = 'none';
+            }
         }
         print() {
             this.items = this.items.filter(item => item);
@@ -865,70 +925,56 @@ margin-left: 0;
             const newItem = document.createElement('div');
             newItem.className = 'item';
             newItem.id = item.id ?? '';
-            const itemMain = document.createElement('div');
-            itemMain.className = 'item-main';
-            if (item.priceWithVat != 0) {
-                const itemPrice = document.createElement('span');
-                itemPrice.className = 'item-price';
-                itemPrice.textContent = (item.finalPrice ?? item.priceWithVat).toFixed(2).toString();
-                itemMain.appendChild(itemPrice);
-            }
-            const itemName = document.createElement('span');
-            itemName.className = 'item-name';
-            itemName.textContent = item.name;
-            itemMain.appendChild(itemName);
-            newItem.appendChild(itemMain);
-            const itemLabels = document.createElement('div');
-            itemLabels.className = 'item-labels';
-            const labels = ['packageCode', 'weight', 'departmentNumber', 'packageQuantity'];
-            if (item.weight != null) {
-                const span = document.createElement('span');
-                span.textContent = i18n('kiloPrice') + ': ' + item.priceWithVat;
-                itemLabels.appendChild(span);
-            }
-            else if (item.measurementUnitName === 'kg') {
-                const span = document.createElement('span');
-                span.textContent = i18n('weightedItem');
-                itemLabels.appendChild(span);
-            }
-            for (const label of labels) {
-                if (item[label] != null) {
-                    const span = document.createElement('span');
-                    span.textContent = i18n(label) + ': ' + item[label];
-                    itemLabels.appendChild(span);
-                }
-            }
-            newItem.appendChild(itemLabels);
-            const cornerButton = document.createElement('button');
-            cornerButton.className = 'btn btn-sm corner-button btn-yellow';
-            cornerButton.type = 'button';
-            const i = document.createElement('i');
-            i.className = 'fa fa-fw fa-trash';
-            cornerButton.addEventListener('click', () => {
-                newItem.remove();
-                this.items = this.items.filter(i => i.id != item.id);
-            });
-            cornerButton.appendChild(i);
+            newItem.innerHTML = this.getItemHtml(item);
+            const cornerButton = this.createCornerButton();
+            cornerButton.addEventListener('click', () => { this.removeItem(newItem, item.id); });
             newItem.appendChild(cornerButton);
-            if (item.barcode == '' || item.isActive == false) {
+            if (item.barcode == null || item.isActive == false)
                 newItem.classList.add('background-light-red');
-            }
-            if (item.weight != null) {
+            if (item.weight != null)
                 newItem.classList.add('mark');
-            }
             return newItem;
         }
+        getItemHtml(item) {
+            return `
+      <div class="item-main">
+        ${item.priceWithVat > 0 ? `<span class="item-price">${(item.finalPrice ?? item.priceWithVat).toFixed(2)}</span>` : ''}
+        <span class="item-name">${item.name}</span>
+      </div>
+      <div class="item-labels">
+        ${this.getItemLabelsHtml(item)}
+      </div>
+    `;
+        }
+        getItemLabelsHtml(item) {
+            const labels = ['packageCode', 'weight', 'departmentNumber', 'packageQuantity'];
+            const labelHtml = labels.map(label => item[label] != null ? `<span>${i18n(label)}: ${item[label]}</span>` : '').join('');
+            return `${item.weight != null ? `<span>${i18n('kiloPrice')}: ${item.priceWithVat}</span>` : ''}
+            ${item.measurementUnitName === 'kg' ? `<span>${i18n('weightedItem')}</span>` : ''}
+            ${labelHtml}`;
+        }
+        createCornerButton() {
+            const button = document.createElement('button');
+            button.className = 'btn btn-sm corner-button btn-yellow';
+            button.type = 'button';
+            const i = document.createElement('i');
+            i.className = 'fa fa-trash';
+            button.appendChild(i);
+            return button;
+        }
+        removeItem(element, itemId) {
+            element.remove();
+            this.items = this.items.filter(item => item.id !== itemId);
+        }
         addItemToView(item) {
-            if (this.itemList == null) {
-                console.error('itemList is not defined');
-                return;
+            const itemElement = this.createItemElement(item);
+            if (this.itemList != null) {
+                this.itemList.appendChild(itemElement);
+                itemElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
-            const newItem = this.createItemElement(item);
-            item.id = item.id !== '' ? item.id : Math.random().toString(36).substring(7);
-            this.itemList.appendChild(newItem);
-            newItem.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
         newItem(item) {
+            item.id = 'item-' + Math.random().toString(36).substring(7);
             if (item.priceWithVat == null) {
                 console.error('priceWithVat is not defined');
                 item.priceWithVat = 0;
@@ -937,15 +983,13 @@ margin-left: 0;
             if (this.items.length > 0 && (this.items[this.items.length - 1]).barcode == item.barcode) {
                 void this.playAudio('Kaip ir sakiau, kaina yra ' + this.digitsToPrice(item.finalPrice ?? item.priceWithVat) + (item.weight !== undefined ? '. Svoris ' + this.numberToWords(item.weight) + ' g.' : '') + ' Tai ' + item.name);
             }
-            else {
-                this.items.push(item);
-                if (item.priceWithVat !== 0) {
-                    void this.playAudio('Kaina ' + this.digitsToPrice(item.finalPrice ?? item.priceWithVat));
-                }
-                else {
-                    void this.playAudio('Kaina nėra nustatyta');
-                }
+            else if (item.priceWithVat !== 0) {
+                void this.playAudio('Kaina ' + this.digitsToPrice(item.finalPrice ?? item.priceWithVat));
             }
+            else {
+                void this.playAudio('Kaina nėra nustatyta');
+            }
+            this.items.push(item);
             this.addItemToView(item);
         }
         async playAudio(text) {
@@ -1023,7 +1067,7 @@ margin-left: 0;
         }
         searchByBarcode() {
             const inputField = document.getElementById('barcode');
-            if (inputField.value == null) {
+            if (inputField.value.length === 0) {
                 console.error('inputField.value is not defined');
                 return;
             }
@@ -1053,38 +1097,39 @@ margin-left: 0;
                 return;
             }
             this.nameInput.disabled = true;
+            await this.showLoading();
             const items = await this.req.getItemsByName(name);
-            if (items.length === 0) {
-                this.searchResultsElement.innerHTML = `<div class="alert alert-warning">${i18n('noItemsFound')} "${name}"</div>`;
+            await this.hideLoading();
+            if (this.searchResultsElement != null) {
+                this.searchResultsElement.innerHTML = items.length > 0 ? `<div class="alert alert-info">${i18n('searchSuccessful')} "${name}". ${items.length} ${i18n('itemsFound')} <br>${i18n('clickToAdd')}</div>` : `<div class="alert alert-warning">${i18n('noItemsFound')} "${name}"</div>`;
             }
-            else {
-                this.searchResultsElement.innerHTML = `<div class="alert alert-info">${i18n('searchSuccessful')} "${name}". ${items.length} ${i18n('itemsFound')} <br>${i18n('clickToAdd')}</div>`;
-                items.forEach(item => {
-                    const newItem = document.createElement('div');
-                    newItem.className = 'item';
-                    newItem.innerHTML = `<span class="item-name">${item.name}</span><span class="item-price
-                pull-right">${item.priceWithVat}</span>`;
-                    newItem.addEventListener('click', () => {
-                        this.newItem(item);
-                        newItem.style.backgroundColor = '#b0d877';
-                    });
-                    if (this.searchResultsElement != null) {
-                        this.searchResultsElement.appendChild(newItem);
-                    }
-                    else {
-                        console.error('searchResultsElement is not defined');
-                    }
-                });
-            }
+            items.forEach(item => {
+                if (this.searchResultsElement != null) {
+                    this.searchResultsElement.appendChild(this.createSearchResultItem(item));
+                }
+            });
             this.nameInput.disabled = false;
             this.nameInput.value = '';
+        }
+        createSearchResultItem(item) {
+            const newItem = document.createElement('div');
+            newItem.className = 'item';
+            newItem.innerHTML = `<span class="item-name">${item.name}</span><span class="item-price
+            pull-right">${item.priceWithVat}</span>`;
+            newItem.addEventListener('click', () => {
+                this.newItem(item);
+                newItem.style.backgroundColor = '#b0d877';
+            });
+            return newItem;
         }
         async searchforAPackagedItem(barcode) {
             let item = null;
             const barcodePart = barcode.slice(0, 8);
             const weightPart = parseInt(barcode.slice(8, 12), 10) / 1000;
             if (this.canItBePackaged(barcode)) {
+                await this.showLoading();
                 item = await this.req.getItem(barcodePart);
+                await this.hideLoading();
             }
             if (item != null) {
                 const totalPrice = item.priceWithVat * weightPart;
@@ -1098,7 +1143,9 @@ margin-left: 0;
             }
         }
         async searchItem(barcode) {
+            await this.showLoading();
             let item = await this.req.getItem(barcode);
+            await this.hideLoading();
             if (item == null) {
                 item = {
                     name: i18n('itemNotFound') + ': ' + barcode,
@@ -1155,7 +1202,7 @@ margin-left: 0;
             padding: 1em 10em 1em 0em;
             font-weight: bold;
         }
-        h5.header.blue {
+        ng-form h5.header.blue, ng-form .alert.alert-warning {
             display: none;
         }
         `;
@@ -1384,7 +1431,7 @@ margin-left: 0;
                     if (item != null) {
                         extractedData.push(item);
                     }
-                    await new Promise(resolve => setTimeout(resolve, 150));
+                    await new Promise(resolve => setTimeout(resolve, 200));
                 }
             }
             else {
@@ -1447,6 +1494,15 @@ margin-left: 0;
                 span.className = 'margin-left-5';
                 span.textContent = i18n('print');
                 button.appendChild(span);
+            }
+            else {
+                const icon = document.querySelector('i.fa-cloud-upload');
+                if (icon != null) {
+                    const grandParent = icon.parentElement?.parentElement;
+                    if (grandParent != null) {
+                        grandParent.remove();
+                    }
+                }
             }
             printDiv.addEventListener('click', this.processItemsfromAngular.bind(this));
             printDiv.appendChild(button);

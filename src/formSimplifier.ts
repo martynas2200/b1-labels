@@ -32,7 +32,7 @@ export class FormSimplifier {
             padding: 1em 10em 1em 0em;
             font-weight: bold;
         }
-        h5.header.blue {
+        ng-form h5.header.blue, ng-form .alert.alert-warning {
             display: none;
         }
         `

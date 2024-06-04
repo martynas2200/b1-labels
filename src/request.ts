@@ -65,10 +65,11 @@ export class Request {
 
   async getItem (barcode: string): Promise<any> {
     if (!this.isItDigits(barcode)) {
-      return []
+      return null
     }
     if (Object.keys(this.items).includes(barcode)) {
-      return this.items[barcode]
+      // return a copy of the object if needed (when printing the duplicate labels)
+      return JSON.parse(JSON.stringify(this.items[barcode]))
     }
     // Prepare the request body
     const body = {
@@ -83,6 +84,9 @@ export class Request {
     }
 
     const data = await this.fetchData('POST', this.path, body)
+    if (data.data == null) {
+      return null
+    }
     this.items[barcode] = data.data[0]
     return data.data[0]
   }
@@ -105,7 +109,6 @@ export class Request {
       page: 1
     }
     const data = await this.fetchData('POST', this.path, body)
-    // data = data.data;
     // push all the items to the items array
     data.data.forEach((item: item) => {
       // unnecessary check

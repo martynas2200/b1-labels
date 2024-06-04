@@ -164,7 +164,7 @@ class LabelsUserscript {
         if (item != null) {
           extractedData.push(item)
         }
-        await new Promise(resolve => setTimeout(resolve, 150))
+        await new Promise(resolve => setTimeout(resolve, 200))
       }
     } else { // Use the limited data from the view
       selectedRows.forEach((row: any) => {
@@ -210,7 +210,7 @@ class LabelsUserscript {
     }
     void new LabelGenerator(data)
   }
-
+  
   public addPrintButton (parentSelector: string = '.buttons-left', withName: boolean = false): boolean {
     const buttonsLeft = document.querySelector(parentSelector)
     if (buttonsLeft == null) {
@@ -232,6 +232,15 @@ class LabelsUserscript {
       span.className = 'margin-left-5'
       span.textContent = i18n('print')
       button.appendChild(span)
+    } else {
+      // make more space for the print button by removing the import button
+      const icon = document.querySelector('i.fa-cloud-upload')
+      if (icon != null) {
+        const grandParent = icon.parentElement?.parentElement
+        if (grandParent != null) {
+          grandParent.remove()
+        }
+      }
     }
     printDiv.addEventListener('click', this.processItemsfromAngular.bind(this))
     printDiv.appendChild(button)
