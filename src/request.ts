@@ -84,7 +84,7 @@ export class Request {
     }
 
     const data = await this.fetchData('POST', this.path, body)
-    if (data.data == null) {
+    if (data == null) {
       return null
     }
     this.items[barcode] = data.data[0]

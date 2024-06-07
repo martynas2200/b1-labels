@@ -8,6 +8,7 @@ import { type item } from './item'
 import { i18n } from './i18n'
 import { LabelGenerator } from './labelGenerator'
 import { FormSimplifier } from './formSimplifier'
+import { UINotification } from './ui-notification'
 interface row extends item {
   _select: boolean
 }
@@ -19,13 +20,12 @@ declare let window: Window
 class LabelsUserscript {
   private wasInterfaceButtonAdded: boolean = false
   private pageReady: boolean = false
-  private readonly user: UserSession
-  private readonly interface: LabelerInterface
+  private readonly notification = new UINotification()
+  private readonly user = new UserSession()
+  private readonly interface = new LabelerInterface()
   private currentUrl: string
 
   constructor () {
-    this.user = new UserSession()
-    this.interface = new LabelerInterface()
     this.currentUrl = window.location.pathname
     this.init()
     void this.handleUrlChange(null, this.currentUrl)
@@ -127,7 +127,7 @@ class LabelsUserscript {
     // eslint-disable-next-line no-undef
     const dataRows = this.getDataRows()
     if (dataRows == null) {
-      console.error('Data rows not found')
+      this.notification.error(i18n('error'))
       return []
     }
 
@@ -149,13 +149,13 @@ class LabelsUserscript {
     // eslint-disable-next-line no-undef
     const dataRows = this.getDataRows()
     if (dataRows == null) {
-      console.error('Data rows not found')
+      this.notification.error(i18n('error'))
       return []
     }
     const selectedRows = angular.element(dataRows).controller().data.filter((a: row) => a._select)
     const extractedData = []
     if (confirm(i18n('askingForPackageCode'))) { // Get full item data from the server
-      window.alert(i18n('aboutToCheckPackageCode'))
+      this.notification.primary(i18n('aboutToCheckPackageCode'))
       const barcodes = selectedRows.map((row: any) => row.itemBarcode)
       const req = new Request()
       for (const barcode of barcodes) {
@@ -185,7 +185,7 @@ class LabelsUserscript {
     // eslint-disable-next-line no-undef
     const form = document.querySelector('ng-form')
     if (form == null) {
-      console.error('Form not found!')
+      this.notification.error(i18n('error'))
       return []
     }
     const data = angular.element(form).controller().model
@@ -210,7 +210,7 @@ class LabelsUserscript {
     }
     void new LabelGenerator(data)
   }
-  
+
   public addPrintButton (parentSelector: string = '.buttons-left', withName: boolean = false): boolean {
     const buttonsLeft = document.querySelector(parentSelector)
     if (buttonsLeft == null) {

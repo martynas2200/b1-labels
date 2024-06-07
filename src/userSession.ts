@@ -1,42 +1,47 @@
+/* eslint-disable @typescript-eslint/quotes */
 import { i18n } from "./i18n"
+import { UINotification } from "./ui-notification"
 
 declare let angular: angular.IAngularStatic
 declare let GM: any
+declare let currentCompanyUser: any
+declare let currentUser: any
 export class UserSession {
-  interfaceInUse: boolean
-  isLoggedIn: boolean
-  admin: boolean
+  notification = new UINotification()
+  interfaceInUse: boolean = false
+  isLoggedIn: boolean = false
+  admin: boolean = false
   user: {
     name: string
     typeId: number
   } | null
 
   constructor () {
-    this.interfaceInUse = false
-    this.isLoggedIn = false
-    this.admin = false
     this.user = null
     this.checkLoginStatus()
   }
 
   public checkLoginStatus (): boolean {
-    const dropdownToggle: HTMLElement | null = document.querySelector('.dropdown-toggle')
-    if (dropdownToggle === null) {
-      this.isLoggedIn = false
-      console.error('Dropdown toggle not found')
-      return false
-    }
-    const controller = angular.element(dropdownToggle).controller()
-    if (controller.user.name != null) {
-      this.user = controller.user
+    if (currentUser?.name != null) {
       this.isLoggedIn = true
-      // typeId is 1 for admin, 2 for accountant, 3 for manager, 4 for salesperson
-      // No need to check for null, because we already checked for the length, but the linter doesn't know that ?...
+      this.user = currentUser
       this.admin = (this.user != null) ? this.user.typeId <= 3 : false
-    } else {
+      if (!this.admin) {
+        this.limitPermissions()
+      }
+      return true
+    } else if (currentUser != null && currentUser.name == null) {
       this.isLoggedIn = false
     }
-    return this.isLoggedIn
+    return false
+  }
+
+  private limitPermissions (): void {
+    currentCompanyUser.permissions.crudKlientai = { create: false, read: false, update: false, delete: false }
+    currentCompanyUser.permissions.crudBankaisaskait = { create: false, read: false, update: false, delete: false }
+    currentCompanyUser.permissions.crudPardavim = { create: false, read: false, update: false, delete: false }
+    currentCompanyUser.permissions.crudPrekes = { create: false, read: true, update: false, delete: false }
+    currentCompanyUser.permissions.crudDokSer = { create: false, read: false, update: false, delete: false }
   }
 
   private addContainer (): boolean {
@@ -45,10 +50,10 @@ export class UserSession {
 
     const formElement = document.querySelector('form')
     const html = `
-      <h5 class="header blue">${ i18n('login') }</h5>
+      <h5 class="header blue">${i18n('login')}</h5>
       <div class="form-group text-center">
-      <button class="btn btn-success-2 btn-block " type="button" id="auto-login"><i class="fa fa-sign-in"></i>${ i18n('autoLogin') }</button>
-      <button class="btn-primary btn btn-block margin-top-8" type="button" id="show-login-options">${ i18n('showLoginOptions') }</button>
+      <button class="btn btn-success-2 btn-block " type="button" id="auto-login"><i class="fa fa-sign-in"></i>${i18n('autoLogin')}</button>
+      <button class="btn-primary btn btn-block margin-top-8" type="button" id="show-login-options">${i18n('showLoginOptions')}</button>
       </div>`
     if (formElement !== null) {
       formElement.insertAdjacentHTML('beforebegin', html)
@@ -85,14 +90,14 @@ export class UserSession {
     const usernameInput: HTMLInputElement | null = document.querySelector('input[name="username"]')
     const passwordInput: HTMLInputElement | null = document.querySelector('input[name="password"]')
     if ((usernameInput === null) || (passwordInput === null)) {
-      alert('Username or password input not found')
+      this.notification.error(i18n('loginDetailsNotFound'))
       return false
     }
     const username = await GM.getValue('username', '')
     const password = await GM.getValue('password', '')
     if (username === '' || password === '') {
       // crazy idea to check what is in the fields and if they contain x's then ask to save the login details
-      alert('Login details not found')
+      this.notification.error(i18n('loginDetailsNotFound'))
       if (usernameInput.value === 'x' && passwordInput.value === 'x') {
         void this.saveLoginDetails()
       }
@@ -106,17 +111,17 @@ export class UserSession {
 
     const form: HTMLFormElement | null = document.querySelector('form')
     if (form === null) {
-      alert('Form not found')
+      this.notification.error(i18n('error'))
       return false
     }
     let key = form.getAttribute('ng-submit')
     if (key === null) {
-      alert('Recaptcha key not found')
+      this.notification.error('Recaptcha key not found')
       return false
     }
     const match = key.match(/"([^"]+)"/)
     if (match === null) {
-      alert('Recaptcha key not found')
+      this.notification.error('Recaptcha key not found')
       return false
     }
     key = match[1]

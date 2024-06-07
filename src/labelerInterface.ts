@@ -2,10 +2,12 @@ import { i18n, lettersToNumbers } from './i18n'
 import { Request } from './request.js'
 import { LabelGenerator } from './labelGenerator'
 import { type item, type packagedItem } from './item'
+import { UINotification } from './ui-notification'
 
 declare let GM: any
 export class LabelerInterface {
-  req: Request
+  notification = new UINotification()
+  req: Request = new Request()
   items: item[] = []
   active: boolean = false
   settings: {
@@ -19,9 +21,9 @@ export class LabelerInterface {
   nameInput: HTMLInputElement | null = null
   itemList: HTMLElement | null = null
   apiKey: string | null = null
+  infoModal: HTMLElement | null | undefined
 
   constructor () {
-    this.req = new Request()
     this.settings = {
       alternativeLabelFormat: false,
       sayOutLoud: true,
@@ -51,12 +53,13 @@ export class LabelerInterface {
       return false
     }
 
-    this.removeElements(navbarShortcuts, footer)
     this.hideDropdownMenuItems()
     this.injectHtml(mainPage)
+    this.removeElements(navbarShortcuts, footer, mainPage)
 
     this.bindEvents()
     this.cacheElements()
+    this.changeDocumentTitle()
     return true
   }
 
@@ -73,19 +76,15 @@ export class LabelerInterface {
   injectHtml (mainPage: Element): void {
     mainPage.insertAdjacentHTML('beforebegin', `
         <style>
-      body {
+        body {
           background: #eee;
-      }
-      .look-up-container .form-section, .item, #barcode {
-          background: white;
-      }
-      .look-up-container .load-data {
+        }
+        .look-up-container .load-data {
           padding: 10px;
-      }
-      .look-up-container load-overlay {
-          // background-color: hsla(0, 0%, 100%, .7);
-          background-color: rgb(238 238 238 / 80%);
-      }
+        }
+        .look-up-container .load-overlay {
+          background: rgb(238 238 238 / 75%)
+        }
         .form-section {
           padding: 10px;
           border: 1px solid #ddd;
@@ -107,10 +106,13 @@ export class LabelerInterface {
           font-size: 1.1em;
           border: 1px solid #ddd;
           padding: 10px;
-          margin-bottom: 10px;
+          margin-bottom: 5px;
           cursor: pointer;
           position: relative;
           animation: highlight 0.5s ease-out;
+        }
+        .item.inactive {
+          background-color: #f8d7da;
         }
         .item:hover {
           background-color: #f1f1f1;
@@ -148,6 +150,9 @@ export class LabelerInterface {
         }
         #barcode {
             transition: background-color 0.3s;
+        }
+        .look-up-container .form-section, .item:not(.mark):not(.inactive), #barcode {
+          background: white;
         }
     </style>
     <div class="container look-up-container">
@@ -200,6 +205,7 @@ export class LabelerInterface {
               </div>
               <div class="item-list">
               <div class="alert alert-info alert-xs text-center">${i18n('noItemsScanned')}</div>
+              <div class="alert-xs grey text-center">${i18n('help')}</div>
               </div>
             </div>
             </div>
@@ -226,13 +232,26 @@ export class LabelerInterface {
             </div>
         </div>
     </div>
-        `)
-
-    mainPage.remove()
+    <div class="modal fade" id="itemDetails" tabindex="-1" role="dialog" aria-labelledby="itemDetailsLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title inline" id="itemDetailsLabel">${i18n('itemDetails')}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" data></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-sm" data-dismiss="modal">${i18n('close')}</button>
+      </div>
+    </div>
+  </div>
+</div>
+  `)
   }
 
   bindEvents (): void {
-    document.getElementById('searchBarcodeButton')?.addEventListener('click', this.searchByBarcode.bind(this))
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     document.getElementById('searchNameButton')?.addEventListener('click', this.searchByName.bind(this))
     document.getElementById('cleanAllButton')?.addEventListener('click', this.cleanAll.bind(this))
@@ -240,7 +259,8 @@ export class LabelerInterface {
 
     const barcodeInput = document.getElementById('barcode') as HTMLInputElement
     if (barcodeInput != null) {
-      barcodeInput.addEventListener('keypress', this.handleEnterPress(this.searchByBarcode.bind(this)))
+      barcodeInput.addEventListener('keypress', this.handleEnterPress(this.searchByBarcode.bind(this, barcodeInput)))
+      document.getElementById('searchBarcodeButton')?.addEventListener('click', this.searchByBarcode.bind(this, barcodeInput))
       barcodeInput.focus()
       const modals = document.querySelectorAll('.modal')
       document.addEventListener('click', (event) => {
@@ -292,6 +312,7 @@ export class LabelerInterface {
     this.searchResultsElement = document.getElementById('search-results')
     this.nameInput = document.getElementById('name') as HTMLInputElement
     this.loadingIndicator = document.getElementById('loadingOverlay')
+    this.infoModal = document.getElementById('itemDetails')
   }
 
   async showLoading (): Promise<void> {
@@ -308,6 +329,14 @@ export class LabelerInterface {
 
   print (): void {
     this.items = this.items.filter(item => item)
+    // if there are no items, show an alert
+    if (this.items.length === 0) {
+      this.notification.error(i18n('noData'))
+      return
+    }
+    if (!this.items.every(item => item.isActive == true && item.barcode != null)) {
+      this.notification.warning(i18n('notAllItemsActive'))
+    }
     void new LabelGenerator(this.items, this.settings.alternativeLabelFormat)
   }
 
@@ -342,19 +371,20 @@ export class LabelerInterface {
   }
 
   private createItemElement (item: packagedItem): HTMLElement {
-    const newItem = document.createElement('div')
-    newItem.className = 'item'
-    newItem.id = item.id ?? ''
-    newItem.innerHTML = this.getItemHtml(item)
+    const itemElement = document.createElement('div')
+    itemElement.className = 'item'
+    itemElement.id = item.id ?? ''
+    itemElement.innerHTML = this.getItemHtml(item)
 
     const cornerButton = this.createCornerButton()
-    cornerButton.addEventListener('click', () => { this.removeItem(newItem, item.id) })
-    newItem.appendChild(cornerButton)
+    cornerButton.addEventListener('click', () => { this.removeItem(itemElement, item.id) })
+    itemElement.appendChild(cornerButton)
+    itemElement.addEventListener('click', () => { this.showDetails(item) })
 
-    if (item.barcode == null || item.isActive == false) newItem.classList.add('background-light-red')
-    if (item.weight != null) newItem.classList.add('mark')
+    if (item.barcode == null || item.isActive == false) itemElement.classList.add('inactive')
+    if (item.weight != null) itemElement.classList.add('mark')
 
-    return newItem
+    return itemElement
   }
 
   getItemHtml (item: packagedItem): string {
@@ -390,6 +420,31 @@ export class LabelerInterface {
   removeItem (element: HTMLElement, itemId?: string): void {
     element.remove()
     this.items = this.items.filter(item => item.id !== itemId)
+  }
+
+  showDetails (item: packagedItem): void {
+    const clickCount = (item.clickCount ?? 0) + 1
+    item.clickCount = clickCount
+    // filter out the undefined or null values
+    if (clickCount > 2) {
+      item.clickCount = 0
+      const filteredItem = Object.fromEntries(
+        // is null or the string contains `id`
+        Object.entries(item).filter(([key, value]) => value !== null && !key.toString().toLowerCase().includes('id') && !key.toString().includes('cost'))
+      )
+      const resultString = Object.entries(filteredItem)
+        .map(([key, value]) => `<div class="row col-xs-12"><div class="col-sm-5">${key}:</div><div class="col-sm-7">${value}</div></div>`)
+        .join('')
+
+      if (this.infoModal != null) {
+        const modalBody = this.infoModal.querySelector('.modal-body')
+        if (modalBody != null) {
+          modalBody.innerHTML = `<div class="container width-auto">${resultString}</div>`
+        }
+      }
+      // show the modal by using jQuery
+      $(this.infoModal).modal('show')
+    }
   }
 
   addItemToView (item: packagedItem): void {
@@ -494,20 +549,18 @@ export class LabelerInterface {
   }
 
   canItBePackaged (barcode: string): boolean {
-    // if it is above 4kg or zero weight, it is not a packaged item
-    return barcode.length === 13 && barcode.slice(8, 12) !== '0000' && parseInt(barcode.slice(8, 12), 10) < 4000
+    // if it is below 4kg or starts with 2, 3,
+    return barcode.toString().length === 13 && parseInt(barcode.slice(0, 1)) < 4 && parseInt(barcode.slice(8, 12), 10) < 4000
   }
 
-  searchByBarcode (): void {
-    const inputField = document.getElementById('barcode') as HTMLInputElement
-    if (inputField.value.length === 0) {
-      console.error('inputField.value is not defined')
-      return
-    }
+  searchByBarcode (inputField: HTMLInputElement): void {
     const barcode = lettersToNumbers(inputField.value)
     inputField.value = ''
     inputField.focus()
-    if (barcode.toLowerCase() === 'stop') {
+    if (barcode.length == 0) {
+      this.notification.error(i18n('missingBarcode'))
+      return
+    } else if (barcode.toLowerCase() === 'stop') {
       this.print()
       return
     }
@@ -521,19 +574,18 @@ export class LabelerInterface {
 
   async searchByName (): Promise<void> {
     const name = this.nameInput?.value
-    if (name == null) {
-      alert(i18n('missingName'))
+    if (name == null || name.length == 0) {
+      this.notification.error(i18n('missingName'))
       return
     }
     if ((this.nameInput == null) || (this.searchResultsElement == null)) {
       this.active = false // TODO: write a function to check if the interface consists of all the elements
-      alert(i18n('error'))
+      this.notification.error(i18n('missingElements'))
       return
     }
     this.nameInput.disabled = true
-    await this.showLoading()
+    this.notification.info(i18n('searchingFor') + ' ' + name)
     const items: item[] = await this.req.getItemsByName(name)
-    await this.hideLoading()
     if (this.searchResultsElement != null) {
       this.searchResultsElement.innerHTML = items.length > 0 ? `<div class="alert alert-info">${i18n('searchSuccessful')} "${name}". ${items.length} ${i18n('itemsFound')} <br>${i18n('clickToAdd')}</div>` : `<div class="alert alert-warning">${i18n('noItemsFound')} "${name}"</div>`
     }
@@ -607,5 +659,9 @@ export class LabelerInterface {
       navbarShortcuts.appendChild(button)
     }
     return navbarShortcuts != null
+  }
+
+  changeDocumentTitle (): void {
+    document.title = i18n('labelsAndPrices')
   }
 }

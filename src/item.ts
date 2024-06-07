@@ -9,6 +9,7 @@ interface item {
   packageCode?: string
   packageQuantity?: number
   measurementUnitName?: string
+  clickCount?: number
 };
 
 interface packagedItem extends item {

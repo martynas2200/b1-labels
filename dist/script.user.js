@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Label Generator for the items in b1.lt
 // @namespace    http://tampermonkey.net/
-// @version      1.0.5
+// @version      1.0.6
 // @description  Generate labels for the selected items on the b1.lt website
 // @author       Martynas Miliauskas
 // @match        https://www.b1.lt/*
@@ -43,15 +43,22 @@
             done: 'Done',
             enterBarcode: 'Enter the barcode',
             enterName: 'Enter Name',
+            error: 'Error',
             fullBarcode: 'Full Barcode',
+            help: 'If you have any problems, contact Martynas',
             inactiveItem: 'The item is inactive. Do you want to continue?',
             invalidBarcode: 'Invalid barcode',
             itemAdded: 'Item added',
+            itemDetails: 'Item Details',
             itemNotFound: 'Item not found!',
             itemsFound: 'Items found',
             kiloPrice: 'Kilogram Price',
             labelsAndPrices: 'Labels and Prices',
             login: 'Login',
+            loginDetailsNotFound: 'Login details not found',
+            missingBarcode: 'Missing barcode',
+            missingElements: 'Missing UI elements',
+            missingName: 'Missing name',
             nlabelsToBePrinted: ' labels to be printed',
             noData: 'No data to print!',
             noItemsFound: 'No items found',
@@ -68,6 +75,7 @@
             search: 'Search',
             searchByBarcode: 'Search by Barcode',
             searchByName: 'Search by Name',
+            searchingFor: 'Searching for',
             searchSuccessful: 'Search successful',
             showLoginOptions: 'Other ways to login',
             simplifyForm: 'Simplify Form',
@@ -88,15 +96,22 @@
             done: 'Atlikta',
             enterBarcode: 'Įveskite brūkšninį kodą',
             enterName: 'Įveskite prekės pavadinimą',
+            error: 'Įvyko klaida',
             fullBarcode: 'Pilnas brūkšninis kodas',
+            help: 'Jei kyla problemų, kreiptis pas Martyną',
             inactiveItem: 'Prekė yra neaktyvi. Ar norite tęsti?',
             invalidBarcode: 'Neteisingas brūkšninis kodas',
             itemAdded: 'Prekė pridėta',
+            itemDetails: 'Prekės informacija',
             itemNotFound: 'Prekė nerasta!',
             itemsFound: ' rasta',
             kiloPrice: 'Kilogramo kaina',
             labelsAndPrices: 'Etiketės ir kainos',
             login: 'Prisijungimas darbo vietoje',
+            loginDetailsNotFound: 'Prisijungimo duomenys nerasti',
+            missingBarcode: 'Trūksta brūkšninio kodo',
+            missingElements: 'Trūksta UI elementų',
+            missingName: 'Trūksta pavadinimo',
             nlabelsToBePrinted: ' etiketės bus spausdinamos',
             noData: 'Nepakanka duomenų spausdinimui!',
             noItemsFound: 'Nieko nerasta',
@@ -113,6 +128,7 @@
             search: 'Ieškoti',
             searchByBarcode: 'Ieškoti pagal brūkšninį kodą',
             searchByName: 'Ieškoti pagal pavadinimą',
+            searchingFor: 'Ieškoma',
             searchSuccessful: 'Paieška sėkminga',
             showLoginOptions: 'Kiti prisijungimo būdai',
             simplifyForm: 'Supaprastinti formą',
@@ -129,35 +145,65 @@
     const currentLanguage = LANGUAGES[userLanguage] != null ? userLanguage : 'en';
     const i18n = (key) => LANGUAGES[currentLanguage][key] ?? LANGUAGES.en[key] ?? key;
 
+    class UINotification {
+        notificationService;
+        constructor() {
+            const appElement = document.querySelector('[ng-app]');
+            if (appElement === null) {
+                alert('Reload the page');
+                throw new Error('Angular app not found');
+            }
+            const injector = angular.element(appElement).injector();
+            this.notificationService = injector.get('Notification');
+        }
+        info(options) {
+            this.notificationService.info(options);
+        }
+        error(options) {
+            this.notificationService.error(options);
+        }
+        success(options) {
+            this.notificationService.success(options);
+        }
+        warning(options) {
+            this.notificationService.warning(options);
+        }
+        primary(options) {
+            this.notificationService.primary(options);
+        }
+    }
+
     class UserSession {
-        interfaceInUse;
-        isLoggedIn;
-        admin;
+        notification = new UINotification();
+        interfaceInUse = false;
+        isLoggedIn = false;
+        admin = false;
         user;
         constructor() {
-            this.interfaceInUse = false;
-            this.isLoggedIn = false;
-            this.admin = false;
             this.user = null;
             this.checkLoginStatus();
         }
         checkLoginStatus() {
-            const dropdownToggle = document.querySelector('.dropdown-toggle');
-            if (dropdownToggle === null) {
-                this.isLoggedIn = false;
-                console.error('Dropdown toggle not found');
-                return false;
-            }
-            const controller = angular.element(dropdownToggle).controller();
-            if (controller.user.name != null) {
-                this.user = controller.user;
+            if (currentUser?.name != null) {
                 this.isLoggedIn = true;
+                this.user = currentUser;
                 this.admin = (this.user != null) ? this.user.typeId <= 3 : false;
+                if (!this.admin) {
+                    this.limitPermissions();
+                }
+                return true;
             }
-            else {
+            else if (currentUser != null && currentUser.name == null) {
                 this.isLoggedIn = false;
             }
-            return this.isLoggedIn;
+            return false;
+        }
+        limitPermissions() {
+            currentCompanyUser.permissions.crudKlientai = { create: false, read: false, update: false, delete: false };
+            currentCompanyUser.permissions.crudBankaisaskait = { create: false, read: false, update: false, delete: false };
+            currentCompanyUser.permissions.crudPardavim = { create: false, read: false, update: false, delete: false };
+            currentCompanyUser.permissions.crudPrekes = { create: false, read: true, update: false, delete: false };
+            currentCompanyUser.permissions.crudDokSer = { create: false, read: false, update: false, delete: false };
         }
         addContainer() {
             const h5Elements = document.querySelectorAll('h5');
@@ -202,13 +248,13 @@
             const usernameInput = document.querySelector('input[name="username"]');
             const passwordInput = document.querySelector('input[name="password"]');
             if ((usernameInput === null) || (passwordInput === null)) {
-                alert('Username or password input not found');
+                this.notification.error(i18n('loginDetailsNotFound'));
                 return false;
             }
             const username = await GM.getValue('username', '');
             const password = await GM.getValue('password', '');
             if (username === '' || password === '') {
-                alert('Login details not found');
+                this.notification.error(i18n('loginDetailsNotFound'));
                 if (usernameInput.value === 'x' && passwordInput.value === 'x') {
                     void this.saveLoginDetails();
                 }
@@ -220,17 +266,17 @@
             passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
             const form = document.querySelector('form');
             if (form === null) {
-                alert('Form not found');
+                this.notification.error(i18n('error'));
                 return false;
             }
             let key = form.getAttribute('ng-submit');
             if (key === null) {
-                alert('Recaptcha key not found');
+                this.notification.error('Recaptcha key not found');
                 return false;
             }
             const match = key.match(/"([^"]+)"/);
             if (match === null) {
-                alert('Recaptcha key not found');
+                this.notification.error('Recaptcha key not found');
                 return false;
             }
             key = match[1];
@@ -336,7 +382,7 @@
                 page: 1
             };
             const data = await this.fetchData('POST', this.path, body);
-            if (data.data == null) {
+            if (data == null) {
                 return null;
             }
             this.items[barcode] = data.data[0];
@@ -614,7 +660,8 @@ margin-left: 0;
     }
 
     class LabelerInterface {
-        req;
+        notification = new UINotification();
+        req = new Request();
         items = [];
         active = false;
         settings;
@@ -623,8 +670,8 @@ margin-left: 0;
         nameInput = null;
         itemList = null;
         apiKey = null;
+        infoModal;
         constructor() {
-            this.req = new Request();
             this.settings = {
                 alternativeLabelFormat: false,
                 sayOutLoud: true,
@@ -651,11 +698,12 @@ margin-left: 0;
             if ((mainPage == null) || (navbarShortcuts == null) || (footer == null)) {
                 return false;
             }
-            this.removeElements(navbarShortcuts, footer);
             this.hideDropdownMenuItems();
             this.injectHtml(mainPage);
+            this.removeElements(navbarShortcuts, footer, mainPage);
             this.bindEvents();
             this.cacheElements();
+            this.changeDocumentTitle();
             return true;
         }
         hideDropdownMenuItems() {
@@ -670,19 +718,15 @@ margin-left: 0;
         injectHtml(mainPage) {
             mainPage.insertAdjacentHTML('beforebegin', `
         <style>
-      body {
+        body {
           background: #eee;
-      }
-      .look-up-container .form-section, .item, #barcode {
-          background: white;
-      }
-      .look-up-container .load-data {
+        }
+        .look-up-container .load-data {
           padding: 10px;
-      }
-      .look-up-container load-overlay {
-          // background-color: hsla(0, 0%, 100%, .7);
-          background-color: rgb(238 238 238 / 80%);
-      }
+        }
+        .look-up-container .load-overlay {
+          background: rgb(238 238 238 / 75%)
+        }
         .form-section {
           padding: 10px;
           border: 1px solid #ddd;
@@ -704,10 +748,13 @@ margin-left: 0;
           font-size: 1.1em;
           border: 1px solid #ddd;
           padding: 10px;
-          margin-bottom: 10px;
+          margin-bottom: 5px;
           cursor: pointer;
           position: relative;
           animation: highlight 0.5s ease-out;
+        }
+        .item.inactive {
+          background-color: #f8d7da;
         }
         .item:hover {
           background-color: #f1f1f1;
@@ -745,6 +792,9 @@ margin-left: 0;
         }
         #barcode {
             transition: background-color 0.3s;
+        }
+        .look-up-container .form-section, .item:not(.mark):not(.inactive), #barcode {
+          background: white;
         }
     </style>
     <div class="container look-up-container">
@@ -797,6 +847,7 @@ margin-left: 0;
               </div>
               <div class="item-list">
               <div class="alert alert-info alert-xs text-center">${i18n('noItemsScanned')}</div>
+              <div class="alert-xs grey text-center">${i18n('help')}</div>
               </div>
             </div>
             </div>
@@ -823,17 +874,32 @@ margin-left: 0;
             </div>
         </div>
     </div>
-        `);
-            mainPage.remove();
+    <div class="modal fade" id="itemDetails" tabindex="-1" role="dialog" aria-labelledby="itemDetailsLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title inline" id="itemDetailsLabel">${i18n('itemDetails')}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" data></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-sm" data-dismiss="modal">${i18n('close')}</button>
+      </div>
+    </div>
+  </div>
+</div>
+  `);
         }
         bindEvents() {
-            document.getElementById('searchBarcodeButton')?.addEventListener('click', this.searchByBarcode.bind(this));
             document.getElementById('searchNameButton')?.addEventListener('click', this.searchByName.bind(this));
             document.getElementById('cleanAllButton')?.addEventListener('click', this.cleanAll.bind(this));
             document.getElementById('printButton')?.addEventListener('click', this.print.bind(this));
             const barcodeInput = document.getElementById('barcode');
             if (barcodeInput != null) {
-                barcodeInput.addEventListener('keypress', this.handleEnterPress(this.searchByBarcode.bind(this)));
+                barcodeInput.addEventListener('keypress', this.handleEnterPress(this.searchByBarcode.bind(this, barcodeInput)));
+                document.getElementById('searchBarcodeButton')?.addEventListener('click', this.searchByBarcode.bind(this, barcodeInput));
                 barcodeInput.focus();
                 const modals = document.querySelectorAll('.modal');
                 document.addEventListener('click', (event) => {
@@ -878,6 +944,7 @@ margin-left: 0;
             this.searchResultsElement = document.getElementById('search-results');
             this.nameInput = document.getElementById('name');
             this.loadingIndicator = document.getElementById('loadingOverlay');
+            this.infoModal = document.getElementById('itemDetails');
         }
         async showLoading() {
             if (this.loadingIndicator != null) {
@@ -891,6 +958,13 @@ margin-left: 0;
         }
         print() {
             this.items = this.items.filter(item => item);
+            if (this.items.length === 0) {
+                this.notification.error(i18n('noData'));
+                return;
+            }
+            if (!this.items.every(item => item.isActive == true && item.barcode != null)) {
+                this.notification.warning(i18n('notAllItemsActive'));
+            }
             void new LabelGenerator(this.items, this.settings.alternativeLabelFormat);
         }
         cleanAll() {
@@ -922,18 +996,19 @@ margin-left: 0;
             return URL.createObjectURL(audioBlob);
         }
         createItemElement(item) {
-            const newItem = document.createElement('div');
-            newItem.className = 'item';
-            newItem.id = item.id ?? '';
-            newItem.innerHTML = this.getItemHtml(item);
+            const itemElement = document.createElement('div');
+            itemElement.className = 'item';
+            itemElement.id = item.id ?? '';
+            itemElement.innerHTML = this.getItemHtml(item);
             const cornerButton = this.createCornerButton();
-            cornerButton.addEventListener('click', () => { this.removeItem(newItem, item.id); });
-            newItem.appendChild(cornerButton);
+            cornerButton.addEventListener('click', () => { this.removeItem(itemElement, item.id); });
+            itemElement.appendChild(cornerButton);
+            itemElement.addEventListener('click', () => { this.showDetails(item); });
             if (item.barcode == null || item.isActive == false)
-                newItem.classList.add('background-light-red');
+                itemElement.classList.add('inactive');
             if (item.weight != null)
-                newItem.classList.add('mark');
-            return newItem;
+                itemElement.classList.add('mark');
+            return itemElement;
         }
         getItemHtml(item) {
             return `
@@ -965,6 +1040,24 @@ margin-left: 0;
         removeItem(element, itemId) {
             element.remove();
             this.items = this.items.filter(item => item.id !== itemId);
+        }
+        showDetails(item) {
+            const clickCount = (item.clickCount ?? 0) + 1;
+            item.clickCount = clickCount;
+            if (clickCount > 2) {
+                item.clickCount = 0;
+                const filteredItem = Object.fromEntries(Object.entries(item).filter(([key, value]) => value !== null && !key.toString().toLowerCase().includes('id') && !key.toString().includes('cost')));
+                const resultString = Object.entries(filteredItem)
+                    .map(([key, value]) => `<div class="row col-xs-12"><div class="col-sm-5">${key}:</div><div class="col-sm-7">${value}</div></div>`)
+                    .join('');
+                if (this.infoModal != null) {
+                    const modalBody = this.infoModal.querySelector('.modal-body');
+                    if (modalBody != null) {
+                        modalBody.innerHTML = `<div class="container width-auto">${resultString}</div>`;
+                    }
+                }
+                $(this.infoModal).modal('show');
+            }
         }
         addItemToView(item) {
             const itemElement = this.createItemElement(item);
@@ -1066,18 +1159,17 @@ margin-left: 0;
             return words.join(' ');
         }
         canItBePackaged(barcode) {
-            return barcode.length === 13 && barcode.slice(8, 12) !== '0000' && parseInt(barcode.slice(8, 12), 10) < 4000;
+            return barcode.toString().length === 13 && parseInt(barcode.slice(0, 1)) < 4 && parseInt(barcode.slice(8, 12), 10) < 4000;
         }
-        searchByBarcode() {
-            const inputField = document.getElementById('barcode');
-            if (inputField.value.length === 0) {
-                console.error('inputField.value is not defined');
-                return;
-            }
+        searchByBarcode(inputField) {
             const barcode = lettersToNumbers(inputField.value);
             inputField.value = '';
             inputField.focus();
-            if (barcode.toLowerCase() === 'stop') {
+            if (barcode.length == 0) {
+                this.notification.error(i18n('missingBarcode'));
+                return;
+            }
+            else if (barcode.toLowerCase() === 'stop') {
                 this.print();
                 return;
             }
@@ -1090,19 +1182,18 @@ margin-left: 0;
         }
         async searchByName() {
             const name = this.nameInput?.value;
-            if (name == null) {
-                alert(i18n('missingName'));
+            if (name == null || name.length == 0) {
+                this.notification.error(i18n('missingName'));
                 return;
             }
             if ((this.nameInput == null) || (this.searchResultsElement == null)) {
                 this.active = false;
-                alert(i18n('error'));
+                this.notification.error(i18n('missingElements'));
                 return;
             }
             this.nameInput.disabled = true;
-            await this.showLoading();
+            this.notification.info(i18n('searchingFor') + ' ' + name);
             const items = await this.req.getItemsByName(name);
-            await this.hideLoading();
             if (this.searchResultsElement != null) {
                 this.searchResultsElement.innerHTML = items.length > 0 ? `<div class="alert alert-info">${i18n('searchSuccessful')} "${name}". ${items.length} ${i18n('itemsFound')} <br>${i18n('clickToAdd')}</div>` : `<div class="alert alert-warning">${i18n('noItemsFound')} "${name}"</div>`;
             }
@@ -1172,6 +1263,9 @@ margin-left: 0;
                 navbarShortcuts.appendChild(button);
             }
             return navbarShortcuts != null;
+        }
+        changeDocumentTitle() {
+            document.title = i18n('labelsAndPrices');
         }
     }
 
@@ -1303,12 +1397,11 @@ margin-left: 0;
     class LabelsUserscript {
         wasInterfaceButtonAdded = false;
         pageReady = false;
-        user;
-        interface;
+        notification = new UINotification();
+        user = new UserSession();
+        interface = new LabelerInterface();
         currentUrl;
         constructor() {
-            this.user = new UserSession();
-            this.interface = new LabelerInterface();
             this.currentUrl = window.location.pathname;
             this.init();
             void this.handleUrlChange(null, this.currentUrl);
@@ -1401,7 +1494,7 @@ margin-left: 0;
         extractDataFromAngular() {
             const dataRows = this.getDataRows();
             if (dataRows == null) {
-                console.error('Data rows not found');
+                this.notification.error(i18n('error'));
                 return [];
             }
             const selectedRows = angular.element(dataRows).controller().grid.data.filter((a) => a._select);
@@ -1420,13 +1513,13 @@ margin-left: 0;
         async extractDataFromAngularPurchaseView() {
             const dataRows = this.getDataRows();
             if (dataRows == null) {
-                console.error('Data rows not found');
+                this.notification.error(i18n('error'));
                 return [];
             }
             const selectedRows = angular.element(dataRows).controller().data.filter((a) => a._select);
             const extractedData = [];
             if (confirm(i18n('askingForPackageCode'))) {
-                window.alert(i18n('aboutToCheckPackageCode'));
+                this.notification.primary(i18n('aboutToCheckPackageCode'));
                 const barcodes = selectedRows.map((row) => row.itemBarcode);
                 const req = new Request();
                 for (const barcode of barcodes) {
@@ -1454,7 +1547,7 @@ margin-left: 0;
         extractDataFromAngularItemView() {
             const form = document.querySelector('ng-form');
             if (form == null) {
-                console.error('Form not found!');
+                this.notification.error(i18n('error'));
                 return [];
             }
             const data = angular.element(form).controller().model;
