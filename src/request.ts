@@ -69,7 +69,7 @@ export class Request {
     }
     if (Object.keys(this.items).includes(barcode)) {
       // return a copy of the object if needed (when printing the duplicate labels)
-      return JSON.parse(JSON.stringify(this.items[barcode]))
+      return this.items[barcode] != null ? JSON.parse(JSON.stringify(this.items[barcode])) : null
     }
     // Prepare the request body
     const body = {

@@ -1,19 +1,28 @@
 interface item {
-  id?: string
+  barcode: string
+  code: string
+  departmentNumber: number
+  description: string
+  id: string
+  isActive: boolean
+  isRefundable: boolean
+  leftover: number
+  manufacturerName: string
+  measurementUnitCanBeWeighed: boolean
+  measurementUnitName: string
   name: string
-  barcode?: string
+  packageCode: string
+  packageQuantity: number
   priceWithVat: number
-  code?: string
-  departmentNumber?: number
-  isActive?: boolean
-  packageCode?: string
-  packageQuantity?: number
-  measurementUnitName?: string
-  clickCount?: number
+  stock: number
 };
 
 interface packagedItem extends item {
-  finalPrice?: number
+  addDescription?: boolean
+  addManufacturer?: boolean
+  batchNumber?: string
+  expiryDate?: string
+  totalPrice?: number
   weight?: number
 };
 

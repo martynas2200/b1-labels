@@ -1,0 +1,158 @@
+<div class="container look-up-container">
+  <div class="row">
+    <div class="col-md-4 form-section">
+      <h4 class="header">${i18n('labelsAndPrices')}</h4>
+      <div class="form-group clearfix">
+        <label for="barcode" class="label-text">${i18n('barcodeOrName')}</label>
+        <input type="text" class="form-control" id="barcode" placeholder="${i18n('scanOrEnterName')}"
+          autocomplete="off">
+        <div class="ready-for-scan pull-right text-success">${i18n('readyForScan')}</div>
+      </div>
+      <div class="form-group">
+        <button type="button" class="btn btn-primary" id="searchButton">${i18n('search')}</button>
+        <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#searchByNameModal"
+          id="searchNameButton">${i18n('searchByName')}</button>
+      </div>
+      <div class="form-group">
+        <div class="checkbox-form">
+          <label>
+            <input type="checkbox" class="ace" id="alternativeLabelFormat">
+            <span class="lbl display-inline">&nbsp;${i18n('alternativeLabelFormat')}</span>
+          </label>
+        </div>
+        <div class="checkbox-form">
+          <label>
+            <input type="checkbox" class="ace" id="sayOutLoud" checked>
+            <span class="lbl display-inline">&nbsp;${i18n('sayOutLoud')}</span>
+          </label>
+        </div>
+      </div>
+      <div class="clearfix margin-bottom-10">
+        <div class="pull-right">
+          <button type="button" class="btn btn-purple" id="printButton">
+            <i class="fa fa-print"></i>&nbsp;${i18n('print')}</button>
+          <button type="button" class="btn btn-danger" id="cleanAllButton">${i18n('cleanAll')}</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-8 load-data">
+      <div class="load-overlay" style="display:none" id="loadingOverlay">
+        <div>
+          <i class="fa fa-5x fa-b1-loader blue"></i>
+        </div>
+      </div>
+      <div class="item-list">
+        <div class="alert alert-info text-center">${i18n('noItemsScanned')}</div>
+        <div class="alert-xs grey text-center">${i18n('help')}</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="modal fade" id="searchByNameModal" tabindex="-1" role="dialog" aria-labelledby="searchByNameModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title inline">${i18n('searchByName')}</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="searchByName">${i18n('name')}</label>
+          <input type="text" class="form-control" id="searchByName" placeholder="${i18n('enterName')}"
+            autocomplete="off">
+        </div>
+        <div id="search-results"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">${i18n('close')}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="itemDetails" tabindex="-1" role="dialog" aria-labelledby="itemDetailsLabel"
+  aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title inline" id="itemDetailsLabel">${i18n('itemDetails')}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" data></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-sm" data-dismiss="modal">${i18n('close')}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="weightLabelModal" tabindex="-1" aria-labelledby="weightLabelModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        <h4 class="modal-title" id="weightLabelModalLabel">${i18n('weightLabel')}</h4>
+      </div>
+      <div class="modal-body">
+        <form>
+          <div class="form-group">
+            <label for="productName">${i18n('name')}</label>
+            <input type="text" class="form-control" id="productName" disabled>
+          </div>
+          <div class="form-group col-md-4 padding-0">
+            <label for="productWeight">${i18n('weight')} (g)</label>
+            <input type="number" step="1" class="form-control" id="productWeight" min="0" required>
+          </div>
+          <div class="form-group col-md-4">
+            <label for="totalPrice">${i18n('totalPrice')} (EUR)</label>
+            <input type="number" step="0.01" class="form-control" id="totalPrice" disabled>
+          </div>
+          <div class="form-group col-md-4 padding-0">
+            <label for="kgPrice">${i18n('pricePerKg')} (EUR)</label>
+            <input type="number" step="0.01" class="form-control" id="kgPrice" disabled>
+          </div>
+
+          <div class="form-group col-md-6 padding-0 padding-right-10">
+            <label for="expiryDate">${i18n('expiryDate')}</label>
+            <input type="date" class="form-control" id="expiryDate">
+          </div>
+          <div class="form-group col-md-6 padding-0">
+            <label for="batchNumber">${i18n('batchNumber')}</label>
+            <input type="text" class="form-control" id="batchNumber">
+          </div>
+
+          <div class="form-group">
+            <div class="checkbox-form">
+              <label>
+                <input type="checkbox" class="ace" id="addManufacturer">
+                <span class="lbl display-inline">&nbsp;${i18n('addManufacturer')}&nbsp;</span>
+                <span class="lbl display-inline" id="manufacturerField">
+              </label>
+            </div>
+            <div class="checkbox-form">
+              <label>
+                <input type="checkbox" class="ace" id="addDescription" ng-model="data.addDescription">
+                <span class="lbl display-inline">&nbsp;${i18n('addDescription')}</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group mt-2" id="descriptionField" style="display: none;" ng-show="data.addDescription">
+            <label for="productDescription">${i18n('description')}</label>
+            <textarea class="form-control" id="description" rows="3"></textarea>
+          </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">${i18n('close')}</button>
+        <button type="button" class="btn btn-primary" id="addWeightedItem">${i18n('add')}</button>
+      </div>
+    </div>
+  </div>
+</div>

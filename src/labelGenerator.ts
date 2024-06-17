@@ -1,13 +1,13 @@
 import { i18n } from './i18n'
-import { type item } from './item'
-import { labelStyles } from './styles'
+import { type packagedItem, type item } from './item'
+import printStyles from './styles/label-print.scss'
 
 export class LabelGenerator {
   private items: item[] = []
   private readonly allItemsActive: boolean = true
   private readonly alternativeLabelFormat: boolean
 
-  constructor (data: any | Promise<any> | undefined = undefined, alternativeLabelFormat: boolean = false) {
+  constructor (data: item[] | Promise<item[]> | packagedItem[] | Promise<packagedItem[]> | undefined = undefined, alternativeLabelFormat: boolean = false) {
     this.alternativeLabelFormat = alternativeLabelFormat
     if (data == null) {
       // The constructor was called without data.
@@ -54,11 +54,13 @@ export class LabelGenerator {
     return text.replace(regex, '<b>$1</b>')
   }
 
-  private generateLabel (data: item): HTMLDivElement {
+  private generateLabel (data: packagedItem): HTMLDivElement {
     const label = document.createElement('div')
     label.className = 'label'
     if (this.alternativeLabelFormat) {
       label.classList.add('alternative')
+    } else if (data.weight != null) {
+      return this.generateWeightLabel(data)
     }
 
     const item = document.createElement('div')
@@ -77,7 +79,7 @@ export class LabelGenerator {
       barcode.appendChild(barcodeImage)
       label.appendChild(barcode)
     }
-    if (data.priceWithVat !== 0) {
+    if (data.priceWithVat != 0) {
       const price = document.createElement('div')
       price.className = 'price'
       if (typeof data.priceWithVat === 'number') {
@@ -100,13 +102,91 @@ export class LabelGenerator {
       label.appendChild(deposit)
     }
 
-    if (data.isActive === false) {
-      const inactive = document.createElement('div')
-      inactive.className = 'inactive'
-      label.appendChild(inactive)
+    label.appendChild(item)
+    return label
+  }
+
+  private generateWeightLabel (data: packagedItem): HTMLDivElement {
+    const label = document.createElement('div')
+    if (data.weight == null || data.totalPrice == null || data.priceWithVat == null || data.barcode == null) {
+      // this.notifier.error('label data is missing')
+      return label
+    }
+    label.className = 'label weighted'
+
+    const item = document.createElement('div')
+    item.className = 'item'
+    item.innerHTML = data.name
+    label.appendChild(item)
+
+    const price = document.createElement('div')
+    price.className = 'fprice'
+    price.textContent = (data.totalPrice != null) ? data.totalPrice.toFixed(2) + ' €' : ''
+    label.appendChild(price)
+
+    const weight = document.createElement('div')
+    weight.className = 'weight'
+    weight.textContent = data.weight.toFixed(3)
+    label.appendChild(weight)
+
+    const kgPrice = document.createElement('div')
+    kgPrice.className = 'kg-price'
+    kgPrice.textContent = data.priceWithVat.toFixed(2)
+    label.appendChild(kgPrice)
+
+    const weightText = document.createElement('div')
+    weightText.className = 'weight-text'
+    weightText.textContent = 'kg'
+    label.appendChild(weightText)
+
+    const kgText = document.createElement('div')
+    kgText.className = 'kg-text'
+    kgText.textContent = '€/kg'
+    label.appendChild(kgText)
+
+    const barcode = document.createElement('div')
+    barcode.className = 'barcode'
+    const barcodeImage = document.createElement('img')
+    // Prefix 2200, then 13 digits of barcode, then 4 digits of weight
+    // if the barcode is shorter than 13 digits, add 0s to the end, same with weight
+    const barcodeString = '2200' + '0'.repeat(13 - data.barcode.length) + data.barcode + '0'.repeat(5 - data.weight.toFixed(3).length) + data.weight.toFixed(3).replace('.', '')
+    barcodeImage.src = `https://barcodeapi.org/api/dm/${barcodeString}`
+    barcode.appendChild(barcodeImage)
+    label.appendChild(barcode)
+
+    if (data.expiryDate != null) {
+      const expiryText = document.createElement('div')
+      expiryText.className = 'expiracy-text'
+      expiryText.textContent = 'Geriausia iki:'
+      label.appendChild(expiryText)
+
+      const expiry = document.createElement('div')
+      expiry.className = 'expiracy'
+      const expiryDate = new Date(data.expiryDate)
+      expiry.textContent = expiryDate.toLocaleDateString('lt-LT', { month: '2-digit', day: '2-digit' })
+      label.appendChild(expiry)
     }
 
-    label.appendChild(item)
+    if (data.batchNumber != null) {
+      const series = document.createElement('div')
+      series.className = 'batch-no'
+      series.textContent = `Partijos nr. ${data.batchNumber}`
+      label.appendChild(series)
+    }
+
+    if (data.addManufacturer == true && data.manufacturerName != null) {
+      const manufacturer = document.createElement('div')
+      manufacturer.className = 'manufacturer'
+      manufacturer.textContent = data.manufacturerName
+      label.appendChild(manufacturer)
+    }
+
+    if (data.addDescription == true && data.description != null) {
+      const description = document.createElement('div')
+      description.className = 'description'
+      description.textContent = data.description
+      label.appendChild(description)
+    }
 
     return label
   }
@@ -121,8 +201,13 @@ export class LabelGenerator {
     }
     popup.document.title = `${labels.length} ${i18n('nlabelsToBePrinted')}`
 
+    // const style: HTMLLinkElement = document.createElement('link')
+    // style.rel = 'stylesheet'
+    // style.href = 'https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/styles/label-print.css'
+    // popup.document.head.appendChild(style)
     const style: HTMLStyleElement = document.createElement('style')
-    style.innerHTML = labelStyles
+    style.innerHTML = `${printStyles}`
+    style.type = 'text/css'
     popup.document.head.appendChild(style)
 
     labels.forEach(label => {
@@ -143,9 +228,9 @@ export class LabelGenerator {
       setTimeout(resolve, 5000) // default timeout
     })
 
-    popup.print()
     popup.addEventListener('afterprint', () => {
       popup.close()
     })
+    popup.print()
   }
 }

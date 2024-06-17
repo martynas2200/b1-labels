@@ -1,8 +1,26 @@
 import typescript from '@rollup/plugin-typescript';
 import addUserScriptMetadata from './meta.js';
-// const pkg = require('package.json');
-// load it as a module
-// import pkg from './package.json';
+import { createFilter } from '@rollup/pluginutils';
+import scss from 'rollup-plugin-scss';
+import { terser } from 'rollup-plugin-terser';
+
+function htmlToTemplateString() {
+  const filter = createFilter('**/*.html');
+  return {
+    name: 'html-to-template-string',
+    transform(code, id) {
+      if (filter(id)) {
+        const escapedContent = code.replace(/`/g, '\\`').replace(/\s{2,}/g, ' ');
+        return {
+          code: `export default function(i18n) { return \`${escapedContent}\`; }`,
+          map: { mappings: '' },
+        };
+      }
+      return null;
+    },
+  };
+}
+
 
 export default {
   input: 'src/script.user.ts',
@@ -12,17 +30,23 @@ export default {
     name: 'b1userscript',
   },
   plugins: [
-    typescript(
-      {
-        tsconfig: 'tsconfig.json',
-        module: 'esnext',
-        removeComments: true,
-        declaration: false,
-        sourceMap: false,
-        inlineSources: false,
-        inlineSourceMap: false
-      }
+    scss({
+      output: false,
+      outputStyle: 'compressed',
+      failOnError: true
+    }),
+    htmlToTemplateString(),
+    typescript({
+      tsconfig: 'tsconfig.json',
+      module: 'esnext',
+      removeComments: true,
+      declaration: false,
+      sourceMap: false,
+      inlineSources: false,
+      inlineSourceMap: false
+    }
     ),
-    addUserScriptMetadata()
-  ]
+    addUserScriptMetadata(),
+    terser()
+  ],
 };

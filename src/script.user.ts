@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression */
 /* eslint-disable @typescript-eslint/unbound-method */
-
+import './overlay'
+import all from './styles/all.scss'
 import { UserSession } from './userSession'
 import { LabelerInterface } from './labelerInterface'
 import { Request } from './request'
@@ -12,7 +13,6 @@ import { UINotification } from './ui-notification'
 interface row extends item {
   _select: boolean
 }
-
 declare const angular: angular.IAngularStatic
 declare let history: History
 declare let window: Window
@@ -29,12 +29,13 @@ class LabelsUserscript {
     this.currentUrl = window.location.pathname
     this.init()
     void this.handleUrlChange(null, this.currentUrl)
-    console.log('Label Generator for the items in b1.lt is ready!')
+    console.debug('LabelsUserscript initialized')
   }
 
   private init (): void {
     this.overrideHistoryMethods()
     this.setupPopStateListener()
+    this.addStyles()
   }
 
   private overrideHistoryMethods (): void {
@@ -80,7 +81,7 @@ class LabelsUserscript {
         case '/reference-book/items':
         case '/warehouse/purchases/edit':
           success = this.addPrintButton()
-          // if we add it, and the view has not yet, we need to double check after some time
+          // Check after a delay, we could have added the button to the old view
           if (success) {
             setTimeout(() => {
               if (document.querySelector('.print') == null) {
@@ -89,7 +90,7 @@ class LabelsUserscript {
             }, 1000)
           }
           break
-
+        case '/en/reference-book/items/edit':
         case '/reference-book/items/edit':
           success = this.addPrintButton('.btn-ctrl', true)
           if (success) {
@@ -105,7 +106,7 @@ class LabelsUserscript {
       }
     } else if (this.user.isLoggedIn && !this.user.admin && !this.interface.isActive()) {
       this.pageReady = this.interface.init()
-    } else if (!this.user.isLoggedIn) {
+    } else if (!this.user.isLoggedIn && this.currentUrl === '/login') {
       this.pageReady = this.user.addLoginOptions()
     } else {
       this.pageReady = true
@@ -118,19 +119,17 @@ class LabelsUserscript {
     }
   }
 
-  private getDataRows (): HTMLElement | null {
-    return document.querySelector('.data-rows')
-  }
-
-  // reference-book/items
-  private extractDataFromAngular (): item[] {
-    // eslint-disable-next-line no-undef
-    const dataRows = this.getDataRows()
+  private getDataRows (): HTMLElement {
+    const dataRows = document.querySelector('.data-rows') as HTMLElement
     if (dataRows == null) {
       this.notification.error(i18n('error'))
-      return []
+      throw new Error('Data rows not found')
     }
+    return dataRows
+  }
 
+  private extractDataFromAngularItemList (): item[] {
+    const dataRows = this.getDataRows()
     const selectedRows = angular.element(dataRows).controller().grid.data.filter((a: row) => a._select)
     return selectedRows.map((row: any) => ({
       name: row.name,
@@ -146,12 +145,7 @@ class LabelsUserscript {
   }
 
   async extractDataFromAngularPurchaseView (): Promise<item[]> {
-    // eslint-disable-next-line no-undef
     const dataRows = this.getDataRows()
-    if (dataRows == null) {
-      this.notification.error(i18n('error'))
-      return []
-    }
     const selectedRows = angular.element(dataRows).controller().data.filter((a: row) => a._select)
     const extractedData = []
     if (confirm(i18n('askingForPackageCode'))) { // Get full item data from the server
@@ -182,7 +176,6 @@ class LabelsUserscript {
   }
 
   extractDataFromAngularItemView (): item[] {
-    // eslint-disable-next-line no-undef
     const form = document.querySelector('ng-form')
     if (form == null) {
       this.notification.error(i18n('error'))
@@ -197,7 +190,7 @@ class LabelsUserscript {
     switch (window.location.pathname) {
       case '/en/reference-book/items':
       case '/reference-book/items':
-        data = this.extractDataFromAngular()
+        data = this.extractDataFromAngularItemList()
         break
       case '/en/warehouse/purchases/edit':
       case '/warehouse/purchases/edit':
@@ -247,8 +240,20 @@ class LabelsUserscript {
     buttonsLeft.appendChild(printDiv)
     return true
   }
+
+  private addStyles (): void {
+    const styles = document.createElement('style') as HTMLStyleElement
+    styles.innerHTML = `${all}`
+    document.head.appendChild(styles)
+  }
 }
 
 window.addEventListener('load', () => {
   void new LabelsUserscript()
+  // Stop Clarity analytics
+  setTimeout(() => {
+    if ((window as any).clarity != null) {
+      (window as any).clarity('stop')
+    }
+  }, 500)
 })

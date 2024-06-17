@@ -11,37 +11,16 @@ export class FormSimplifier {
     if (barcodeInput !== null) {
       barcodeInput.removeEventListener('input', (event) => { this.handleInputChange(event) })
       barcodeInput.addEventListener('input', (event) => { this.handleInputChange(event) })
-      barcodeInput.classList.add('handle-input') // Not sure if this is needed, only for debugging
     }
   }
 
   simplifyForm (): void {
-    const style = document.createElement('style')
-    style.textContent = `
-        textarea.form-control.input-sm.ng-pristine.ng-untouched.ng-valid {
-            height: 50px;
-        }
-        input[name=isActive].ace:checked + span{
-            background: white !important;
-            font-weight: bold;
-            color: black;
-        }
-        input[name=isActive].ace + span{
-            background: #ff1c00 !important;
-            color: white;
-            padding: 1em 10em 1em 0em;
-            font-weight: bold;
-        }
-        ng-form h5.header.blue, ng-form .alert.alert-warning {
-            display: none;
-        }
-        `
-    document.head.appendChild(style)
+    document.querySelector<HTMLFormElement>('ng-form')?.classList.add('simplified-form')
+
     const fieldsToHide = [
       'vatRate', 'minQuantity', 'netWeight', 'grossWeight', 'expenseCorrespondenceAccountCode',
       'saleCorrespondenceAccountCode', 'purchaseCorrespondenceAccountCode', 'externalId', 'isCommentRequired',
-      'defaultSaleService', 'countryOfOriginName', 'intrastatShortDescription', 'intrastatCode',
-      'freePrice', 'priceFrom', 'priceUntil', 'minPriceWithVat', 'priceMinQuantity', 'stock',
+      'defaultSaleService', 'countryOfOriginName', 'intrastatShortDescription', 'intrastatCode', 'priceFrom', 'priceUntil', 'minPriceWithVat', 'priceMinQuantity', 'stock',
       'discountStatus', 'maxDiscount', 'discountPointsStatus', 'ageLimit', 'certificateDate',
       'certificateNumber', 'validFrom', 'validUntil', 'attribute1', 'attribute2', 'attribute3'
     ]
@@ -114,9 +93,8 @@ export class FormSimplifier {
 
   handleInputChange (event: Event): void {
     const inputField = event.target as HTMLInputElement
-    const inputValue = inputField.value
+    const inputValue = inputField.value = lettersToNumbers(inputField.value)
 
-    inputField.value = lettersToNumbers(inputValue)
     if (!/^\d+$/.test(inputValue)) {
       inputField.style.backgroundColor = 'orangered'
     } else if (inputValue.length === 13 || inputValue.length === 8) {

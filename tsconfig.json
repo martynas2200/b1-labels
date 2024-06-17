@@ -6,9 +6,11 @@
         "strict": true,
         "lib": ["dom", "es5"],
     },
-    "include": ["src"],
+    "include": ["src", "**/declarations.d.ts"],
     "exclude": [
-        "node_modules"
+        "node_modules",
+        "dist",
+        "*.mjs"
     ]
 }
   

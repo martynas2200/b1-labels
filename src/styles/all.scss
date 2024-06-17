@@ -1,0 +1,281 @@
+// Forms
+
+ng-form textarea.form-control.input-sm.ng-pristine.ng-untouched.ng-valid {
+  height: 50px;
+}
+
+ng-form label:has(input[name=isActive]) {
+  margin-left: -0.5em;
+}
+
+ng-form input[name=isActive].ace+span {
+  background-color: #b74635;
+  color: white;
+  padding: 0.75em 5em 0.75em 0.5em;
+  border-radius: 4px
+}
+
+ng-form input[name=isActive].ace:checked+span {
+  background-color: white;
+  color: inherit;
+}
+
+ng-form.simplified-form h5.header.blue,
+ng-form .alert.alert-warning {
+  display: none;
+}
+// .navbar .navbar-shortcuts>ul>li {
+.navbar .navbar-shortcuts>ul>li:first-child {
+  display: none;
+}
+
+// .navbar li:has(a#manage-wallet),
+// .navbar li:has(a#manage-plan) {
+//   display: inline-block;
+// }
+
+// Look-up container
+
+body:has(.look-up-container) {
+  background-color: #eee;
+
+  .navbar {
+    background-color: var(--theme-blue--dark-bg);
+
+    a.navbar-brand {
+      filter: brightness(0) invert(1);
+    }
+    .navbar-nav {
+      li.nav-user-dropdown {
+        img, .divider {
+          display: none;
+        }
+        a .nav-user-company  {
+          font-size: unset;
+          line-height: unset;
+        }
+        //Could add `>` to make sure it is only the nav part, not the items in the dropdown, but a touch screen user might have trouble
+        a { 
+          padding:15px 10px;
+        }
+      }
+      .nav-user-dropdown__title {
+        // The business name doesn't fit in the header
+        color:#d9d9d9;
+        padding-right: 10px;
+        font-size: 15px;
+        max-width:unset;
+        .caret {
+          color: #d9d9d9;
+        }
+
+        & *:first-child {
+          // The user name
+          display: none;
+        }
+      }
+    }
+  }
+}
+
+// Search modal contain some items
+.item {
+  font-size: 1.1em;
+  background-color: white;
+  border: 1px solid #ddd;
+  padding: 10px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  position: relative;
+
+  .item-price {
+    font-weight: bold;
+    background-color: var(--theme-blue--dark-bg);
+    color: white;
+    padding: 2px 8px;
+  }
+}
+
+.look-up-container {
+
+  *:not(.header) {
+    border-radius: 4px;
+  }
+
+  .form-section,
+  .item:not(.mark):not(.inactive) {
+    background-color: white;
+  }
+
+  .load-data {
+    padding: 10px;
+  }
+
+  .load-overlay {
+    background-color: #eeeeeebf;
+  }
+
+  .form-section {
+    border: 1px solid #ddd;
+    margin-top: 10px;
+    background-color: white;
+  }
+
+  .item-list {
+    max-height: calc(100vh - 70px);
+    overflow: auto;
+
+    .item {
+      transition: 0.5s;
+      animation: highlight 0.5s ease-out;
+      display: grid;
+      grid-template-columns: auto min-content min-content;
+      column-gap: 5px;
+
+      .item-main{
+        grid-row: 1;
+        grid-column: 1;
+      }
+      .item-labels {
+        grid-column: 1;
+        grid-row: 2;
+        align-self: center;
+      }
+      .btn {
+        grid-row: 1 / span 2;
+        border: none;
+      }
+      .btn-yellow {
+        grid-column: 3;
+      }
+
+      &:last-child {
+        margin-bottom: 30px;
+        animation: highlight 0.5s ease-out, emphasizeItem 0.5s ease-in-out 5s backwards;
+      }
+
+      &.inactive {
+        background-color: #f8d7da !important;
+      }
+
+      &.mark {
+        background-color: #fcf8e3 !important;
+      }
+
+      &:hover {
+        background-color: #f1f1f1 !important;
+      }
+
+      *:empty:not(i) {
+        display: none;
+      }
+
+      .item-price {
+        margin-right: 4px;
+        border-radius: 4px;
+        transition: 0.5s;
+      }
+
+      &:last-child .item-price {
+        animation: emphasizePrice 0.5s ease-in-out 5s backwards;
+      }
+    }
+  }
+
+
+  .item-labels {
+    font-size: 0.8em;
+    color: #666;
+
+    span {
+      margin-right: 10px;
+    }
+  }
+
+  .form-group {
+    position: relative;
+  }
+  .ready-for-scan {
+    opacity:0;
+    transition: 0.5s;
+    position: absolute;
+    right: 0%;
+    width: 80px;
+    text-align: right;
+    color: var(--theme-orange--base-bg);
+    padding-top: 5px;
+    text-transform: lowercase;
+  }
+  #barcode:focus:placeholder-shown + .ready-for-scan {
+    opacity:1;
+  }
+}
+
+
+/* item detail modal */
+.container.width-auto>.row {
+  padding: 5px 0px;
+  white-space: pre-line;
+  border-bottom: 1px solid #eeeeee
+}
+
+#weightLabelModal {
+  * {
+    border-radius: 4px !important;
+  }
+}
+
+#search-results {
+  * {
+    border-radius: 4px !important;
+  }
+
+  .item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .item-price {
+    align-self: center;
+  }
+
+  .item-name {
+    flex: 1;
+    margin-right: 10px;
+    word-wrap: break-word;
+  }
+}
+
+.modal-backdrop {
+  display: none;
+}
+.modal {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+
+@keyframes emphasizeItem {
+  from {
+    font-size: 1.2em;
+    // border-left: solid var(--theme-blue--dark-bg) 4px;
+    // padding-left: 6px;
+  }
+}
+
+@keyframes emphasizePrice {
+  from {
+    margin-left: -10px;
+    padding-left: 10px;
+    border-radius: 0px 5px 5px 0px;
+    background-color: black;
+  }
+}
+
+@keyframes highlight {
+  from {
+    background-color: #1b6aaa;
+    color: white;
+    filter: opacity(0.5);
+  }
+}

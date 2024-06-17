@@ -1,5 +1,6 @@
 import { createFilter } from '@rollup/pluginutils';
 import { promises as fs } from 'fs';
+import { connect } from 'http2';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -23,14 +24,23 @@ export async function getVersion() {
 const metadata = {
   name: "Label Generator for the items in b1.lt",
   namespace: "http://tampermonkey.net/",
+  homepage: "https://github.com/martynas2200/b1-labels",
   version: "1.0.0",
   description: "Generate labels for the selected items on the b1.lt website",
   author: "Martynas Miliauskas",
   match: "https://www.b1.lt/*",
+  icon: "https://b1.lt/favicon.ico",
+  "run-at": "document-start",
+  connect: ["b1.lt", "raw.githubusercontent.com"],
   downloadURL: "https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/script.user.js",
   updateURL: "https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/script.user.js",
-  license: "GNU GPLv3"
+  grant: ["GM.setValue", "GM.getValue", "unsafeWindow", "GM_xmlhttpRequest"],
+  license: "GNU GPLv3",
 };
+
+function addSpaces(key) {
+  return ' '.repeat(16 - key.length);
+}
 
 export default async function addUserScriptMetadata(overwrites = {}) {
   for (const key in overwrites) {
@@ -47,21 +57,17 @@ export default async function addUserScriptMetadata(overwrites = {}) {
       for (const fileName in bundle) {
         if (filter(fileName)) {
           const content = bundle[fileName].code;
-          const metadataBlock = `
-// ==UserScript==
-// @name         ${metadata.name}
-// @namespace    ${metadata.namespace}
-// @version      ${metadata.version}
-// @description  ${metadata.description}
-// @author       ${metadata.author}
-// @match        ${metadata.match}
-// @downloadURL  ${metadata.downloadURL}
-// @updateURL    ${metadata.updateURL}
-// @grant        GM.setValue
-// @grant        GM.getValue
-// @grant        unsafeWindow
-// @license      ${metadata.license}
-// ==/UserScript==\n\n`;
+          let metadataBlock = `// ==UserScript==\n`;
+          for (const key in metadata) {
+            if (Array.isArray(metadata[key])) {
+              metadata[key].forEach(value => {
+                metadataBlock += `// @${key} ${addSpaces(key)} ${value}\n`;
+              });
+              continue;
+            }
+            metadataBlock += `// @${key} ${addSpaces(key)} ${metadata[key]}\n`;
+          }
+          metadataBlock += `// ==/UserScript==\n\n`;
           bundle[fileName].code = metadataBlock + content;
         }
       }
