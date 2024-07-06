@@ -15,6 +15,8 @@ export class LabelerInterface {
   active: boolean = false
   settings: {
     alternativeLabelFormat: boolean
+    autoPrint: boolean
+    clearAfterPrint: boolean
     sayOutLoud: boolean
   }
 
@@ -32,6 +34,7 @@ export class LabelerInterface {
       addDescription: HTMLInputElement | null
       manufacturerField: HTMLElement | null
       descriptionField: HTMLElement | null
+      printWeightLabel: HTMLButtonElement | null
       addWeightedItem: HTMLButtonElement | null
       totalPrice: HTMLInputElement | null
     }
@@ -47,6 +50,8 @@ export class LabelerInterface {
   constructor () {
     this.settings = {
       alternativeLabelFormat: false,
+      autoPrint: false,
+      clearAfterPrint: true,
       sayOutLoud: true
     }
     void this.checkApiKey()
@@ -98,9 +103,8 @@ export class LabelerInterface {
   }
 
   bindEvents (): void {
-    document.getElementById('cleanAllButton')?.addEventListener('click', this.cleanAll.bind(this))
-    document.getElementById('printButton')?.addEventListener('click', this.print.bind(this))
-
+    document.getElementById('cleanAllButton')?.addEventListener('click', () => { this.cleanAll() })
+    document.getElementById('printButton')?.addEventListener('click', () => { this.print() })
     if (this.mainInput != null) {
       this.mainInput.addEventListener('keypress', this.handleEnterPress(this.searchByBarcode.bind(this, this.mainInput)))
       document.getElementById('searchButton')?.addEventListener('click', this.searchByBarcode.bind(this, this.mainInput))
@@ -127,11 +131,14 @@ export class LabelerInterface {
       }
     })
     this.modals?.weight.addWeightedItem?.addEventListener('click', () => { this.addWeightItem() })
+    this.modals?.weight.printWeightLabel?.addEventListener('click', () => { this.printWeightLabel() })
     this.modals?.weight.productWeight?.addEventListener('keypress', this.handleEnterPress(() => { this.addWeightItem() }))
     this.modals?.weight.productWeight?.addEventListener('input', this.handleWeightChange.bind(this))
 
     this.bindCheckboxChange('alternativeLabelFormat', 'alternativeLabelFormat')
     this.bindCheckboxChange('sayOutLoud', 'sayOutLoud')
+    this.bindCheckboxChange('clearAfterPrint', 'clearAfterPrint')
+    this.bindCheckboxChange('autoPrint', 'autoPrint')
   }
 
   handleEnterPress (callback: () => void): (event: KeyboardEvent) => void {
@@ -166,6 +173,7 @@ export class LabelerInterface {
         addDescription: document.getElementById('addDescription') as HTMLInputElement,
         manufacturerField: document.getElementById('manufacturerField'),
         descriptionField: document.getElementById('descriptionField'),
+        printWeightLabel: document.getElementById('printWeightLabel') as HTMLButtonElement,
         addWeightedItem: document.getElementById('addWeightedItem') as HTMLButtonElement,
         totalPrice: document.getElementById('totalPrice') as HTMLInputElement
       },
@@ -186,7 +194,7 @@ export class LabelerInterface {
     }
   }
 
-  print (): void {
+  print (clearAfterPrint: boolean = this.settings.clearAfterPrint): void {
     this.items = this.items.filter(item => item)
     if (this.items.length === 0) {
       this.notification.error(i18n('noData'))
@@ -196,15 +204,22 @@ export class LabelerInterface {
       this.notification.warning(i18n('notAllItemsActive'))
     }
     void new LabelGenerator(this.items, this.settings.alternativeLabelFormat)
+    if (clearAfterPrint) {
+      this.cleanAll(true)
+    }
   }
 
-  cleanAll (): void {
+  cleanAll (donePrinting: boolean = false): void {
     this.items = []
     if (this.itemList == null) {
       console.error('itemList is not defined')
       return
     }
-    this.itemList.innerHTML = `<div class="alert alert-info text-center">${i18n('noItemsScanned')}</div>`
+    if (donePrinting) {
+      this.itemList.innerHTML = `<div class="alert alert-success text-center">${i18n('printJobIsSent')}. ${i18n('noItemsScanned')}</div>`
+    } else {
+      this.itemList.innerHTML = `<div class="alert alert-info text-center">${i18n('noItemsScanned')}</div>`
+    }
   }
 
   async getAudioUrl (text: string): Promise<string | undefined> {
@@ -223,6 +238,10 @@ export class LabelerInterface {
       })
     })
     const data = await response.json()
+    if (data.audioContent == null) {
+      this.notification.error({ title: i18n('error'), message: JSON.stringify(data) })
+      return
+    }
     const audioContent = data.audioContent as string
     const audioBlob = new Blob([Uint8Array.from(atob(audioContent), c => c.charCodeAt(0))], { type: 'audio/mp3' })
     return URL.createObjectURL(audioBlob)
@@ -310,7 +329,7 @@ export class LabelerInterface {
   }
 
   newItem (item: packagedItem): void {
-    // we might get duplicate items, so system's id or barcode is not enough
+    // we might get duplicate items, so item id or barcode is not enough
     item.id = this.generateItemId()
     if (this.items.length > 0 && (this.items[this.items.length - 1]).barcode == item.barcode && item.weight == this.items[this.items.length - 1].weight) {
       void this.playAudio('Kaip ir sakiau, kaina yra ' + this.digitsToPrice(item.totalPrice ?? item.priceWithVat) + (item.weight !== undefined ? '. Svoris ' + this.numberToWords(item.weight) + ' g.' : '') + ' Tai ' + item.name)
@@ -324,6 +343,9 @@ export class LabelerInterface {
     }
     this.items.push(item)
     this.addItemToView(item)
+    if (this.settings.autoPrint) {
+      this.print(true)
+    }
   }
 
   async playAudio (text: string): Promise<void> {
@@ -517,7 +539,7 @@ export class LabelerInterface {
     if (this.modals?.weight.productName == null || this.modals.weight.productWeight == null || this.modals.weight.kgPrice == null || this.modals.weight.expiryDate == null || this.modals.weight.addManufacturer == null || this.modals.weight.manufacturerField == null || this.modals.weight.description == null) {
       return
     }
-    this.modals.weight.currentItem = item
+    this.modals.weight.currentItem = JSON.parse(JSON.stringify(item))
     this.modals.weight.productName.value = item.name
     this.modals.weight.kgPrice.value = item.priceWithVat.toString()
     this.modals.weight.description.value = item.description ?? ''
@@ -529,10 +551,10 @@ export class LabelerInterface {
     this.modals.weight.productWeight.focus()
   }
 
-  addWeightItem (): void {
+  getWeightItem (): packagedItem | null {
     if (this.modals?.weight.currentItem?.weight == null || isNaN(this.modals.weight.currentItem.weight)) {
       this.notification.error(i18n('missingWeight'))
-      return
+      return null
     }
     this.modals.weight.currentItem.expiryDate = (this.modals.weight.expiryDate?.value != null && this.modals.weight.expiryDate.value.length > 0) ? this.modals.weight.expiryDate.value.slice(5) : undefined
     this.modals.weight.currentItem.batchNumber = (this.modals.weight.batchNumber?.value != null && this.modals.weight.batchNumber.value.length > 0) ? this.modals.weight.batchNumber.value : undefined
@@ -540,9 +562,24 @@ export class LabelerInterface {
     this.modals.weight.currentItem.addDescription = this.modals.weight.addDescription?.checked && this.modals.weight.currentItem.description != null
     this.modals.weight.currentItem.description = (this.modals.weight.description?.value != null && this.modals.weight.description.value.length > 0) ? this.modals.weight.description.value : ""
     this.notification.info(i18n('weightItemAdded') + ': ' + this.modals.weight.currentItem.weight + ' kg')
-    this.newItem(this.modals.weight.currentItem)
     // copy current item to a new object, so that the original object is not modified
     this.modals.weight.currentItem = JSON.parse(JSON.stringify(this.modals.weight.currentItem))
+
+    return this.modals.weight.currentItem
+  }
+  
+  addWeightItem (): void {
+    const item = this.getWeightItem()
+    if (item != null) {
+      this.newItem(item)
+    }
+  }
+
+  printWeightLabel (): void {
+    const item = this.getWeightItem()
+    if (item != null) {
+      void new LabelGenerator([item], this.settings.alternativeLabelFormat)
+    }
   }
 
   calculateTotalPrice (item: packagedItem): number {

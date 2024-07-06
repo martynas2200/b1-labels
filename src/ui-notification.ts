@@ -24,11 +24,22 @@ export class UINotification {
   constructor () {
     const appElement = document.querySelector('[ng-app]')
     if (appElement === null) {
-      alert('Reload the page')
       throw new Error('Angular app not found')
     }
-    const injector = angular.element(appElement).injector()
-    this.notificationService = injector.get('Notification')
+    try {
+      const injector = angular.element(appElement).injector()
+      this.notificationService = injector.get('Notification')
+    } catch (error) {
+      console.error('Failed to get Notification service', error)
+      alert('Failed to get Notification service')
+      this.notificationService = {
+        info: (options: NotificationOptions | string): void =>  alert(options),
+        error: (options: NotificationOptions | string): void => alert(options),
+        success: (options: NotificationOptions | string): void => alert(options),
+        warning: (options: NotificationOptions | string): void => alert(options),
+        primary: (options: NotificationOptions | string): void => alert(options)
+      }
+    }
   }
 
   info (options: NotificationOptions | string): void {

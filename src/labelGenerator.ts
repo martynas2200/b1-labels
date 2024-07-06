@@ -107,12 +107,14 @@ export class LabelGenerator {
   }
 
   private generateWeightLabel (data: packagedItem): HTMLDivElement {
-    const label = document.createElement('div')
+    const parent = document.createElement('div')
     if (data.weight == null || data.totalPrice == null || data.priceWithVat == null || data.barcode == null) {
       // this.notifier.error('label data is missing')
-      return label
+      return parent
     }
-    label.className = 'label weighted'
+    parent.className = 'label'
+    const label = document.createElement('div')
+    label.className = 'weighted'
 
     const item = document.createElement('div')
     item.className = 'item'
@@ -187,8 +189,8 @@ export class LabelGenerator {
       description.textContent = data.description
       label.appendChild(description)
     }
-
-    return label
+    parent.appendChild(label)
+    return parent
   }
 
   private async printLabelsUsingBrowser (data: item[]): Promise<void> {

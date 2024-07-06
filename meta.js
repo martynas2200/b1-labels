@@ -30,7 +30,6 @@ const metadata = {
   author: "Martynas Miliauskas",
   match: "https://www.b1.lt/*",
   icon: "https://b1.lt/favicon.ico",
-  "run-at": "document-start",
   connect: ["b1.lt", "raw.githubusercontent.com"],
   downloadURL: "https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/script.user.js",
   updateURL: "https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/script.user.js",

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression */
 /* eslint-disable @typescript-eslint/unbound-method */
-import './overlay'
 import all from './styles/all.scss'
 import { UserSession } from './userSession'
 import { LabelerInterface } from './labelerInterface'
