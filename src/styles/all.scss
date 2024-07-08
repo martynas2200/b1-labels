@@ -42,37 +42,59 @@ body:has(.look-up-container) {
   .navbar {
     background-color: var(--theme-blue--dark-bg);
 
-    a.navbar-brand {
-      filter: brightness(0) invert(1);
-    }
-    .navbar-nav {
-      li.nav-user-dropdown {
-        img, .divider {
-          display: none;
-        }
-        a .nav-user-company  {
-          font-size: unset;
-          line-height: unset;
-        }
-        //Could add `>` to make sure it is only the nav part, not the items in the dropdown, but a touch screen user might have trouble
-        a { 
-          padding:15px 10px;
-        }
+    .navbar-header {
+      .navbar-brand {
+        padding-left: 1em;
+        filter: brightness(0) invert(1);
       }
-      .nav-user-dropdown__title {
-        // The business name doesn't fit in the header
-        color:#d9d9d9;
-        padding-right: 10px;
-        font-size: 15px;
-        max-width:unset;
-        .caret {
-          color: #d9d9d9;
-        }
+      .navbar-toggle {
+        display: none;
+      }
+    }
+    
+    .navbar-nav {
+      & > *:not(:last-child) {
+        display: none;
+      }
+      & > *:nth-last-child(2), 
+      & > *:nth-last-child(4), 
+      & > *:nth-last-child(5), 
+      & > *:nth-last-child(7) {
+          display: block;
+      }
+    }
+    .navbar-collapse-2,
+    .navbar-nav  li.nav-user-dropdown {
 
-        & *:first-child {
-          // The user name
-          display: none;
-        }
+      .nav-user-shortcut {
+        height: 100%;
+      }
+
+      img, .divider {
+        display: none;
+      }
+      a .nav-user-company  {
+        font-size: unset;
+        line-height: unset;
+      }
+      //Could add `>` to make sure it is only the nav part, not the items in the dropdown, but a touch screen user might have trouble
+      a { 
+        padding:15px 10px;
+      }
+    }
+    .nav-user-dropdown__title {
+      // The business name doesn't fit in the header
+      color:#d9d9d9;
+      padding-right: 10px;
+      font-size: 15px;
+      max-width:unset;
+      .caret {
+        color: #d9d9d9;
+      }
+
+      & *:first-child {
+        // The user name
+        display: none;
       }
     }
   }
