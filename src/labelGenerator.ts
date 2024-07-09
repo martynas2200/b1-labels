@@ -172,7 +172,7 @@ export class LabelGenerator {
     if (data.batchNumber != null) {
       const series = document.createElement('div')
       series.className = 'batch-no'
-      series.textContent = `Partijos nr. ${data.batchNumber}`
+      series.textContent = `Part. nr. ${data.batchNumber}`
       label.appendChild(series)
     }
 
@@ -182,12 +182,12 @@ export class LabelGenerator {
       manufacturer.textContent = data.manufacturerName
       label.appendChild(manufacturer)
     }
-
-    if (data.addDescription == true && data.description != null) {
-      const description = document.createElement('div')
-      description.className = 'description'
-      description.textContent = data.description
-      label.appendChild(description)
+    
+    if (data.addPackageFeeNote == true) {
+      const packageCode = document.createElement('div')
+      packageCode.className = 'package'
+      packageCode.textContent = '+ 0,01 (fas. maišelis)'
+      label.appendChild(packageCode)
     }
     parent.appendChild(label)
     return parent

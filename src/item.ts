@@ -18,7 +18,7 @@ interface item {
 };
 
 interface packagedItem extends item {
-  addDescription?: boolean
+  addPackageFeeNote?: boolean
   addManufacturer?: boolean
   batchNumber?: string
   expiryDate?: string

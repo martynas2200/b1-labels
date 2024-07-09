@@ -27,13 +27,11 @@ export class LabelerInterface {
       productName: HTMLInputElement | null
       productWeight: HTMLInputElement | null
       kgPrice: HTMLInputElement | null
-      description: HTMLInputElement | null
       expiryDate: HTMLInputElement | null
       batchNumber: HTMLInputElement | null
       addManufacturer: HTMLInputElement | null
-      addDescription: HTMLInputElement | null
+      addPackageFeeNote: HTMLInputElement | null
       manufacturerField: HTMLElement | null
-      descriptionField: HTMLElement | null
       printWeightLabel: HTMLButtonElement | null
       addWeightedItem: HTMLButtonElement | null
       totalPrice: HTMLInputElement | null
@@ -125,11 +123,11 @@ export class LabelerInterface {
       })
     }
 
-    this.modals?.weight.addDescription?.addEventListener('change', () => {
-      if (this.modals?.weight.descriptionField != null && this.modals.weight.addDescription != null) {
-        this.modals.weight.descriptionField.style.display = this.modals.weight.addDescription.checked ? 'block' : 'none'
-      }
-    })
+    // this.modals?.weight.addDescription?.addEventListener('change', () => {
+    //   if (this.modals?.weight.descriptionField != null && this.modals.weight.addDescription != null) {
+    //     this.modals.weight.descriptionField.style.display = this.modals.weight.addDescription.checked ? 'block' : 'none'
+    //   }
+    // })
     this.modals?.weight.addWeightedItem?.addEventListener('click', () => { this.addWeightItem() })
     this.modals?.weight.printWeightLabel?.addEventListener('click', () => { this.printWeightLabel() })
     this.modals?.weight.productWeight?.addEventListener('keypress', this.handleEnterPress(() => { this.addWeightItem() }))
@@ -166,13 +164,11 @@ export class LabelerInterface {
         productName: document.getElementById('productName') as HTMLInputElement,
         productWeight: document.getElementById('productWeight') as HTMLInputElement,
         kgPrice: document.getElementById('kgPrice') as HTMLInputElement,
-        description: document.getElementById('description') as HTMLInputElement,
         expiryDate: document.getElementById('expiryDate') as HTMLInputElement,
         batchNumber: document.getElementById('batchNumber') as HTMLInputElement,
         addManufacturer: document.getElementById('addManufacturer') as HTMLInputElement,
-        addDescription: document.getElementById('addDescription') as HTMLInputElement,
+        addPackageFeeNote: document.getElementById('addPackageFeeNote') as HTMLInputElement,
         manufacturerField: document.getElementById('manufacturerField'),
-        descriptionField: document.getElementById('descriptionField'),
         printWeightLabel: document.getElementById('printWeightLabel') as HTMLButtonElement,
         addWeightedItem: document.getElementById('addWeightedItem') as HTMLButtonElement,
         totalPrice: document.getElementById('totalPrice') as HTMLInputElement
@@ -536,13 +532,13 @@ export class LabelerInterface {
   }
 
   openWeightModal (item: packagedItem): void {
-    if (this.modals?.weight.productName == null || this.modals.weight.productWeight == null || this.modals.weight.kgPrice == null || this.modals.weight.expiryDate == null || this.modals.weight.addManufacturer == null || this.modals.weight.manufacturerField == null || this.modals.weight.description == null) {
+    if (this.modals?.weight.productName == null || this.modals.weight.productWeight == null || this.modals.weight.kgPrice == null || this.modals.weight.expiryDate == null || this.modals.weight.addManufacturer == null || this.modals.weight.manufacturerField == null) {
+      this.notification.error(i18n('missingElements'))
       return
     }
     this.modals.weight.currentItem = JSON.parse(JSON.stringify(item))
     this.modals.weight.productName.value = item.name
     this.modals.weight.kgPrice.value = item.priceWithVat.toString()
-    this.modals.weight.description.value = item.description ?? ''
     this.modals.weight.expiryDate.min = new Date().toISOString().split('T')[0]
     this.modals.weight.expiryDate.value = ''
     this.modals.weight.addManufacturer.style.display = item.manufacturerName != null ? 'block' : 'none'
@@ -559,8 +555,7 @@ export class LabelerInterface {
     this.modals.weight.currentItem.expiryDate = (this.modals.weight.expiryDate?.value != null && this.modals.weight.expiryDate.value.length > 0) ? this.modals.weight.expiryDate.value.slice(5) : undefined
     this.modals.weight.currentItem.batchNumber = (this.modals.weight.batchNumber?.value != null && this.modals.weight.batchNumber.value.length > 0) ? this.modals.weight.batchNumber.value : undefined
     this.modals.weight.currentItem.addManufacturer = this.modals.weight.addManufacturer?.checked && this.modals.weight.currentItem.manufacturerName != null
-    this.modals.weight.currentItem.addDescription = this.modals.weight.addDescription?.checked && this.modals.weight.currentItem.description != null
-    this.modals.weight.currentItem.description = (this.modals.weight.description?.value != null && this.modals.weight.description.value.length > 0) ? this.modals.weight.description.value : ""
+    this.modals.weight.currentItem.addPackageFeeNote = this.modals.weight.addPackageFeeNote?.checked
     this.notification.info(i18n('weightItemAdded') + ': ' + this.modals.weight.currentItem.weight + ' kg')
     // copy current item to a new object, so that the original object is not modified
     this.modals.weight.currentItem = JSON.parse(JSON.stringify(this.modals.weight.currentItem))
