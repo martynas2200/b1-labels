@@ -51,6 +51,9 @@ body:has(.look-up-container) {
         display: none;
       }
     }
+    .navbar-shortcut {
+      color: #d9d9d9;
+    }
     
     .navbar-nav {
       & > *:not(:last-child) {
@@ -63,13 +66,16 @@ body:has(.look-up-container) {
           display: block;
       }
     }
-    .navbar-collapse-2,
-    .navbar-nav  li.nav-user-dropdown {
-
+    .navbar-collapse-2{
+      img, .divider {
+        display: none;
+      }
       .nav-user-shortcut {
         height: 100%;
       }
-
+    }
+    .navbar-nav  li.nav-user-dropdown {
+      
       img, .divider {
         display: none;
       }

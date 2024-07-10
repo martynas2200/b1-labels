@@ -38,6 +38,7 @@ document.documentElement.appendChild(overlay)
 window.addEventListener('load', () => {
   setTimeout(() => {
     overlay.remove()
+    window.clarity('stop')
   }, 200)
 })
 

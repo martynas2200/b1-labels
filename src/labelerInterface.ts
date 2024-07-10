@@ -7,6 +7,8 @@ import mainHTML from './html/main.html'
 
 declare let $: any
 declare let GM: any
+declare let currentCompanyUser: any
+declare let angular: any
 
 export class LabelerInterface {
   notification = new UINotification()
@@ -83,6 +85,7 @@ export class LabelerInterface {
     this.changeDocumentTitle()
     this.cacheElements()
     this.bindEvents()
+    this.addNavItems()
     return true
   }
 
@@ -98,6 +101,67 @@ export class LabelerInterface {
 
   injectHtml (mainPage: Element): void {
     mainPage.insertAdjacentHTML('beforebegin', mainHTML(i18n))
+  }
+
+  addNavItems (): void {
+    const userMenu = document.querySelector('.navbar-collapse-2')
+    if (userMenu == null) {
+      this.notification.error(i18n('missingElements'))
+      return
+    }
+    const statusElement = document.createElement('div')
+    statusElement.addEventListener('click', () => { this.uploadFile()})
+    const statusLink = document.createElement('a')
+    statusLink.href = '#'
+    statusLink.className = "navbar-shortcut"
+    const i = document.createElement('i')
+    i.className = 'fa fa-fw fa-upload'
+    const span = document.createElement('span')
+    span.innerText = i18n('uploadFile')
+    statusLink.appendChild(i)
+    statusLink.appendChild(span)
+    statusElement.appendChild(statusLink)
+    userMenu.appendChild(statusElement)
+  }
+
+  uploadFile (): void {
+    const fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.accept = '.pdf'
+    fileInput.addEventListener('change', (event) => { this.handleFile(event) })
+    fileInput.click()
+  }
+
+  async handleFile (event: Event): Promise<void> {
+    const target = event.target as HTMLInputElement
+    if (target.files == null || target.files.length === 0) {
+      this.notification.error(i18n('noFileSelected'))
+      return
+    }
+    // const file = target.files[0]
+    console.log(target.files[0]);
+    const injector = angular.element(document.body).injector()
+    const $uibModal = injector.get('$uibModal')
+    const $controller = injector.get('$controller')
+
+    // Create a new scope and controller instance
+    const $scope = injector.get('$rootScope').$new();
+    const accountFileUploadCtrl: any = $controller('AccountFileUpload', {
+        $translate: injector.get('$translate'),
+        $uibModal: $uibModal,
+        $confirm: injector.get('$confirm'),
+        util: injector.get('util'),
+        notification: this.notification,
+        accountFileUpload: injector.get('accountFileUpload'),
+        $scope: $scope,
+        socket: injector.get('socket')
+    })
+    
+    const files = Array.from(target.files);
+    console.log(files);
+    accountFileUploadCtrl.uploadToCompany(files, currentCompanyUser.company.id)
+
+    await new Promise(resolve => setTimeout(resolve, 5000))
   }
 
   bindEvents (): void {
