@@ -31,6 +31,7 @@ export class FormSimplifier {
     if (costFormGroup != null && manufacturerFormGroup != null) {
       manufacturerFormGroup.parentElement?.appendChild(costFormGroup)
     }
+
   }
 
   findFormGroupByInputName (inputName: string): HTMLElement | null | undefined {
@@ -47,7 +48,7 @@ export class FormSimplifier {
       if (formGroup != null) {
         (formGroup as HTMLElement).style.display = 'none'
         const parent = formGroup.parentElement
-        if ((parent != null) && !parent.classList.contains('col-lg-12') && !parent.classList.contains('ng-pristine')) {
+        if ((parent != null) && !parent.classList.contains('col-lg-12') && !parent.tagName.includes('form')) {
           (parent).style.display = 'none'
         }
       }

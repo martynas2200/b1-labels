@@ -39,7 +39,7 @@ export class UserSession {
   private limitPermissions (): void {
     currentCompanyUser.permissions.crudKlientai = { create: false, read: false, update: false, delete: false }
     currentCompanyUser.permissions.crudBankaisaskait = { create: false, read: false, update: false, delete: false }
-    currentCompanyUser.permissions.crudPardavim = { create: false, read: false, update: false, delete: false }
+    currentCompanyUser.permissions.crudPardavim = { create: true, read: true, update: true, delete: true }
     currentCompanyUser.permissions.crudPrekes = { create: false, read: true, update: false, delete: false }
     currentCompanyUser.permissions.crudDokSer = { create: false, read: false, update: false, delete: false }
   }

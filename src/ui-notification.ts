@@ -1,6 +1,6 @@
 import type * as ng from 'angular'
 
-interface NotificationService {
+export interface NotificationService {
   info: (options: NotificationOptions | string) => void
   error: (options: NotificationOptions | string) => void
   success: (options: NotificationOptions | string) => void

@@ -55,7 +55,6 @@
       </div>
       <div class="item-list">
         <div class="alert alert-info text-center">${i18n('noItemsScanned')}</div>
-        <div class="alert alert-warning text-center hidden-lg hidden-md">${i18n('smallScreenDetected')}</div>
         <div class="alert-xs grey text-center">${i18n('help')}</div>
       </div>
     </div>
@@ -115,50 +114,72 @@
         <h4 class="modal-title" id="weightLabelModalLabel">${i18n('weightLabel')}</h4>
       </div>
       <div class="modal-body">
-        <form>
+        <div class="form">
           <div class="form-group">
             <label for="productName">${i18n('name')}</label>
             <input type="text" class="form-control" id="productName" disabled>
           </div>
-          <div class="form-group col-md-4 padding-0">
-            <label for="productWeight">${i18n('weight')} (g)</label>
-            <input type="number" step="1" class="form-control" id="productWeight" min="0" required>
-          </div>
-          <div class="form-group col-md-4">
-            <label for="totalPrice">${i18n('totalPrice')} (EUR)</label>
-            <input type="number" step="0.01" class="form-control" id="totalPrice" disabled>
-          </div>
-          <div class="form-group col-md-4 padding-0">
-            <label for="kgPrice">${i18n('pricePerKg')} (EUR)</label>
-            <input type="number" step="0.01" class="form-control" id="kgPrice" disabled>
-          </div>
-
-          <div class="form-group col-md-6 padding-0 padding-right-10">
-            <label for="expiryDate">${i18n('expiryDate')}</label>
-            <input type="date" class="form-control" id="expiryDate">
-          </div>
-          <div class="form-group col-md-6 padding-0">
-            <label for="batchNumber">${i18n('batchNumber')}</label>
-            <input type="text" class="form-control" id="batchNumber">
-          </div>
-
-          <div class="form-group">
-            <div class="checkbox-form">
-              <label>
-                <input type="checkbox" class="ace" id="addManufacturer">
-                <span class="lbl display-inline">&nbsp;${i18n('addManufacturer')}&nbsp;</span>
-                <span class="lbl display-inline" id="manufacturerField">
-              </label>
+          <div class="row">
+            <div class="form-group col-sm-4">
+              <label for="productWeight">${i18n('weight')} (g)</label>
+              <input type="number" step="1" class="form-control" id="productWeight" min="0" required>
             </div>
-            <div class="checkbox-form">
-              <label>
-                <input type="checkbox" class="ace" id="addPackageFeeNote" checked>
-                <span class="lbl display-inline">&nbsp;${i18n('addPackageFeeNote')}</span>
-              </label>
+            <div class="form-group col-sm-4">
+              <label for="totalPrice">${i18n('totalPrice')} (EUR)</label>
+              <input type="number" step="0.01" class="form-control" id="totalPrice" disabled>
+            </div>
+            <div class="form-group col-sm-4">
+              <label for="kgPrice">${i18n('pricePerKg')} (EUR)</label>
+              <input type="number" step="0.01" class="form-control" id="kgPrice" disabled>
             </div>
           </div>
+          <div class="row">
+            <div class="form-group col-sm-6">
+              <label for="expiryDate">${i18n('expiryDate')}</label>
+              <input type="date" class="form-control" id="expiryDate">
+            </div>
+            <div class="form-group col-sm-6">
+              <label for="batchNumber">${i18n('batchNumber')}</label>
+              <input type="text" class="form-control" id="batchNumber">
+            </div>
+          </div>
+          <div class="row">
+            <div class="form-group col-sm-6">
+              <div class="checkbox-form">
+                <label>
+                  <input type="checkbox" class="ace" id="addManufacturer">
+                  <span class="lbl display-inline">&nbsp;${i18n('addManufacturer')}&nbsp;</span>
+                  <span class="lbl display-inline" id="manufacturerField">
+                </label>
+              </div>
+              <div class="checkbox-form">
+                <label>
+                  <input type="checkbox" class="ace" id="addPackageFeeNote" checked>
+                  <span class="lbl display-inline">&nbsp;${i18n('addPackageFeeNote')}</span>
+                </label>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div id="keyboard" class="keyboard hidden">
+                <button class="key btn" data-key="1">1</button>
+                <button class="key btn" data-key="2">2</button>
+                <button class="key btn" data-key="3">3</button>
+                <button class="key btn" data-key="4">4</button>
+                <button class="key btn" data-key="5">5</button>
+                <button class="key btn" data-key="6">6</button>
+                <button class="key btn" data-key="7">7</button>
+                <button class="key btn" data-key="8">8</button>
+                <button class="key btn" data-key="9">9</button>
+                <button class="key btn" data-key="0">0</button>
+                <button class="key btn" data-key="-">-</button>
+                <button class="key btn btn-danger backspace" data-key="del">⌫</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="toggleKeyboard">${i18n('toggleKeyboard')}</button>
         <button type="button" class="btn btn-secondary" data-dismiss="modal">${i18n('close')}</button>
         <button type="button" class="btn btn-primary" id="addWeightedItem">${i18n('add')}</button>
         <button type="button" class="btn btn-purple" id="printWeightLabel">${i18n('print')}</button>
@@ -166,3 +187,96 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade" id="writeOffModal" tabindex="-1" role="dialog" aria-labelledby="writeOffModal"
+  aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title inline" id="writeOffItems">${i18n('writeOffItems')}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <button class="btn btn-green" id="newWriteOffButton">
+            <i class="fa fa-plus"></i>&nbsp;
+            ${i18n('newWriteOff')}
+          </button>
+          <button class="btn btn-white" id="loadWriteOffs">
+            <i class="fa fa-refresh"></i>&nbsp;
+            ${i18n('show')}
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-striped table-bordered table-hover" id="writeOffTable"></table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">${i18n('close')}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- button ot open the newItemModal -->
+
+<button type="button" class="btn btn-primary hidden" data-toggle="modal" data-target="#newItemModal" id="newItemButton">
+  ${i18n('newItem')}
+</button>
+
+<!-- modal for new item dialog -->
+
+<div class="modal fade" id="newItemModal" tabindex="-1" role="dialog" aria-labelledby="newItemModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title inline" id="newItemModalLabel">${i18n('newItem')}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="newItemBarcode">${i18n('barcode')}</label>
+          <input type="text" class="form-control" id="newItemBarcode" disabled </div>
+          <div class="form-group">
+            <label for="newItemName">${i18n('name')}</label>
+            <input type="text" class="form-control" id="newItemName" placeholder="${i18n('enterName')}">
+          </div>
+          <div class="row">
+            <div class="form-group col-sm-6">
+              <label for="newItemPrice">${i18n('price')}</label>
+              <input type="number" step="0.01" class="form-control" id="newItemPrice"
+                placeholder="${i18n('enterPrice')}">
+            </div>
+            <div class="form-group col-sm-6">
+              <label for="newItemPackages">${i18n('packageQuantity')} (${i18n('deposit')})</label>
+              <input type="number" step="1" class="form-control" id="newItemPackageQuantity"
+                placeholder="${i18n('enterPackages')}" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="checkbox-form">
+              <label>
+                <input type="checkbox" class="ace" id="newItemCanBeWeighed">
+                <span class="lbl display-inline">&nbsp;${i18n('measurementUnitCanBeWeighed')}</span>
+              </label>
+            </div>
+            <div class="checkbox-form">
+              <label>
+                <input type="checkbox" class="ace" id="newItemAlcohol">
+                <span class="lbl display-inline">&nbsp;${i18n('alcohol')}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">${i18n('close')}</button>
+          <button type="button" class="btn btn-primary" id="saveNewItem">${i18n('save')}</button>
+        </div>
+      </div>
+    </div>
+  </div>

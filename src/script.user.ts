@@ -17,7 +17,7 @@ declare let history: History
 declare let window: Window
 
 class LabelsUserscript {
-  private wasInterfaceButtonAdded: boolean = false
+  private wereButtonsAdded: boolean = false
   private pageReady: boolean = false
   private readonly notification = new UINotification()
   private readonly user = new UserSession()
@@ -66,11 +66,12 @@ class LabelsUserscript {
   }
 
   private async handleUrlChange (previousUrl: string | null, currentUrl: string, tries: number = 0): Promise<void> {
-    console.log('Url has changed')
+    console.info('Url has changed')
     this.pageReady = false
     if (this.user.isLoggedIn && this.user.admin && !this.interface.isActive()) {
-      if (!this.wasInterfaceButtonAdded && this.interface.addActivateButton()) {
-        this.wasInterfaceButtonAdded = true
+      if (!this.wereButtonsAdded && this.interface.addActivateButton()) {
+        this.wereButtonsAdded = true
+        this.addMarkupButton()
       }
       void new Promise(resolve => setTimeout(resolve, 200))
       let success = false
@@ -104,7 +105,11 @@ class LabelsUserscript {
         this.pageReady = true
       }
     } else if (this.user.isLoggedIn && !this.user.admin && !this.interface.isActive()) {
-      this.pageReady = this.interface.init()
+      if (this.currentUrl === '/en/warehouse/light-sales/edit' || this.currentUrl === '/warehouse/light-sales/edit') {
+        this.pageReady = this.interface.simplifyPage()
+      } else {
+        this.pageReady = this.interface.init()
+      }
     } else if (!this.user.isLoggedIn && this.currentUrl === '/login') {
       this.pageReady = this.user.addLoginOptions()
     } else {
@@ -143,6 +148,43 @@ class LabelsUserscript {
     }))
   }
 
+  calculateMarkup (price: number, cost: number): number {
+    return ((price - cost) / cost) * 100
+  }
+
+  private listMarkup (): void {
+    //check if it is a purchase view
+    if (window.location.pathname !== '/en/warehouse/purchases/edit' && window.location.pathname !== '/warehouse/purchases/edit') {
+      this.notification.error(i18n('onlyAvailableInPurchaseView'))
+      return
+    }
+    // priceWithoutVat
+    const controller = angular.element(this.getDataRows()).controller()
+    // model => clientName, series, number, purchase date
+    const h2 = document.createElement('h2')
+    h2.textContent = controller.model.clientName + ' ' + controller.model.series + '-' + controller.model.number + ' ' + controller.model.purchaseDate
+    const items = controller.data
+
+    const markupList = document.createElement('ul')
+    markupList.className = 'markup-list'
+    items.forEach((item: any) => {
+      const markup = this.calculateMarkup(item.itemPriceWithVat, item.priceWithVat)
+      const markupItem = document.createElement('li')
+      markupItem.innerHTML = `${item.itemName}<br>${markup.toFixed(2)}% (${item.itemPriceWithVat.toFixed(2)}, ${ i18n('minPriceWithVat')}: ${(item.priceWithVat * 1.2).toFixed(3)})`
+      if (markup < 20) {
+        markupItem.style.fontWeight = 'bold'
+        markupItem.style.color = 'red'
+      }
+      markupList.appendChild(markupItem)
+    })
+    const win = window.open('', '_blank')
+    if (win == null) {
+      this.notification.error('Failed to open a new window')
+      return
+    }
+    win.document.body.appendChild(h2)
+    win.document.body.appendChild(markupList)
+  }
   async extractDataFromAngularPurchaseView (): Promise<item[]> {
     const dataRows = this.getDataRows()
     const selectedRows = angular.element(dataRows).controller().data.filter((a: row) => a._select)
@@ -150,7 +192,7 @@ class LabelsUserscript {
     if (confirm(i18n('askingForPackageCode'))) { // Get full item data from the server
       this.notification.primary(i18n('aboutToCheckPackageCode'))
       const barcodes = selectedRows.map((row: any) => row.itemBarcode)
-      const req = new Request()
+      const req = new Request(this.notification)
       for (const barcode of barcodes) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const item = await req.getItem(barcode)
@@ -201,6 +243,18 @@ class LabelsUserscript {
         break
     }
     void new LabelGenerator(data)
+  }
+
+  addMarkupButton (): boolean {
+    const navbarShortcuts = document.querySelector('.breadcrumbs')
+    if (navbarShortcuts != null) {
+      const button = document.createElement('button')
+      button.textContent = i18n('calculateMarkup')
+      button.className = 'btn btn-sm'
+      button.addEventListener('click', this.listMarkup.bind(this))
+      navbarShortcuts.appendChild(button)
+    }
+    return navbarShortcuts != null
   }
 
   public addPrintButton (parentSelector: string = '.buttons-left', withName: boolean = false): boolean {

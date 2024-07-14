@@ -24,20 +24,85 @@ ng-form.simplified-form h5.header.blue,
 ng-form .alert.alert-warning {
   display: none;
 }
-// .navbar .navbar-shortcuts>ul>li {
-.navbar .navbar-shortcuts>ul>li:first-child {
-  display: none;
-}
 
-// .navbar li:has(a#manage-wallet),
 // .navbar li:has(a#manage-plan) {
-//   display: inline-block;
-// }
+.navbar li:has(a#manage-wallet-partner),
+.navbar a[invite-manager] {
+  display: none !important
+}
 
 // Look-up container
 
-body:has(.look-up-container) {
+body.labeler-interface {
   background-color: #eee;
+
+  .sidebar {
+    display: none !important;
+    pointer-events: none;
+  }
+
+  .main-content {
+
+    * {
+      border-radius: 4px !important;
+    }
+
+    table.table.table-bordered * {
+      border-radius: unset !important;
+    }
+
+    .table.table-bordered input:not(:focus) {
+      border: unset;
+    }
+
+    .btn-ctrl:has(.fa-print) button.btn.btn-sm:has(.fa-print) {
+      filter: contrast(0.6);
+      pointer-events: none;
+    }
+
+    //Simplifying the styles
+    .breadcrumbs,
+    .nav-tabs,
+    .no-border,
+    .form-group:has(.fa-star),
+    .table-responsive thead tr> :nth-child(4),
+    .table-responsive thead tr> :nth-child(6),
+    .table-responsive thead tr> :nth-child(7),
+    .table-responsive tbody tr> :nth-child(4),
+    .table-responsive tbody tr> :nth-child(6),
+    .table-responsive tbody tr> :nth-child(7),
+    .uib-typeahead-match .tt-suggestion> :nth-child(2),
+    .uib-typeahead-match .tt-suggestion> :nth-child(3),
+    .uib-typeahead-match .tt-suggestion> :nth-child(4),
+    .uib-typeahead-match .tt-suggestion> :nth-child(5),
+    .form-horizontal:nth-child(3)> :nth-child(2)> :nth-child(2),
+    .form-horizontal:nth-child(3)> :nth-child(2)> :nth-child(3),
+    .form-horizontal:nth-child(3)> :nth-child(5),
+    .form-horizontal:nth-child(1)> :nth-child(2)> :nth-child(1)> :nth-child(2)> :nth-child(2),
+    .form-horizontal:nth-child(1)> :nth-child(2)> :nth-child(3)> :nth-child(2)> :nth-child(2) {
+      display: none !important;
+      pointer-events: none;
+    }
+
+    .input-group-addon,
+    .input-group-btn {
+      display: table-column;
+    }
+
+    .sticky {
+      background: transparent;
+      .btn-ctrl>div {
+        border: unset;
+        padding: unset;
+      }
+    }
+
+    input[name="series"],
+    select[name="operationTypeId"] {
+      background: whitesmoke !important;
+      pointer-events: none;
+    }
+  }
 
   .navbar {
     background-color: var(--theme-blue--dark-bg);
@@ -47,53 +112,70 @@ body:has(.look-up-container) {
         padding-left: 1em;
         filter: brightness(0) invert(1);
       }
+
       .navbar-toggle {
         display: none;
       }
     }
+
     .navbar-shortcut {
-      color: #d9d9d9;
+      color: #eee;
     }
-    
+
+    li:has(.navbar-shortcut):hover {
+      background: #0000005c;
+    }
+
     .navbar-nav {
-      & > *:not(:last-child) {
+      &>*:not(:last-child) {
         display: none;
       }
-      & > *:nth-last-child(2), 
-      & > *:nth-last-child(4), 
-      & > *:nth-last-child(5), 
-      & > *:nth-last-child(7) {
-          display: block;
+
+      &>*:nth-last-child(2),
+      &>*:nth-last-child(4),
+      &>*:nth-last-child(5),
+      &>*:nth-last-child(7) {
+        display: block;
       }
     }
-    .navbar-collapse-2{
-      img, .divider {
+
+    .navbar-collapse-2 {
+
+      img,
+      .divider {
         display: none;
       }
+
       .nav-user-shortcut {
         height: 100%;
       }
     }
-    .navbar-nav  li.nav-user-dropdown {
-      
-      img, .divider {
+
+    .navbar-nav li.nav-user-dropdown {
+
+      img,
+      .divider {
         display: none;
       }
-      a .nav-user-company  {
+
+      a .nav-user-company {
         font-size: unset;
         line-height: unset;
       }
+
       //Could add `>` to make sure it is only the nav part, not the items in the dropdown, but a touch screen user might have trouble
-      a { 
-        padding:15px 10px;
+      a {
+        padding: 15px 10px;
       }
     }
+
     .nav-user-dropdown__title {
       // The business name doesn't fit in the header
-      color:#d9d9d9;
+      color: #d9d9d9;
       padding-right: 10px;
       font-size: 15px;
-      max-width:unset;
+      max-width: unset;
+
       .caret {
         color: #d9d9d9;
       }
@@ -160,19 +242,22 @@ body:has(.look-up-container) {
       grid-template-columns: auto min-content min-content;
       column-gap: 5px;
 
-      .item-main{
+      .item-main {
         grid-row: 1;
         grid-column: 1;
       }
+
       .item-labels {
         grid-column: 1;
         grid-row: 2;
         align-self: center;
       }
+
       .btn {
         grid-row: 1 / span 2;
         border: none;
       }
+
       .btn-yellow {
         grid-column: 3;
       }
@@ -223,8 +308,9 @@ body:has(.look-up-container) {
   .form-group {
     position: relative;
   }
+
   .ready-for-scan {
-    opacity:0;
+    opacity: 0;
     transition: 0.5s;
     position: absolute;
     right: 0%;
@@ -234,8 +320,9 @@ body:has(.look-up-container) {
     padding-top: 5px;
     text-transform: lowercase;
   }
-  #barcode:focus:placeholder-shown + .ready-for-scan {
-    opacity:1;
+
+  #barcode:focus:placeholder-shown+.ready-for-scan {
+    opacity: 1;
   }
 }
 
@@ -250,6 +337,20 @@ body:has(.look-up-container) {
 #weightLabelModal {
   * {
     border-radius: 4px !important;
+  }
+  .keyboard {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 220px;
+    margin: 0 auto;
+    & > * {
+        padding: 20px;
+        font-size: 18px;
+    }
+    // .backspace {
+    //     grid-column: span 2;
+    // }
   }
 }
 
@@ -278,6 +379,7 @@ body:has(.look-up-container) {
 .modal-backdrop {
   display: none;
 }
+
 .modal {
   background-color: rgba(0, 0, 0, 0.5);
 }

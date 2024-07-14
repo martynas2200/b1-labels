@@ -108,8 +108,7 @@ export class LabelGenerator {
 
   private generateWeightLabel (data: packagedItem): HTMLDivElement {
     const parent = document.createElement('div')
-    if (data.weight == null || data.totalPrice == null || data.priceWithVat == null || data.barcode == null) {
-      // this.notifier.error('label data is missing')
+    if (data.weight == null || data.totalPrice == null || data.priceWithVat == null || data.barcode == null || data.barcode.length > 13) {
       return parent
     }
     parent.className = 'label'
@@ -128,7 +127,11 @@ export class LabelGenerator {
 
     const weight = document.createElement('div')
     weight.className = 'weight'
-    weight.textContent = data.weight.toFixed(3)
+    if (data.measurementUnitCanBeWeighed == true) {
+      weight.textContent = data.weight.toFixed(3)
+    } else {
+      weight.textContent = data.weight.toString()
+    }
     label.appendChild(weight)
 
     const kgPrice = document.createElement('div')
@@ -138,12 +141,12 @@ export class LabelGenerator {
 
     const weightText = document.createElement('div')
     weightText.className = 'weight-text'
-    weightText.textContent = 'kg'
+    weightText.textContent = data.measurementUnitName
     label.appendChild(weightText)
 
     const kgText = document.createElement('div')
     kgText.className = 'kg-text'
-    kgText.textContent = '€/kg'
+    kgText.textContent = '€/' + data.measurementUnitName
     label.appendChild(kgText)
 
     const barcode = document.createElement('div')
@@ -202,14 +205,8 @@ export class LabelGenerator {
       return
     }
     popup.document.title = `${labels.length} ${i18n('nlabelsToBePrinted')}`
-
-    // const style: HTMLLinkElement = document.createElement('link')
-    // style.rel = 'stylesheet'
-    // style.href = 'https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/styles/label-print.css'
-    // popup.document.head.appendChild(style)
     const style: HTMLStyleElement = document.createElement('style')
     style.innerHTML = `${printStyles}`
-    style.type = 'text/css'
     popup.document.head.appendChild(style)
 
     labels.forEach(label => {

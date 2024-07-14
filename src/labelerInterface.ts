@@ -1,9 +1,12 @@
 import { i18n, lettersToNumbers } from './i18n'
-import { Request } from './request.js'
 import { LabelGenerator } from './labelGenerator'
-import { type item, type packagedItem } from './item'
+import { newItem, type item, type packagedItem } from './item'
 import { UINotification } from './ui-notification'
 import mainHTML from './html/main.html'
+import { TextToVoice } from './textToVoice'
+import { WriteOffModal } from './writeOffModal'
+import { WeightLabelModal } from './weightLabelModal'
+import { Request } from './request'
 
 declare let $: any
 declare let GM: any
@@ -11,59 +14,33 @@ declare let currentCompanyUser: any
 declare let angular: any
 
 export class LabelerInterface {
-  notification = new UINotification()
-  req: Request = new Request()
-  items: packagedItem[] = []
-  active: boolean = false
-  settings: {
-    alternativeLabelFormat: boolean
-    autoPrint: boolean
-    clearAfterPrint: boolean
-    sayOutLoud: boolean
+  private notification = new UINotification()
+  private readonly req: Request = new Request(this.notification)
+  private textToVoice = new TextToVoice(this.notification);
+  private items: packagedItem[] = []
+  private active: boolean = false
+  settings = {
+    alternativeLabelFormat: false,
+    autoPrint: false,
+    clearAfterPrint: true,
+    sayOutLoud: true
   }
 
   modals: {
-    weight: {
-      currentItem: packagedItem | null
-      parent: HTMLElement | null
-      productName: HTMLInputElement | null
-      productWeight: HTMLInputElement | null
-      kgPrice: HTMLInputElement | null
-      expiryDate: HTMLInputElement | null
-      batchNumber: HTMLInputElement | null
-      addManufacturer: HTMLInputElement | null
-      addPackageFeeNote: HTMLInputElement | null
-      manufacturerField: HTMLElement | null
-      printWeightLabel: HTMLButtonElement | null
-      addWeightedItem: HTMLButtonElement | null
-      totalPrice: HTMLInputElement | null
-    }
+    weight: WeightLabelModal
     searchResults: HTMLElement | null
+    writeOff: WriteOffModal 
     itemDetails: HTMLElement | null
+    newItem: newItem
   } | undefined
 
   loadingIndicator: HTMLElement | null = null
   mainInput: HTMLInputElement | null = null
   itemList: HTMLElement | null = null
-  apiKey: string | null = null
 
   constructor () {
-    this.settings = {
-      alternativeLabelFormat: false,
-      autoPrint: false,
-      clearAfterPrint: true,
-      sayOutLoud: true
-    }
-    void this.checkApiKey()
   }
 
-  async checkApiKey (): Promise<void> {
-    this.apiKey = await GM.getValue('api-key', null)
-    if (this.apiKey != null && this.apiKey.length < 20) {
-      this.apiKey = null
-      this.notification.error(i18n('invalidApiKey'))
-    }
-  }
 
   public isActive (): boolean {
     this.active = (document.querySelector('.look-up-container') !== null)
@@ -75,17 +52,23 @@ export class LabelerInterface {
     const mainPage = document.querySelector('.main-container')
     const navbarShortcuts = document.querySelector('.navbar-shortcuts')
     const footer = document.querySelector('.footer')
-    if ((mainPage == null) || (navbarShortcuts == null) || (footer == null)) {
+    if ((navbarShortcuts == null) || (footer == null) || (mainPage == null)) {
       return false
     }
 
     this.injectHtml(mainPage)
-    this.removeElements(navbarShortcuts, footer, mainPage)
-    this.hideDropdownMenuItems()
-    this.changeDocumentTitle()
+    this.removeElements(footer, mainPage)
+    this.simplifyPage()
     this.cacheElements()
     this.bindEvents()
+    return true
+  }
+
+  public simplifyPage (): boolean {
+    this.hideDropdownMenuItems()
+    this.changeDocumentTitle()
     this.addNavItems()
+    document.body.classList.add('labeler-interface')
     return true
   }
 
@@ -103,25 +86,36 @@ export class LabelerInterface {
     mainPage.insertAdjacentHTML('beforebegin', mainHTML(i18n))
   }
 
+  createNavItem (text: string, onClick: () => void, icon: string): HTMLElement {
+    const li = document.createElement('li')
+    const a = document.createElement('a')
+    a.className = 'navbar-shortcut'
+    a.href = '#'
+    a.addEventListener('click', onClick)
+    const i = document.createElement('i')
+    i.className = 'fa fa-fw ' + icon
+    a.appendChild(i)
+    a.appendChild(document.createTextNode(text))
+    li.appendChild(a)
+    return li
+  }
+
   addNavItems (): void {
-    const userMenu = document.querySelector('.navbar-collapse-2')
-    if (userMenu == null) {
+    const parentElement = document.querySelector('.navbar-shortcuts')
+    if (parentElement == null) {
       this.notification.error(i18n('missingElements'))
       return
     }
-    const statusElement = document.createElement('div')
-    statusElement.addEventListener('click', () => { this.uploadFile()})
-    const statusLink = document.createElement('a')
-    statusLink.href = '#'
-    statusLink.className = "navbar-shortcut"
-    const i = document.createElement('i')
-    i.className = 'fa fa-fw fa-upload'
-    const span = document.createElement('span')
-    span.innerText = i18n('uploadFile')
-    statusLink.appendChild(i)
-    statusLink.appendChild(span)
-    statusElement.appendChild(statusLink)
-    userMenu.appendChild(statusElement)
+    parentElement.innerHTML = ''
+    const ul = document.createElement('ul')
+    parentElement.appendChild(ul)
+    const uploadFileElement = this.createNavItem(i18n('uploadFile'), () => { this.uploadFile() }, 'fa-upload')
+    const writeOff = this.createNavItem(i18n('writeOff'), () => {}, 'fa-file')
+    // writeOff
+    writeOff.setAttribute('data-toggle', 'modal')
+    writeOff.setAttribute('data-target', '#writeOffModal')
+    ul.appendChild(writeOff)
+    ul.appendChild(uploadFileElement)
   }
 
   uploadFile (): void {
@@ -138,8 +132,6 @@ export class LabelerInterface {
       this.notification.error(i18n('noFileSelected'))
       return
     }
-    // const file = target.files[0]
-    console.log(target.files[0]);
     const injector = angular.element(document.body).injector()
     const $uibModal = injector.get('$uibModal')
     const $controller = injector.get('$controller')
@@ -158,7 +150,7 @@ export class LabelerInterface {
     })
     
     const files = Array.from(target.files);
-    console.log(files);
+    console.info(files);
     accountFileUploadCtrl.uploadToCompany(files, currentCompanyUser.company.id)
 
     await new Promise(resolve => setTimeout(resolve, 5000))
@@ -186,17 +178,6 @@ export class LabelerInterface {
         }
       })
     }
-
-    // this.modals?.weight.addDescription?.addEventListener('change', () => {
-    //   if (this.modals?.weight.descriptionField != null && this.modals.weight.addDescription != null) {
-    //     this.modals.weight.descriptionField.style.display = this.modals.weight.addDescription.checked ? 'block' : 'none'
-    //   }
-    // })
-    this.modals?.weight.addWeightedItem?.addEventListener('click', () => { this.addWeightItem() })
-    this.modals?.weight.printWeightLabel?.addEventListener('click', () => { this.printWeightLabel() })
-    this.modals?.weight.productWeight?.addEventListener('keypress', this.handleEnterPress(() => { this.addWeightItem() }))
-    this.modals?.weight.productWeight?.addEventListener('input', this.handleWeightChange.bind(this))
-
     this.bindCheckboxChange('alternativeLabelFormat', 'alternativeLabelFormat')
     this.bindCheckboxChange('sayOutLoud', 'sayOutLoud')
     this.bindCheckboxChange('clearAfterPrint', 'clearAfterPrint')
@@ -222,23 +203,11 @@ export class LabelerInterface {
     this.mainInput = document.getElementById('barcode') as HTMLInputElement
     this.loadingIndicator = document.getElementById('loadingOverlay')
     this.modals = {
-      weight: {
-        currentItem: null,
-        parent: document.getElementById('weightLabelModal'),
-        productName: document.getElementById('productName') as HTMLInputElement,
-        productWeight: document.getElementById('productWeight') as HTMLInputElement,
-        kgPrice: document.getElementById('kgPrice') as HTMLInputElement,
-        expiryDate: document.getElementById('expiryDate') as HTMLInputElement,
-        batchNumber: document.getElementById('batchNumber') as HTMLInputElement,
-        addManufacturer: document.getElementById('addManufacturer') as HTMLInputElement,
-        addPackageFeeNote: document.getElementById('addPackageFeeNote') as HTMLInputElement,
-        manufacturerField: document.getElementById('manufacturerField'),
-        printWeightLabel: document.getElementById('printWeightLabel') as HTMLButtonElement,
-        addWeightedItem: document.getElementById('addWeightedItem') as HTMLButtonElement,
-        totalPrice: document.getElementById('totalPrice') as HTMLInputElement
-      },
       itemDetails: document.getElementById('itemDetails'),
-      searchResults: document.getElementById('search-results')
+      newItem: new newItem(this.req),
+      searchResults: document.getElementById('search-results'),
+      weight: new WeightLabelModal(this.notification, this),
+      writeOff: new WriteOffModal(this.req)
     }
   }
 
@@ -282,44 +251,24 @@ export class LabelerInterface {
     }
   }
 
-  async getAudioUrl (text: string): Promise<string | undefined> {
-    if (this.apiKey == null) {
-      return
-    }
-    const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${this.apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        input: { text },
-        voice: { languageCode: 'lt-LT', ssmlGender: 'MALE' },
-        audioConfig: { audioEncoding: 'MP3' }
-      })
-    })
-    const data = await response.json()
-    if (data.audioContent == null) {
-      this.notification.error({ title: i18n('error'), message: JSON.stringify(data) })
-      return
-    }
-    const audioContent = data.audioContent as string
-    const audioBlob = new Blob([Uint8Array.from(atob(audioContent), c => c.charCodeAt(0))], { type: 'audio/mp3' })
-    return URL.createObjectURL(audioBlob)
-  }
-
   private createItemElement (item: packagedItem): HTMLElement {
     const itemElement = document.createElement('div')
     itemElement.className = 'item'
     itemElement.id = item.id ?? ''
     itemElement.innerHTML = this.getItemHtml(item)
     if (item.barcode == null || item.isActive == false) itemElement.classList.add('inactive')
-    if (item.weight != null) itemElement.classList.add('mark')
-
-    const cornerButton = this.createItemButton('btn-yellow', 'fa-trash', () => { this.removeItem(itemElement, item.id) });
+    else if (item.weight != null) itemElement.classList.add('mark')
+    const cornerButton = this.createItemButton('btn-yellow', 'fa-trash', () => { 
+      this.removeItem(itemElement, item.id) 
+    });
     itemElement.appendChild(cornerButton)
     if (item.measurementUnitCanBeWeighed) {
-      const tagButton = this.createItemButton('btn-pink', 'fa-balance-scale', () => { this.openWeightModal(item) })
+      const tagButton = this.createItemButton('btn-pink', 'fa-balance-scale', () => { this.modals?.weight.openWeightModal(item) })
       itemElement.appendChild(tagButton)
+    } else if (item.id == null) {
+      // we can add a button to add a new item
+      const addNewItemButton = this.createItemButton('btn-info', 'fa-plus', () => { this.modals?.newItem.openModal(item) })
+      itemElement.appendChild(addNewItemButton)
     }
     itemElement.querySelector('.item-price')?.addEventListener('click', () => { this.showDetails(item) });
     return itemElement
@@ -338,12 +287,22 @@ export class LabelerInterface {
 
   getItemLabelsHtml (item: packagedItem): string {
     const labels = ['packageCode', 'weight', 'departmentNumber', 'packageQuantity'] as const
+    const ago = this.getSeconds(item.retrievedAt ?? new Date())
     const labelHtml = labels.map(label => item[label] != null ? `<span>${i18n(label)}: ${item[label]}</span>` : '').join('')
-    return labelHtml + (item.weight != null ? `<span>${i18n('kiloPrice')}: ${item.priceWithVat}</span>` : '') 
+    return labelHtml + (item.weight != null ? `<span>${i18n('kiloPrice')}: <b>${item.priceWithVat.toFixed(3)}</b></span>` : '') 
     + (item.measurementUnitCanBeWeighed ? `<span>${i18n('weightedItem')}</span>` : '')
+    + `<span class="text-primary">${ this.getAgoText(ago) }</span>`
   }
 
-
+  getSeconds(date: Date): number {
+    if (date == null) return 0
+    const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000)
+    return seconds
+  }
+  getAgoText (s: number): string {
+    if (s === 0) return ''
+    return i18n('checked') + ' ' + s + ' s ' + i18n('ago')
+  }
   createItemButton (buttonClass: string, iconClass: string, onClick: () => void): HTMLElement {
     const button = document.createElement('button')
     button.addEventListener('click', onClick)
@@ -365,7 +324,7 @@ export class LabelerInterface {
       Object.entries(item).filter(([key, value]) => value !== null && !key.toString().toLowerCase().includes('id') && !key.toString().includes('cost'))
     )
     const resultString = Object.entries(filteredItem)
-      .map(([key, value]) => `<div class="row col-xs-12"><div class="col-sm-5">${i18n(key)}:</div><div class="col-sm-7">${value}</div></div>`)
+      .map(([key, value]) => `<div class="row col-xs-12 ${key.includes('price') ? 'price' : ''}"><div class="col-sm-5">${i18n(key)}:</div><div class="col-sm-7">${value}</div></div>`)
       .join('')
 
     if (this.modals?.itemDetails != null) {
@@ -373,9 +332,33 @@ export class LabelerInterface {
       if (modalBody != null) {
         modalBody.innerHTML = `<div class="container width-auto">${resultString}</div>`
       }
+      const button = this.modals.itemDetails.querySelectorAll('.price')
+      button.forEach(e => e.addEventListener('click', () => { this.quickPriceChange(item) }))
     }
     // show the modal by using jQuery
     $(this.modals?.itemDetails).modal('show')
+  }
+  quickPriceChange (item: packagedItem): void {
+    let price = prompt(i18n('enterNewPrice'), item.priceWithVat.toString())
+    if (price == null || item.id == null) {
+      this.notification.info(i18n('error'))
+      return;
+    } 
+    let data = new Object() as item
+    data.id = item.id.split('-')[0]
+    data.isActive = true
+    data.priceWithVat = parseFloat(price.replace(',', '.'))
+    if (data.priceWithVat <= 0) {
+      this.notification.error(i18n('missingPrice'))
+      return;
+    }
+    data.priceWithoutVat = (data.priceWithVat / 1.21)
+    data.priceWithoutVat = Math.round((data.priceWithoutVat + Number.EPSILON) * 10000) / 10000
+    item.priceWithVat = data.priceWithVat
+    item.priceWithoutVat = data.priceWithoutVat
+    this.req.saveItem(data.id, data)
+    $(this.modals?.itemDetails).modal('hide')
+    this.cleanAll()
   }
 
   addItemToView (item: packagedItem): void {
@@ -388,15 +371,18 @@ export class LabelerInterface {
     }
   }
 
-  newItem (item: packagedItem): void {
+  proccessItem (item: packagedItem): void {
     // we might get duplicate items, so item id or barcode is not enough
-    item.id = this.generateItemId()
-    if (this.items.length > 0 && (this.items[this.items.length - 1]).barcode == item.barcode && item.weight == this.items[this.items.length - 1].weight) {
-      void this.playAudio('Kaip ir sakiau, kaina yra ' + this.digitsToPrice(item.totalPrice ?? item.priceWithVat) + (item.weight !== undefined ? '. Svoris ' + this.numberToWords(item.weight) + ' g.' : '') + ' Tai ' + item.name)
+    item.id = this.generateItemId(item.id)
+    if (!this.settings.sayOutLoud) {
+      // Nothing
+    } else if (this.items.length > 0 && item.priceWithVat > 0 && (this.items[this.items.length - 1]).barcode == item.barcode && item.weight == this.items[this.items.length - 1].weight) {
+      // void this.textToVoice.speak('Kaip ir sakiau, kaina yra ' + this.textToVoice.digitsToPrice(item.totalPrice ?? item.priceWithVat) + (item.weight !== undefined ? '. Svoris ' + this.textToVoice.numberToWords(item.weight) + ' g.' : '') + ' Tai ' + item.name)
+      void this.textToVoice.speak(i18n('asMentioned') + ', ' + i18n('price') + ' ' + this.textToVoice.digitsToPrice(item.totalPrice ?? item.priceWithVat) + (item.weight !== undefined ? '. ' + i18n('weight') + this.textToVoice.numberToWords(item.weight) + item.measurementUnitName : '') + ' ' + i18n('thisIs') + ' ' + item.name)
     } else if (item.priceWithVat > 0) {
-      void this.playAudio('Kaina ' + this.digitsToPrice(item.totalPrice ?? item.priceWithVat))
+      void this.textToVoice.speak(i18n('price') + ' ' + this.textToVoice.digitsToPrice(item.totalPrice ?? item.priceWithVat))
     } else {
-      void this.playAudio('Kaina nėra nustatyta')
+      void this.textToVoice.speak(i18n('priceNotSet'))
     }
     if (this.items.length === 0 && this.itemList != null) {
       this.itemList.innerHTML = ''
@@ -408,81 +394,11 @@ export class LabelerInterface {
     }
   }
 
-  async playAudio (text: string): Promise<void> {
-    if (!this.settings.sayOutLoud) {
-      return
-    }
-    const audio = new Audio(await this.getAudioUrl(text))
-    void audio.play()
-  }
-
-  numberToWords (number: number): string {
-    const units = ['', 'vienas', 'du', 'trys', 'keturi', 'penki', 'šeši', 'septyni', 'aštuoni', 'devyni']
-    const teens = ['dešimt', 'vienuolika', 'dvylika', 'trylika', 'keturiolika', 'penkiolika', 'šešiolika', 'septyniolika', 'aštuoniolika', 'devyniolika']
-    const tens = ['', '', 'dvidešimt', 'trisdešimt', 'keturiasdešimt', 'penkiasdešimt', 'šešiasdešimt', 'septyniasdešimt', 'aštuoniasdešimt', 'devyniasdešimt']
-    const hundreds = ['', 'šimtas', 'du šimtai', 'trys šimtai', 'keturi šimtai', 'penki šimtai', 'šeši šimtai', 'septyni šimtai', 'aštuoni šimtai', 'devyni šimtai']
-
-    let words = []
-    if (number === 0) {
-      words.push('nulis')
-    } else {
-      const unitsPart = number % 10
-      const tensPart = Math.floor(number / 10) % 10
-      const hundredsPart = Math.floor(number / 100)
-      if (hundredsPart > 0) {
-        words.push(hundreds[hundredsPart])
-      }
-      if (tensPart > 1) {
-        words.push(tens[tensPart])
-      }
-      if (tensPart === 1) {
-        words.push(teens[unitsPart])
-      } else {
-        words.push(units[unitsPart])
-      }
-    }
-    words = words.filter(word => word)
-    return words.join(' ')
-  }
-
-  digitsToPrice (number: number): string {
-    const integer = Math.floor(number)
-    const decimal = Math.round((number - integer) * 100)
-    let words = []
-    if (integer > 0) {
-      words.push(this.numberToWords(integer))
-    }
-
-    if (decimal > 0) {
-      // euras, eurai, eurų
-      if (integer !== 0) {
-        if (integer === 1 || (integer % 10 === 1 && integer % 100 !== 11)) {
-          words.push('euras')
-        } else if (integer % 10 === 0 || integer % 10 >= 10 || (integer % 100 >= 10 && integer % 100 <= 20)) {
-          words.push('eurų')
-        } else {
-          words.push('eurai')
-        }
-        words.push('ir')
-      }
-      words.push(this.numberToWords(decimal))
-      // centas, centai, centų
-      if (decimal === 1 || (decimal % 10 === 1 && decimal % 100 !== 11)) {
-        words.push('centas')
-      } else if (decimal % 10 === 0 || decimal % 10 >= 10 || (decimal % 100 >= 10 && decimal % 100 <= 20)) {
-        words.push('centų')
-      } else {
-        words.push('centai')
-      }
-    }
-    words = words.filter(word => word)
-    return words.join(' ')
-  }
-
   canItBePackaged (barcode: string): boolean {
-    // barcode rules: prefix is 20-29, 4 digits for weight
+    // barcode rules: prefix is 21-29(a part of barcode) + 6 barcode digits + 4 digits for weight
+    // '2200' + 13 digits of barcode + 4 digits of weight
     const prefix = parseInt(barcode.slice(0, 2), 10)
-    return barcode.toString().length === 13 && prefix > 20 && prefix < 30 && parseInt(barcode.slice(8, 12), 10) < 5000
+    return (barcode.toString().length === 13 || barcode.toString().length === 21) && prefix > 20 && prefix < 30 
   }
 
   searchByBarcode (inputField: HTMLInputElement): void {
@@ -546,7 +462,7 @@ export class LabelerInterface {
     newItem.appendChild(Addbutton)
 
     Addbutton.addEventListener('click', () => {
-      this.newItem(item)
+      this.proccessItem(item)
       newItem.style.backgroundColor = '#b0d877'
     })
     if (item.measurementUnitCanBeWeighed) {
@@ -555,7 +471,7 @@ export class LabelerInterface {
       button.textContent = i18n('weightLabel')
       newItem.appendChild(button)
       button.addEventListener('click', () => {
-        this.openWeightModal(item)
+        this.modals?.weight.openWeightModal(item)
       })
     }
     return newItem
@@ -563,14 +479,16 @@ export class LabelerInterface {
 
   async searchforAPackagedItem (barcode: string): Promise<void> {
     let item = null
-    const barcodePart = barcode.slice(0, 8)
+    const barcodePart = (barcode.length > 13) ? barcode.slice(4, 17) : barcode.slice(0, 8)
     this.showLoading()
     item = await this.req.getItem(barcodePart) as packagedItem
     this.hideLoading()
     if (item != null) {
-      item.weight = parseInt(barcode.slice(8, 12), 10) / 1000
+      // TODO: function to handle weight or simple units
+      // TODO: rename to quantity or packageQuantity
+      item.weight = parseInt((barcode.length > 13) ? barcode.slice(17, 21) : barcode.slice(8, 12), 10) / 1000
       item.totalPrice = this.calculateTotalPrice(item)
-      this.newItem(item)
+      this.proccessItem(item)
     } else {
       this.notFound(barcode)
     }
@@ -581,13 +499,13 @@ export class LabelerInterface {
     const item = await this.req.getItem(barcode) as item
     this.hideLoading()
     if (item != null) {
-      this.newItem(item)
+      this.proccessItem(item)
     } else {
       this.notFound(barcode)
     }
   }
 
-  notFound (barcode: string): void {
+  private notFound (barcode: string): void {
     let item: item = new Object() as item
     item.name = i18n('itemNotFound') + ' (' + i18n('barcode') + ': ' + barcode + ')'
     item.barcode = barcode
@@ -595,70 +513,13 @@ export class LabelerInterface {
     this.addItemToView(item)
   }
 
-  openWeightModal (item: packagedItem): void {
-    if (this.modals?.weight.productName == null || this.modals.weight.productWeight == null || this.modals.weight.kgPrice == null || this.modals.weight.expiryDate == null || this.modals.weight.addManufacturer == null || this.modals.weight.manufacturerField == null) {
-      this.notification.error(i18n('missingElements'))
-      return
-    }
-    this.modals.weight.currentItem = JSON.parse(JSON.stringify(item))
-    this.modals.weight.productName.value = item.name
-    this.modals.weight.kgPrice.value = item.priceWithVat.toString()
-    this.modals.weight.expiryDate.min = new Date().toISOString().split('T')[0]
-    this.modals.weight.expiryDate.value = ''
-    this.modals.weight.addManufacturer.style.display = item.manufacturerName != null ? 'block' : 'none'
-    this.modals.weight.manufacturerField.innerHTML = item.manufacturerName ?? ''
-    $(this.modals.weight.parent).modal('show')
-    this.modals.weight.productWeight.focus()
-  }
-
-  getWeightItem (): packagedItem | null {
-    if (this.modals?.weight.currentItem?.weight == null || isNaN(this.modals.weight.currentItem.weight)) {
-      this.notification.error(i18n('missingWeight'))
-      return null
-    }
-    this.modals.weight.currentItem.expiryDate = (this.modals.weight.expiryDate?.value != null && this.modals.weight.expiryDate.value.length > 0) ? this.modals.weight.expiryDate.value.slice(5) : undefined
-    this.modals.weight.currentItem.batchNumber = (this.modals.weight.batchNumber?.value != null && this.modals.weight.batchNumber.value.length > 0) ? this.modals.weight.batchNumber.value : undefined
-    this.modals.weight.currentItem.addManufacturer = this.modals.weight.addManufacturer?.checked && this.modals.weight.currentItem.manufacturerName != null
-    this.modals.weight.currentItem.addPackageFeeNote = this.modals.weight.addPackageFeeNote?.checked
-    this.notification.info(i18n('weightItemAdded') + ': ' + this.modals.weight.currentItem.weight + ' kg')
-    // copy current item to a new object, so that the original object is not modified
-    this.modals.weight.currentItem = JSON.parse(JSON.stringify(this.modals.weight.currentItem))
-
-    return this.modals.weight.currentItem
-  }
-  
-  addWeightItem (): void {
-    const item = this.getWeightItem()
-    if (item != null) {
-      this.newItem(item)
-    }
-  }
-
-  printWeightLabel (): void {
-    const item = this.getWeightItem()
-    if (item != null) {
-      void new LabelGenerator([item], this.settings.alternativeLabelFormat)
-    }
-  }
-
-  calculateTotalPrice (item: packagedItem): number {
+  public calculateTotalPrice (item: packagedItem): number {
     if (item.weight == null) {
       return 0
     }
     const totalPrice = item.priceWithVat * item.weight
     const totalFinalPrice = Math.round((totalPrice + Number.EPSILON) * 100) / 100
     return totalFinalPrice
-  }
-
-  handleWeightChange (): void {
-    if (this.modals?.weight.currentItem == null) {
-      return
-    }
-    this.modals.weight.currentItem.weight = (this.modals.weight.productWeight?.value != null) ? parseInt(this.modals.weight.productWeight.value) / 1000 : 0
-    this.modals.weight.currentItem.totalPrice = this.calculateTotalPrice(this.modals.weight.currentItem)
-    if (this.modals.weight.totalPrice != null) {
-      this.modals.weight.totalPrice.value = this.modals.weight.currentItem.totalPrice.toFixed(2)
-    }
   }
 
   addActivateButton (): boolean {
@@ -673,8 +534,8 @@ export class LabelerInterface {
     return navbarShortcuts != null
   }
 
-  generateItemId (): string {
-    return 'i-' + Math.random().toString(36).substring(7)
+  generateItemId (id: string): string {
+    return id + '-' + Math.random().toString(36).substring(7)
   }
 
   changeDocumentTitle (): void {
