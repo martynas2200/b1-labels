@@ -72,6 +72,10 @@ export class Request {
     return /^\d+$/.test(barcode)
   }
 
+  removeLeadingZeros(barcode: string): string {
+    return barcode.replace(/^0+/, '');
+  }
+
   async getItem (barcode: string): Promise<any> {
     if (!this.isItDigits(barcode)) {
       this.notifier.error('Invalid barcode')
@@ -90,7 +94,7 @@ export class Request {
       pageSize: 20,
       filters: {
         groupOp: 'AND',
-        rules: { barcode: { data: barcode, field: 'barcode', op: 'eq' } }
+        rules: { barcode: { data: this.removeLeadingZeros(barcode), field: 'barcode', op: 'eq' } }
       },
       allSelected: false,
       asString: '',

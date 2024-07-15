@@ -81,6 +81,9 @@ export class WeightLabelModal {
     if (this.currentItem?.weight == null || isNaN(this.currentItem.weight)) {
       this.notifier.error(i18n('missingWeight'))
       return null
+    } else if (this.currentItem?.weight > 9.999) {
+      this.notifier.error(i18n('maxWeight'))
+      return null
     }
     this.currentItem.expiryDate = (this.expiryDate?.value != null && this.expiryDate.value.length > 0) ? this.expiryDate.value.slice(5) : undefined
     this.currentItem.batchNumber = (this.batchNumber?.value != null && this.batchNumber.value.length > 0) ? this.batchNumber.value : undefined
