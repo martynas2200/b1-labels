@@ -22,6 +22,7 @@ export class WeightLabelModal {
   keyboard = document.getElementById('keyboard')
   toggleButton = document.getElementById('toggleKeyboard') as HTMLButtonElement
   keys = document.querySelectorAll('.key');
+  quantityLabel = document.getElementById('quantityLabel') as HTMLLabelElement
   private activeInput: HTMLInputElement | null = this.productWeight
   private currentItem: null | packagedItem = null
   private readonly notifier: NotificationService
@@ -67,6 +68,8 @@ export class WeightLabelModal {
       return
     }
     this.currentItem = JSON.parse(JSON.stringify(item))
+    this.productWeight.value = ''
+    this.quantityLabel.innerHTML = (this.currentItem?.measurementUnitCanBeWeighed) ? i18n('weight') : i18n('quantity') + ' (' + this.currentItem?.measurementUnitName + ')'
     this.productName.value = item.name
     this.kgPrice.value = item.priceWithVat.toString()
     this.expiryDate.min = new Date().toISOString().split('T')[0]

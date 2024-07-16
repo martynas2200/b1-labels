@@ -22,6 +22,7 @@ interface item {
   priceWithVat: number
   retrievedAt?: Date
   stock: number
+  vatRate?: number
 };
 
 interface packagedItem extends item {
@@ -118,6 +119,7 @@ export class newItem {
       item.measurementUnitId = 3
     }
     item.isActive = true
+    item.vatRate = 21
     item.attributeId = 1
     item.barcode = this.barcode
     item.description = i18n('itemAdded') + ' ' + new Date().toLocaleString()

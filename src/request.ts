@@ -163,6 +163,9 @@ export class Request {
     const response = await this.fetchData('POST', '/reference-book/items/create', data);
     if (response.code === 200) {
       this.notifier.success(i18n('itemCreated'));
+      setTimeout(() => {
+        void this.saveItem(response.data.id, { isActive: true });
+      }, 400);
     } else {
       this.notifier.error({
         title: i18n('failedToCreateItem'),

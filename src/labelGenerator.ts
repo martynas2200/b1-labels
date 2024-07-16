@@ -154,22 +154,24 @@ export class LabelGenerator {
     const barcodeImage = document.createElement('img')
     // Prefix 2200, then 13 digits of barcode, then 4 digits of weight
     // if the barcode is shorter than 13 digits, add 0s to the end, same with weight
-    const barcodeString = '2200' + '0'.repeat(13 - data.barcode.length) + data.barcode + '0'.repeat(5 - data.weight.toFixed(3).length) + data.weight.toFixed(3).replace('.', '')
+    const barcodeString = '2200' + '0'.repeat(13 - data.barcode.length) + data.barcode + '0'.repeat(5 - data.weight.toFixed(3).length) + data.weight.toFixed(3).replace('.', '') 
     barcodeImage.src = `https://barcodeapi.org/api/dm/${barcodeString}`
+    if (data.addPackageFeeNote == true) {
+      barcodeImage.src = barcodeImage.src + '$$M1102'
+
+    }
     barcode.appendChild(barcodeImage)
     label.appendChild(barcode)
 
     if (data.expiryDate != null) {
       const expiryText = document.createElement('div')
-      expiryText.className = 'expiracy-text'
-      expiryText.textContent = 'Geriausia iki:'
+      expiryText.className = 'expiracy'
+      expiryText.textContent = 'Geriausia iki'
+      const expiryDate = document.createElement('span')
+      expiryDate.textContent = new Date(data.expiryDate).toLocaleDateString('lt-LT', { month: '2-digit', day: '2-digit' })
+      
+      expiryText.appendChild(expiryDate)
       label.appendChild(expiryText)
-
-      const expiry = document.createElement('div')
-      expiry.className = 'expiracy'
-      const expiryDate = new Date(data.expiryDate)
-      expiry.textContent = expiryDate.toLocaleDateString('lt-LT', { month: '2-digit', day: '2-digit' })
-      label.appendChild(expiry)
     }
 
     if (data.batchNumber != null) {
