@@ -1,18 +1,16 @@
 import { i18n } from './i18n'
 import { type packagedItem, type item } from './item'
 import printStyles from './styles/label-print.scss'
-import { Code128, DataMatrix } from './barcodeGenerator'
+import { Code128, getDataMatrixMat, toPath } from './barcodeGenerator'
 
 export class LabelGenerator {
   private items: item[] = []
-  private readonly allItemsActive: boolean = true
   private readonly alternativeLabelFormat: boolean
 
-  constructor (data: item[] | Promise<item[]> | packagedItem[] | Promise<packagedItem[]> | undefined = undefined, alternativeLabelFormat: boolean = false) {
+  constructor(data: item[] | Promise<item[]> | packagedItem[] | Promise<packagedItem[]> | undefined = undefined, alternativeLabelFormat: boolean = false) {
     this.alternativeLabelFormat = alternativeLabelFormat
     if (data == null) {
       // The constructor was called without data.
-      // You can add your logic here.
     } else if (data instanceof Promise) {
       void data.then(data => {
         this.items = data
@@ -24,7 +22,7 @@ export class LabelGenerator {
     }
   }
 
-  print (): void {
+  print(): void {
     this.items = this.items.filter(item => item.isActive == true && item.barcode != null)
     if (!this.isAllItemsActive() && !confirm(i18n('notAllItemsActive'))) {
       return
@@ -36,26 +34,16 @@ export class LabelGenerator {
     }
   }
 
-  private isAllItemsActive (): boolean {
+  private isAllItemsActive(): boolean {
     return this.items.every(item => item.isActive)
   }
 
-  private getBarcodeType (barcode: string): string {
-    if (barcode.length === 8) {
-      return '8'
-    } else if (barcode.length === 13) {
-      return '13'
-    } else {
-      return 'code128'
-    }
-  }
-
-  private makeUpperCaseBold (text: string): string {
+  private makeUpperCaseBold(text: string): string {
     const regex = /("[^"]+"|[A-ZŽĄČĘĖĮŠŲŪ]{3,})/g
     return text.replace(regex, '<b>$1</b>')
   }
 
-  private generateLabel (data: packagedItem): HTMLDivElement {
+  private generateLabel(data: packagedItem): HTMLDivElement {
     const label = document.createElement('div')
     label.className = 'label'
     if (this.alternativeLabelFormat) {
@@ -68,21 +56,19 @@ export class LabelGenerator {
     item.className = 'item'
     item.innerHTML = this.makeUpperCaseBold(data.name)
 
-    if ((data.barcode != null)) {
+    if (data.barcode != null) {
       const barcode = document.createElement('div')
       barcode.className = 'barcode'
       const barcodeText = document.createElement('div')
-      barcodeText.innerHTML = ((data.code != null) ? '<small>' + data.code + '</small>' : '') +
-            (data.departmentNumber != null ? 'S' + data.departmentNumber + ' ' : '') + (data.barcode)
-
+      barcodeText.innerHTML = (data.departmentNumber != null ? 'S' + data.departmentNumber + ' ' : '') + data.barcode
       barcode.appendChild(barcodeText)
       const code128 = new Code128(data.barcode)
       const p = document.createElement('p')
       p.innerHTML = code128.toHtml(code128.encode(), this.alternativeLabelFormat ? [1, 50] : [1, 15])
       barcode.appendChild(p)
       label.appendChild(barcode)
-
     }
+    
     if (data.priceWithVat != 0) {
       const price = document.createElement('div')
       price.className = 'price'
@@ -97,9 +83,9 @@ export class LabelGenerator {
     if (data.packageCode != null) {
       const deposit = document.createElement('div')
       deposit.className = 'deposit'
-      deposit.textContent = 'Tara +0,10'
+      deposit.textContent = 'Tara +0.10'
       label.appendChild(deposit)
-    } else if (data.measurementUnitName === 'kg') {
+    } else if (data.measurementUnitCanBeWeighed == true) {
       const deposit = document.createElement('div')
       deposit.className = 'deposit'
       deposit.textContent = '/ 1 ' + data.measurementUnitName
@@ -110,7 +96,7 @@ export class LabelGenerator {
     return label
   }
 
-  private generateWeightLabel (data: packagedItem): HTMLDivElement {
+  private generateWeightLabel(data: packagedItem): HTMLDivElement {
     const parent = document.createElement('div')
     if (data.weight == null || data.totalPrice == null || data.priceWithVat == null || data.barcode == null || data.barcode.length > 13) {
       return parent
@@ -155,20 +141,15 @@ export class LabelGenerator {
 
     const barcode = document.createElement('div')
     barcode.className = 'barcode'
-    // const barcodeImage = document.createElement('img')
     // Prefix 2200, then 13 digits of barcode, then 4 digits of weight
-    // if the barcode is shorter than 13 digits, add 0s to the end, same with weight
-    const barcodeString = (data.addPackageFeeNote == true ? '1102\n' : '') + '2200' + '0'.repeat(13 - data.barcode.length) + data.barcode + '0'.repeat(5 - data.weight.toFixed(3).length) + data.weight.toFixed(3).replace('.', '') 
-    // barcodeImage.src = `https://barcodeapi.org/api/dm/${barcodeString}`
-    // barcode.appendChild(barcodeImage)
-    const dm = new DataMatrix(barcodeString, false)
+    const barcodeString = (data.addPackageFeeNote == true ? '1102\n' : '') + '2200' + '0'.repeat(13 - data.barcode.length) + data.barcode + '0'.repeat(5 - data.weight.toFixed(3).length) + data.weight.toFixed(3).replace('.', '')
     const svgNS = "http://www.w3.org/2000/svg";
     const svg: SVGSVGElement = document.createElementNS(svgNS, 'svg');
     const path = document.createElementNS(svgNS, 'path');
     path.setAttribute('transform', 'scale(1)')
     svg.appendChild(path)
     barcode.appendChild(svg)
-    path.setAttribute('d', dm.toPath(dm.encode()))
+    path.setAttribute('d', toPath(getDataMatrixMat(barcodeString)))
     svg.setAttribute('class', 'datamatrix')
     svg.setAttribute('viewBox', '0 0 18 18')
     label.appendChild(barcode)
@@ -179,7 +160,7 @@ export class LabelGenerator {
       expiryText.textContent = 'Geriausia iki '
       const expiryDate = document.createElement('span')
       expiryDate.textContent = new Date(data.expiryDate).toLocaleDateString('lt-LT', { month: '2-digit', day: '2-digit' })
-      
+
       expiryText.appendChild(expiryDate)
       label.appendChild(expiryText)
     }
@@ -197,7 +178,7 @@ export class LabelGenerator {
       manufacturer.textContent = data.manufacturerName
       label.appendChild(manufacturer)
     }
-    
+
     if (data.addPackageFeeNote == true) {
       const packageCode = document.createElement('div')
       packageCode.className = 'package'
@@ -208,7 +189,7 @@ export class LabelGenerator {
     return parent
   }
 
-  private async printLabelsUsingBrowser (data: item[]): Promise<void> {
+  private async printLabelsUsingBrowser(data: item[]): Promise<void> {
     const labels: HTMLElement[] = data.map(item => this.generateLabel(item))
 
     const popup: Window | null = window.open('', '_blank', 'width=700,height=700')
