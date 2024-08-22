@@ -26,16 +26,22 @@
             <span class="lbl display-inline">&nbsp;${i18n('sayOutLoud')}</span>
           </label>
         </div>
-        <div class="checkbox-form">
+        <div class="checkbox-form hidden-sm">
           <label>
             <input type="checkbox" class="ace" id="clearAfterPrint" checked>
             <span class="lbl display-inline">&nbsp;${i18n('clearAfterPrint')}</span>
           </label>
         </div>
-        <div class="checkbox-form">
+        <div class="checkbox-form hidden-sm">
           <label>
             <input type="checkbox" class="ace" id="autoPrint">
             <span class="lbl display-inline">&nbsp;${i18n('autoPrint')}</span>
+          </label>
+        </div>
+        <div class="checkbox-form">
+          <label>
+            <input type="checkbox" class="ace" id="showStock">
+            <span class="lbl display-inline">&nbsp;${i18n('showStock')}</span>
           </label>
         </div>
       </div>
@@ -160,7 +166,7 @@
                 <label for="batchNumber">${i18n('batchNumber')}</label>
                 <input type="text" class="form-control" id="batchNumber">
               </div>
-              <div id="keyboard" class="keyboard hidden">
+              <div id="keyboard" class="keyboard">
                 <button class="key btn" data-key="1">1</button>
                 <button class="key btn" data-key="2">2</button>
                 <button class="key btn" data-key="3">3</button>
@@ -187,7 +193,6 @@
     </div>
   </div>
 </div>
-
 <div class="modal fade" id="writeOffModal" tabindex="-1" role="dialog" aria-labelledby="writeOffModal"
   aria-hidden="true">
   <div class="modal-dialog" role="document">
@@ -200,13 +205,13 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <button class="btn btn-green" id="newWriteOffButton">
+          <!-- <button class="btn btn-green" id="newWriteOffButton">
             <i class="fa fa-plus"></i>&nbsp;
             ${i18n('newWriteOff')}
-          </button>
+          </button> -->
           <button class="btn btn-white" id="loadWriteOffs">
             <i class="fa fa-refresh"></i>&nbsp;
-            ${i18n('show')}
+            ${i18n('showByDate')}
           </button>
         </div>
         <div class="table-responsive">
@@ -219,14 +224,6 @@
     </div>
   </div>
 </div>
-
-<!-- button ot open the newItemModal -->
-
-<button type="button" class="btn btn-primary hidden" data-toggle="modal" data-target="#newItemModal" id="newItemButton">
-  ${i18n('newItem')}
-</button>
-
-<!-- modal for new item dialog -->
 
 <div class="modal fade" id="newItemModal" tabindex="-1" role="dialog" aria-labelledby="newItemModalLabel"
   aria-hidden="true">

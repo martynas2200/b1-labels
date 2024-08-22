@@ -23,7 +23,8 @@ export class LabelerInterface {
     alternativeLabelFormat: false,
     autoPrint: false,
     clearAfterPrint: true,
-    sayOutLoud: true
+    sayOutLoud: true,
+    showStock: false
   }
 
   modals: {
@@ -110,8 +111,7 @@ export class LabelerInterface {
     const ul = document.createElement('ul')
     parentElement.appendChild(ul)
     const uploadFileElement = this.createNavItem(i18n('uploadFile'), () => { this.uploadFile() }, 'fa-upload')
-    const writeOff = this.createNavItem(i18n('writeOff'), () => {}, 'fa-file')
-    // writeOff
+    const writeOff = this.createNavItem("Nukainavimai", () => {}, 'fa-file')
     writeOff.setAttribute('data-toggle', 'modal')
     writeOff.setAttribute('data-target', '#writeOffModal')
     ul.appendChild(writeOff)
@@ -182,6 +182,7 @@ export class LabelerInterface {
     this.bindCheckboxChange('sayOutLoud', 'sayOutLoud')
     this.bindCheckboxChange('clearAfterPrint', 'clearAfterPrint')
     this.bindCheckboxChange('autoPrint', 'autoPrint')
+    this.bindCheckboxChange('showStock', 'showStock')
   }
 
   handleEnterPress (callback: () => void): (event: KeyboardEvent) => void {
@@ -255,7 +256,7 @@ export class LabelerInterface {
     const itemElement = document.createElement('div')
     itemElement.className = 'item'
     itemElement.id = item.id ?? ''
-    itemElement.innerHTML = this.getItemHtml(item)
+    itemElement.innerHTML = this.getItemHtml(item, true)
     if (item.barcode == null || item.isActive == false) itemElement.classList.add('inactive')
     else if (item.weight != null) itemElement.classList.add('mark')
     const cornerButton = this.createItemButton('btn-yellow', 'fa-trash', () => { 
@@ -270,19 +271,21 @@ export class LabelerInterface {
       const addNewItemButton = this.createItemButton('btn-info', 'fa-plus', () => { this.modals?.newItem.openModal(item) })
       itemElement.appendChild(addNewItemButton)
     }
-    itemElement.querySelector('.item-price')?.addEventListener('click', () => { this.showDetails(item) });
+    if (item.priceWithVat > 0) {
+      itemElement.querySelector('.item-price')?.addEventListener('click', () => { this.showDetails(item) });
+    } else {
+      const priceButton = this.createItemButton('btn-danger', 'fa-euro', () => { this.quickPriceChange(item) })
+      itemElement.appendChild(priceButton)
+    }
     return itemElement
   }
 
-  getItemHtml (item: packagedItem): string {
+  getItemHtml (item: packagedItem, addLabels: boolean): string {
     return `
       <div class="item-main">
-        ${item.priceWithVat > 0 ? `<span class="item-price">${(item.totalPrice ?? item.priceWithVat).toFixed(2)}</span>` : ''}
+        ${(item.priceWithVat > 0 ? `<span class="item-price">${(item.totalPrice ?? item.priceWithVat).toFixed(2)}</span>` : '') + (this.settings.showStock ? `<span class="item-stock text-primary"><i class="fa fa-home margin-right-5"></i>${(item.stock || '0')}</span>` : '')}
         <span class="item-name">${item.name}</span>
-      </div>
-      <div class="item-labels">
-        ${this.getItemLabelsHtml(item)}
-      </div>`
+      </div>` + (addLabels ? `<div class="item-labels">${this.getItemLabelsHtml(item)}</div>` : '')
   }
 
   getItemLabelsHtml (item: packagedItem): string {
@@ -321,7 +324,7 @@ export class LabelerInterface {
 
   showDetails (item: packagedItem): void {
     const filteredItem = Object.fromEntries(
-      Object.entries(item).filter(([key, value]) => value !== null && !key.toString().toLowerCase().includes('id') && !key.toString().includes('cost'))
+      Object.entries(item).filter(([key, value]) => value !== null && !key.toString().toLowerCase().includes('id'))
     )
     const resultString = Object.entries(filteredItem)
       .map(([key, value]) => `<div class="row col-xs-12 ${key.includes('price') ? 'price' : ''}"><div class="col-sm-5">${i18n(key)}:</div><div class="col-sm-7">${value}</div></div>`)
@@ -377,7 +380,6 @@ export class LabelerInterface {
     if (!this.settings.sayOutLoud) {
       // Nothing
     } else if (this.items.length > 0 && item.priceWithVat > 0 && (this.items[this.items.length - 1]).barcode == item.barcode && item.weight == this.items[this.items.length - 1].weight) {
-      // void this.textToVoice.speak('Kaip ir sakiau, kaina yra ' + this.textToVoice.digitsToPrice(item.totalPrice ?? item.priceWithVat) + (item.weight !== undefined ? '. Svoris ' + this.textToVoice.numberToWords(item.weight) + ' g.' : '') + ' Tai ' + item.name)
       void this.textToVoice.speak(i18n('asMentioned') + ', ' + i18n('price') + ' ' + this.textToVoice.digitsToPrice(item.totalPrice ?? item.priceWithVat) + (item.weight !== undefined ? '. ' + i18n('weight') + this.textToVoice.numberToWords(item.weight) + item.measurementUnitName : '') + ' ' + i18n('thisIs') + ' ' + item.name)
     } else if (item.priceWithVat > 0) {
       void this.textToVoice.speak(i18n('price') + ' ' + this.textToVoice.digitsToPrice(item.totalPrice ?? item.priceWithVat))
@@ -448,18 +450,13 @@ export class LabelerInterface {
   createSearchResultItem (item: item): HTMLElement {
     const newItem = document.createElement('div')
     newItem.className = 'item'
-    const price = document.createElement('span')
-    price.className = 'item-price margin-right-5'
-    price.textContent = item.priceWithVat.toString()
-    newItem.appendChild(price)
-    const name = document.createElement('span')
-    name.className = 'item-name'
-    name.textContent = item.name
-    newItem.appendChild(name)
+    newItem.innerHTML = this.getItemHtml(item, false)
+    const buttonDiv = document.createElement('div')
+    newItem.appendChild(buttonDiv)
     const Addbutton = document.createElement('button')
-    Addbutton.className = 'btn btn-info btn-xs margin-left-5'
+    Addbutton.className = 'btn btn-info btn-xs'
     Addbutton.textContent = i18n('add')
-    newItem.appendChild(Addbutton)
+    buttonDiv.appendChild(Addbutton)
 
     Addbutton.addEventListener('click', () => {
       this.proccessItem(item)
@@ -469,7 +466,7 @@ export class LabelerInterface {
       const button = document.createElement('button')
       button.className = 'btn btn-pink btn-xs margin-left-5'
       button.textContent = i18n('weightLabel')
-      newItem.appendChild(button)
+      buttonDiv.appendChild(button)
       button.addEventListener('click', () => {
         this.modals?.weight.openWeightModal(item)
       })

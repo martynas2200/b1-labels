@@ -3,7 +3,6 @@ import { i18n } from './i18n'
 import { Request } from './request'
 
 export class WriteOffModal {
-  newButton = document.getElementById('newWriteOffButton') as HTMLButtonElement
   loadButton = document.getElementById('loadWriteOffs') as HTMLButtonElement
   table = document.getElementById('writeOffTable') as HTMLTableElement
   private request: Request
@@ -12,35 +11,65 @@ export class WriteOffModal {
     this.bindEvents()
   }
   private bindEvents (): void {
-    this.newButton.addEventListener('click', () => this.navigateTo())
     this.loadButton.addEventListener('click', this.load.bind(this))
   }
   private navigateTo(id: string = ''): void {
     window.location.href = '/warehouse/light-sales/edit' + (id != null ? `?id=${id}` : '' )
   }
+  private async showSaleItems(id: string, date: string): Promise<void> {
+    const items = await this.request.getSaleItems(id)
+    if (items == null) {
+      this.table.innerHTML = 'No data found'
+    } else {
+      // clean the table
+      this.table.innerHTML = ''
+    }
+    const resultCell = this.table.insertRow().insertCell()
+    resultCell.colSpan = 4
+    resultCell.textContent = date
+    // add header
+    const header = this.table.insertRow()
+    const nameHeader = header.insertCell()
+    nameHeader.textContent = i18n('name')
+    const quantityHeader = header.insertCell()
+    quantityHeader.textContent = i18n('quantity')
+    const priceHeader = header.insertCell()
+    priceHeader.textContent = i18n('discount')
+    const discountRateHeader = header.insertCell()
+    discountRateHeader.textContent = i18n('discountRate')
+    items.data.forEach((item: any) => {
+      if (item.discount != 0) {
+        const row = this.table.insertRow()
+        const nameCell = row.insertCell()
+        nameCell.textContent = item.virtualName + ' (ID: ' + item.itemId + ')'
+        const quantityCell = row.insertCell()
+        quantityCell.textContent = item.quantity
+        const priceCell = row.insertCell()
+        priceCell.textContent = item.discount
+        const discountRateCell = row.insertCell()
+        discountRateCell.textContent = item.discountRate + '%'
+      }
+    })
+  }
 
   private async load(): Promise<void> {
-    // this.request.getSales('EKA')
-    const items = await this.request.getSales('NUR')
+    const items = await this.request.getSales('nur')
     if (items == null) {
       this.table.innerHTML = 'No data found'
     }
     this.render(items)
   }
-  private render (writeOffs: any): void {
+  private render (sales: any): void {
     this.table.innerHTML = ''
-    const resultCell = this.table.insertRow().insertCell()
-    resultCell.colSpan = 3
-    resultCell.textContent = writeOffs.records + i18n('itemsFound')
-    writeOffs.data.forEach((writeOff: any) => {
+    sales.data.forEach((sale: any) => {
       const row = this.table.insertRow()
       const dateCell = row.insertCell()
-      dateCell.textContent = writeOff.series + writeOff.number
+      dateCell.textContent = sale.series + sale.number
       const clientCell = row.insertCell()
-      clientCell.textContent = writeOff.clientName
+      clientCell.textContent = sale.saleDate
       const totalCell = row.insertCell()
-      totalCell.textContent = writeOff.sumWithVat
-      row.addEventListener('click', () => { this.navigateTo(writeOff.id) })
+      totalCell.textContent = sale.discount;
+      row.addEventListener('click', () => { this.showSaleItems(sale.id, sale.saleDate) })
     })
   }
   

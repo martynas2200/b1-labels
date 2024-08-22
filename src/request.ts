@@ -192,6 +192,19 @@ export class Request {
     return this.fetchData('POST', path, body)
   }
 
+  public getSaleItems (lightSaleId: string): Promise<any> {
+    const body = {
+      page: 1,
+      pageSize: -1,
+      filters: {
+        rules: {
+          lightSaleId: { field: 'lightSaleId', op: 'eq', data: lightSaleId }
+        }
+      }
+    }
+    return this.fetchData('POST', '/warehouse/light-sale-items/search', body)
+  }
+
   public clearCache() {
     const nItems = Object.keys(this.items).length
     this.items = {}

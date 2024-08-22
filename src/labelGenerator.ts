@@ -1,6 +1,7 @@
 import { i18n } from './i18n'
 import { type packagedItem, type item } from './item'
 import printStyles from './styles/label-print.scss'
+import { Code128, DataMatrix } from './barcodeGenerator'
 
 export class LabelGenerator {
   private items: item[] = []
@@ -73,11 +74,14 @@ export class LabelGenerator {
       const barcodeText = document.createElement('div')
       barcodeText.innerHTML = ((data.code != null) ? '<small>' + data.code + '</small>' : '') +
             (data.departmentNumber != null ? 'S' + data.departmentNumber + ' ' : '') + (data.barcode)
-      const barcodeImage = document.createElement('img')
-      barcodeImage.src = `https://barcodeapi.org/api/${this.getBarcodeType(data.barcode)}/${data.barcode}`
+
       barcode.appendChild(barcodeText)
-      barcode.appendChild(barcodeImage)
+      const code128 = new Code128(data.barcode)
+      const p = document.createElement('p')
+      p.innerHTML = code128.toHtml(code128.encode(), this.alternativeLabelFormat ? [1, 50] : [1, 15])
+      barcode.appendChild(p)
       label.appendChild(barcode)
+
     }
     if (data.priceWithVat != 0) {
       const price = document.createElement('div')
@@ -151,22 +155,28 @@ export class LabelGenerator {
 
     const barcode = document.createElement('div')
     barcode.className = 'barcode'
-    const barcodeImage = document.createElement('img')
+    // const barcodeImage = document.createElement('img')
     // Prefix 2200, then 13 digits of barcode, then 4 digits of weight
     // if the barcode is shorter than 13 digits, add 0s to the end, same with weight
-    const barcodeString = '2200' + '0'.repeat(13 - data.barcode.length) + data.barcode + '0'.repeat(5 - data.weight.toFixed(3).length) + data.weight.toFixed(3).replace('.', '') 
-    barcodeImage.src = `https://barcodeapi.org/api/dm/${barcodeString}`
-    if (data.addPackageFeeNote == true) {
-      barcodeImage.src = barcodeImage.src + '$$M1102'
-
-    }
-    barcode.appendChild(barcodeImage)
+    const barcodeString = (data.addPackageFeeNote == true ? '1102\n' : '') + '2200' + '0'.repeat(13 - data.barcode.length) + data.barcode + '0'.repeat(5 - data.weight.toFixed(3).length) + data.weight.toFixed(3).replace('.', '') 
+    // barcodeImage.src = `https://barcodeapi.org/api/dm/${barcodeString}`
+    // barcode.appendChild(barcodeImage)
+    const dm = new DataMatrix(barcodeString, false)
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg: SVGSVGElement = document.createElementNS(svgNS, 'svg');
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('transform', 'scale(1)')
+    svg.appendChild(path)
+    barcode.appendChild(svg)
+    path.setAttribute('d', dm.toPath(dm.encode()))
+    svg.setAttribute('class', 'datamatrix')
+    svg.setAttribute('viewBox', '0 0 18 18')
     label.appendChild(barcode)
 
     if (data.expiryDate != null) {
       const expiryText = document.createElement('div')
       expiryText.className = 'expiracy'
-      expiryText.textContent = 'Geriausia iki'
+      expiryText.textContent = 'Geriausia iki '
       const expiryDate = document.createElement('span')
       expiryDate.textContent = new Date(data.expiryDate).toLocaleDateString('lt-LT', { month: '2-digit', day: '2-digit' })
       
@@ -213,20 +223,6 @@ export class LabelGenerator {
 
     labels.forEach(label => {
       popup.document.body.appendChild(label)
-    })
-
-    await new Promise<void>(resolve => {
-      const images: NodeListOf<HTMLImageElement> = popup.document.querySelectorAll('.barcode img')
-      let counter: number = 0
-      images.forEach(image => {
-        image.onload = () => {
-          counter++
-          if (counter === images.length) {
-            resolve()
-          }
-        }
-      })
-      setTimeout(resolve, 5000) // default timeout
     })
 
     popup.addEventListener('afterprint', () => {

@@ -60,6 +60,9 @@ export class WeightLabelModal {
         this.handleWeightChange();
       });
     });
+    this.expiryDate.addEventListener('click', () => {
+      this.expiryDate.showPicker();
+    });
   }
 
   public openWeightModal(item: packagedItem): void {

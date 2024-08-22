@@ -71,7 +71,6 @@ class LabelsUserscript {
     if (this.user.isLoggedIn && this.user.admin && !this.interface.isActive()) {
       if (!this.wereButtonsAdded && this.interface.addActivateButton()) {
         this.wereButtonsAdded = true
-        this.addMarkupButton()
       }
       void new Promise(resolve => setTimeout(resolve, 200))
       let success = false
@@ -107,6 +106,15 @@ class LabelsUserscript {
     } else if (this.user.isLoggedIn && !this.user.admin && !this.interface.isActive()) {
       if (this.currentUrl === '/en/warehouse/light-sales/edit' || this.currentUrl === '/warehouse/light-sales/edit') {
         this.pageReady = this.interface.simplifyPage()
+        if (this.pageReady) {
+        setTimeout(() => {
+          const model = angular.element(document.querySelector('input[name="employeePositionName"]') ?? document.body).controller().model;
+          model.employeeFullName = "Reda Miliauskienė"
+          model.employeeId = 39
+          model.employeePositionName = "direktorė"
+          this.notification.success(i18n('employeeDataFilled'))
+        }, 5000)
+        }
       } else {
         this.pageReady = this.interface.init()
       }
@@ -146,44 +154,6 @@ class LabelsUserscript {
       isActive: row.isActive,
       discountStatus: row.discountStatus
     }))
-  }
-
-  calculateMarkup (price: number, cost: number): number {
-    return ((price - cost) / cost) * 100
-  }
-
-  private listMarkup (): void {
-    //check if it is a purchase view
-    if (window.location.pathname !== '/en/warehouse/purchases/edit' && window.location.pathname !== '/warehouse/purchases/edit') {
-      this.notification.error(i18n('onlyAvailableInPurchaseView'))
-      return
-    }
-    // priceWithoutVat
-    const controller = angular.element(this.getDataRows()).controller()
-    // model => clientName, series, number, purchase date
-    const h2 = document.createElement('h2')
-    h2.textContent = controller.model.clientName + ' ' + controller.model.series + '-' + controller.model.number + ' ' + controller.model.purchaseDate
-    const items = controller.data
-
-    const markupList = document.createElement('ul')
-    markupList.className = 'markup-list'
-    items.forEach((item: any) => {
-      const markup = this.calculateMarkup(item.itemPriceWithVat, item.priceWithVat)
-      const markupItem = document.createElement('li')
-      markupItem.innerHTML = `${item.itemName}<br>${markup.toFixed(2)}% (${item.itemPriceWithVat.toFixed(2)}, ${ i18n('minPriceWithVat')}: ${(item.priceWithVat * 1.2).toFixed(3)})`
-      if (markup < 20) {
-        markupItem.style.fontWeight = 'bold'
-        markupItem.style.color = 'red'
-      }
-      markupList.appendChild(markupItem)
-    })
-    const win = window.open('', '_blank')
-    if (win == null) {
-      this.notification.error('Failed to open a new window')
-      return
-    }
-    win.document.body.appendChild(h2)
-    win.document.body.appendChild(markupList)
   }
   async extractDataFromAngularPurchaseView (): Promise<item[]> {
     const dataRows = this.getDataRows()
@@ -243,18 +213,6 @@ class LabelsUserscript {
         break
     }
     void new LabelGenerator(data)
-  }
-
-  addMarkupButton (): boolean {
-    const navbarShortcuts = document.querySelector('.breadcrumbs')
-    if (navbarShortcuts != null) {
-      const button = document.createElement('button')
-      button.textContent = i18n('calculateMarkup')
-      button.className = 'btn btn-sm'
-      button.addEventListener('click', this.listMarkup.bind(this))
-      navbarShortcuts.appendChild(button)
-    }
-    return navbarShortcuts != null
   }
 
   public addPrintButton (parentSelector: string = '.buttons-left', withName: boolean = false): boolean {

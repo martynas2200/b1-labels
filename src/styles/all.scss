@@ -198,11 +198,15 @@ body.labeler-interface {
   cursor: pointer;
   position: relative;
 
-  .item-price {
+  .item-price, .item-stock {
     font-weight: bold;
     background-color: var(--theme-blue--dark-bg);
     color: white;
     padding: 2px 8px;
+    margin-right: 4px;
+  }
+  .item-stock {
+    background-color: #777;
   }
 }
 
@@ -367,14 +371,8 @@ body.labeler-interface {
     align-items: center;
   }
 
-  .item-price {
-    align-self: center;
-  }
-
   .item-name {
-    flex: 1;
     margin-right: 10px;
-    word-wrap: break-word;
   }
 }
 

@@ -27,28 +27,18 @@ body {
   position: absolute;
   bottom: 0;
   z-index: 3;
-}
+  
+  div {
+    font-size: 10px;
+    font-family: monospace;
+    margin-left: 6px;
+    line-height: 1em;
+  }
 
-.barcode div {
-  font-size: 10px;
-  font-family: monospace;
-  margin-left: 10px;
-  line-height: 1em;
+  p {
+    margin: 0;
+  }
 }
-
-.barcode div small {
-  color: #888;
-  font-size: 8px;
-  display: block;
-}
-
-.barcode img {
-  width: 35mm;
-  height: 4mm;
-  object-fit: cover;
-  object-position: top;
-}
-
 .deposit {
   position: absolute;
   right: 2px;
@@ -76,29 +66,17 @@ body {
   
   .barcode {
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(-50%) scale(1.4);
+    width: max-content;
+    div {
+      margin-left: 0;
+      font-size: 7px;
+    }
   }
 
   .price,
   .deposit {
     display: none;
-  }
-
-  .barcode img {
-    width: 50mm;
-    height: 12mm;
-  }
-
-  .barcode div {
-    margin-left: 0;
-    font-size: 11px;
-    display: flex;
-    justify-content: space-between
-  }
-
-  .barcode div small {
-    color: black;
-    font-size: 9px;
   }
 }
 
@@ -119,17 +97,9 @@ body {
  .barcode {
     grid-column: 1;
     position: static;
-    width: 13mm;
-    height: 13mm;
-    grid-row: span 2;
+    width: 11mm;
+    height: 11mm;
   }
-
- .barcode img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-
 
  .item {
     grid-column: span 2;
@@ -139,10 +109,6 @@ body {
     max-width: 60pt;
     padding: 0px;
     height: unset;
-  }
-
-  .weighted *:not(.item, .manufacturer) {
-    font-family: "Book Antiqua", serif;
   }
 
   .fprice {
