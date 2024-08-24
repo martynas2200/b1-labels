@@ -2,16 +2,11 @@
   <div class="row">
     <div class="col-md-4 form-section">
       <h4 class="header">${i18n('labelsAndPrices')}</h4>
-      <div class="form-group clearfix">
-        <label for="barcode" class="label-text">${i18n('barcodeOrName')}</label>
-        <input type="text" class="form-control" id="barcode" placeholder="${i18n('scanOrEnterName')}"
+      <div class="form-group input-group">
+        <input type="text" class="form-control" id="barcode" placeholder="${i18n('enterBarcode')}"
           autocomplete="off">
         <div class="ready-for-scan pull-right text-success">${i18n('readyForScan')}</div>
-      </div>
-      <div class="form-group">
-        <button type="button" class="btn btn-primary" id="searchButton">${i18n('search')}</button>
-        <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#searchByNameModal"
-          id="searchNameButton">${i18n('searchByName')}</button>
+        <button type="button" class="btn btn-info" id="searchButton">${i18n('code')}</button>
       </div>
       <div class="form-group">
         <div class="checkbox-form hidden-sm">
@@ -30,12 +25,6 @@
           <label>
             <input type="checkbox" class="ace" id="clearAfterPrint" checked>
             <span class="lbl display-inline">&nbsp;${i18n('clearAfterPrint')}</span>
-          </label>
-        </div>
-        <div class="checkbox-form hidden-sm">
-          <label>
-            <input type="checkbox" class="ace" id="autoPrint">
-            <span class="lbl display-inline">&nbsp;${i18n('autoPrint')}</span>
           </label>
         </div>
         <div class="checkbox-form">
@@ -62,31 +51,6 @@
       <div class="item-list">
         <div class="alert alert-info text-center">${i18n('noItemsScanned')}</div>
         <div class="alert-xs grey text-center">${i18n('help')}</div>
-      </div>
-    </div>
-  </div>
-</div>
-</div>
-<div class="modal fade" id="searchByNameModal" tabindex="-1" role="dialog" aria-labelledby="searchByNameModalLabel"
-  aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h4 class="modal-title inline">${i18n('searchByName')}</h4>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="searchByName">${i18n('name')}</label>
-          <input type="text" class="form-control" id="searchByName" placeholder="${i18n('enterName')}"
-            autocomplete="off">
-        </div>
-        <div id="search-results"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">${i18n('close')}</button>
       </div>
     </div>
   </div>
@@ -193,33 +157,29 @@
     </div>
   </div>
 </div>
-<div class="modal fade" id="writeOffModal" tabindex="-1" role="dialog" aria-labelledby="writeOffModal"
+<div class="modal fade" id="markdownModal" tabindex="-1" role="dialog" aria-labelledby="markdownModal"
   aria-hidden="true">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title inline" id="writeOffItems">${i18n('writeOffItems')}</h5>
+        <h5 class="modal-title inline">${i18n('markdowns')}</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <!-- <button class="btn btn-green" id="newWriteOffButton">
-            <i class="fa fa-plus"></i>&nbsp;
-            ${i18n('newWriteOff')}
-          </button> -->
-          <button class="btn btn-white" id="loadWriteOffs">
+          <button class="btn btn-white" id="loadMarkdowns">
             <i class="fa fa-refresh"></i>&nbsp;
             ${i18n('showByDate')}
           </button>
         </div>
         <div class="table-responsive">
-          <table class="table table-striped table-bordered table-hover" id="writeOffTable"></table>
+          <table class="table table-striped table-bordered table-hover" id="markdownTable"></table>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-primary" data-dismiss="modal">${i18n('close')}</button>
+        <button type="button" class="btn" data-dismiss="modal">${i18n('close')}</button>
       </div>
     </div>
   </div>

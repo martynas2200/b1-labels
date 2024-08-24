@@ -109,34 +109,6 @@ export class Request {
     this.items[barcode] = data.data[0]
     return data.data[0]
   }
-
-  async getItemsByName (name: string): Promise<any[]> {
-    if (name.length < 3) {
-      return []
-    }
-    const body = {
-      pageSize: 20,
-      filters: {
-        groupOp: 'AND',
-        rules: {
-          name: { data: name, field: 'name', op: 'cn' },
-          isActive: { data: true, field: 'isActive', op: 'eq' }
-        }
-      },
-      allSelected: false,
-      asString: '',
-      page: 1
-    }
-    const data = await this.fetchData('POST', this.path, body)
-    // push all the items to the items array
-    data.data.forEach((item: item) => {
-      // unnecessary check
-      if (item.barcode != null) {
-        this.items[item.barcode] = item
-      }
-    })
-    return data.data
-  }
   async saveItem(id: string, data: Record<string, any>): Promise<boolean> {
     // Check if the id is provided and it consists of digits only
     if (!this.isItDigits(id)) {

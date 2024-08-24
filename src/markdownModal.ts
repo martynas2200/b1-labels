@@ -2,9 +2,9 @@
 import { i18n } from './i18n'
 import { Request } from './request'
 
-export class WriteOffModal {
-  loadButton = document.getElementById('loadWriteOffs') as HTMLButtonElement
-  table = document.getElementById('writeOffTable') as HTMLTableElement
+export class MarkdownModal {
+  loadButton = document.getElementById('loadMarkdowns') as HTMLButtonElement
+  table = document.getElementById('markdownTable') as HTMLTableElement
   private request: Request
   constructor (r: Request) {
     this.request = r
@@ -13,15 +13,11 @@ export class WriteOffModal {
   private bindEvents (): void {
     this.loadButton.addEventListener('click', this.load.bind(this))
   }
-  private navigateTo(id: string = ''): void {
-    window.location.href = '/warehouse/light-sales/edit' + (id != null ? `?id=${id}` : '' )
-  }
   private async showSaleItems(id: string, date: string): Promise<void> {
     const items = await this.request.getSaleItems(id)
     if (items == null) {
       this.table.innerHTML = 'No data found'
     } else {
-      // clean the table
       this.table.innerHTML = ''
     }
     const resultCell = this.table.insertRow().insertCell()

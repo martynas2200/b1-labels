@@ -4,7 +4,7 @@ import { newItem, type item, type packagedItem } from './item'
 import { UINotification } from './ui-notification'
 import mainHTML from './html/main.html'
 import { TextToVoice } from './textToVoice'
-import { WriteOffModal } from './writeOffModal'
+import { MarkdownModal } from './markdownModal'
 import { WeightLabelModal } from './weightLabelModal'
 import { Request } from './request'
 
@@ -21,7 +21,6 @@ export class LabelerInterface {
   private active: boolean = false
   settings = {
     alternativeLabelFormat: false,
-    autoPrint: false,
     clearAfterPrint: true,
     sayOutLoud: true,
     showStock: false
@@ -29,8 +28,7 @@ export class LabelerInterface {
 
   modals: {
     weight: WeightLabelModal
-    searchResults: HTMLElement | null
-    writeOff: WriteOffModal 
+    markdown: MarkdownModal
     itemDetails: HTMLElement | null
     newItem: newItem
   } | undefined
@@ -65,10 +63,10 @@ export class LabelerInterface {
     return true
   }
 
-  public simplifyPage (): boolean {
+  public simplifyPage (navAll: boolean = true): boolean {
     this.hideDropdownMenuItems()
     this.changeDocumentTitle()
-    this.addNavItems()
+    this.addNavItems(navAll)
     document.body.classList.add('labeler-interface')
     return true
   }
@@ -101,21 +99,38 @@ export class LabelerInterface {
     return li
   }
 
-  addNavItems (): void {
+  addNavItems (navAll: boolean = true): void {
     const parentElement = document.querySelector('.navbar-shortcuts')
+    const isNavInitialized = parentElement != null && parentElement.querySelector('.fa-upload') != null
     if (parentElement == null) {
-      this.notification.error(i18n('missingElements'))
       return
     }
     parentElement.innerHTML = ''
     const ul = document.createElement('ul')
     parentElement.appendChild(ul)
+    if (navAll) {
+      const writeOff = this.createNavItem(i18n('markdowns'), () => {}, 'fa-book')
+      writeOff.setAttribute('data-toggle', 'modal')
+      writeOff.setAttribute('data-target', '#markdownModal')
+      ul.appendChild(writeOff)
+      const itemsList = this.createNavItem(i18n('itemCatalog'), () => { window.location.href = '/reference-book/items' }, 'fa-folder-open')
+      ul.appendChild(itemsList)
+    } else {
+      const back = this.createNavItem(i18n('labelsAndPrices'), () => { window.location.href = '/' }, 'fa-arrow-left')
+      ul.appendChild(back)
+    }
     const uploadFileElement = this.createNavItem(i18n('uploadFile'), () => { this.uploadFile() }, 'fa-upload')
-    const writeOff = this.createNavItem("Nukainavimai", () => {}, 'fa-file')
-    writeOff.setAttribute('data-toggle', 'modal')
-    writeOff.setAttribute('data-target', '#writeOffModal')
-    ul.appendChild(writeOff)
     ul.appendChild(uploadFileElement)
+    const logoutButtons = document.querySelectorAll('.nav-user-dropdown__title')
+    if (logoutButtons != null && !isNavInitialized) {
+      logoutButtons.forEach(button => {
+        const i = document.createElement('i')
+        i.className = 'fa fa-fw fa-power-off'
+        button.appendChild(i)
+        const company = button.querySelector('.nav-user-company') as HTMLDivElement
+        company.style.display = 'none'
+      });
+    }
   }
 
   uploadFile (): void {
@@ -163,9 +178,6 @@ export class LabelerInterface {
       this.mainInput.addEventListener('keypress', this.handleEnterPress(this.searchByBarcode.bind(this, this.mainInput)))
       document.getElementById('searchButton')?.addEventListener('click', this.searchByBarcode.bind(this, this.mainInput))
       this.mainInput.focus()
-      document.getElementById('searchNameButton')?.addEventListener('click', this.searchByName.bind(this, this.mainInput))
-      const modalSearchInput = document.getElementById('searchByName') as HTMLInputElement
-      modalSearchInput.addEventListener('keypress', this.handleEnterPress(this.searchByName.bind(this, modalSearchInput)))
       const modals = document.querySelectorAll('.modal')
       document.addEventListener('click', (event) => {
         let clickedInsideModal = false
@@ -181,7 +193,6 @@ export class LabelerInterface {
     this.bindCheckboxChange('alternativeLabelFormat', 'alternativeLabelFormat')
     this.bindCheckboxChange('sayOutLoud', 'sayOutLoud')
     this.bindCheckboxChange('clearAfterPrint', 'clearAfterPrint')
-    this.bindCheckboxChange('autoPrint', 'autoPrint')
     this.bindCheckboxChange('showStock', 'showStock')
   }
 
@@ -206,9 +217,8 @@ export class LabelerInterface {
     this.modals = {
       itemDetails: document.getElementById('itemDetails'),
       newItem: new newItem(this.req),
-      searchResults: document.getElementById('search-results'),
       weight: new WeightLabelModal(this.notification, this),
-      writeOff: new WriteOffModal(this.req)
+      markdown: new MarkdownModal(this.req)
     }
   }
 
@@ -273,7 +283,7 @@ export class LabelerInterface {
     }
     if (item.priceWithVat > 0) {
       itemElement.querySelector('.item-price')?.addEventListener('click', () => { this.showDetails(item) });
-    } else {
+    } else if (item.id != null) {
       const priceButton = this.createItemButton('btn-danger', 'fa-euro', () => { this.quickPriceChange(item) })
       itemElement.appendChild(priceButton)
     }
@@ -391,9 +401,6 @@ export class LabelerInterface {
     }
     this.items.push(item)
     this.addItemToView(item)
-    if (this.settings.autoPrint) {
-      this.print(true)
-    }
   }
 
   canItBePackaged (barcode: string): boolean {
@@ -420,58 +427,6 @@ export class LabelerInterface {
     } else {
       void this.searchItem(barcode)
     }
-  }
-
-  async searchByName (inputField: HTMLInputElement): Promise<void> {
-    const name = inputField.value
-    if (name == null || name.length == 0) {
-      this.notification.error(i18n('missingName'))
-      return
-    }
-    if (this.modals?.searchResults == null) {
-      this.active = false
-      this.notification.error(i18n('missingElements'))
-      return
-    }
-    inputField.disabled = true
-    this.notification.info(i18n('searchingFor') + ' ' + name)
-    const items: item[] = await this.req.getItemsByName(name)
-    this.modals.searchResults.innerHTML = items.length > 0 ? `<div class="alert alert-info">${i18n('searchSuccessful')} "${name}". ${items.length} ${i18n('results')}` : `<div class="alert alert-warning">${i18n('noItemsFound')} "${name}"</div>`
-    items.forEach(item => {
-      if (this.modals?.searchResults != null) {
-        this.modals.searchResults.appendChild(this.createSearchResultItem(item))
-      }
-    })
-    inputField.disabled = false
-    inputField.value = ''
-    inputField.focus()
-  }
-
-  createSearchResultItem (item: item): HTMLElement {
-    const newItem = document.createElement('div')
-    newItem.className = 'item'
-    newItem.innerHTML = this.getItemHtml(item, false)
-    const buttonDiv = document.createElement('div')
-    newItem.appendChild(buttonDiv)
-    const Addbutton = document.createElement('button')
-    Addbutton.className = 'btn btn-info btn-xs'
-    Addbutton.textContent = i18n('add')
-    buttonDiv.appendChild(Addbutton)
-
-    Addbutton.addEventListener('click', () => {
-      this.proccessItem(item)
-      newItem.style.backgroundColor = '#b0d877'
-    })
-    if (item.measurementUnitCanBeWeighed) {
-      const button = document.createElement('button')
-      button.className = 'btn btn-pink btn-xs margin-left-5'
-      button.textContent = i18n('weightLabel')
-      buttonDiv.appendChild(button)
-      button.addEventListener('click', () => {
-        this.modals?.weight.openWeightModal(item)
-      })
-    }
-    return newItem
   }
 
   async searchforAPackagedItem (barcode: string): Promise<void> {

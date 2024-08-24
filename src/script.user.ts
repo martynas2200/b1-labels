@@ -104,20 +104,22 @@ class LabelsUserscript {
         this.pageReady = true
       }
     } else if (this.user.isLoggedIn && !this.user.admin && !this.interface.isActive()) {
-      if (this.currentUrl === '/en/warehouse/light-sales/edit' || this.currentUrl === '/warehouse/light-sales/edit') {
-        this.pageReady = this.interface.simplifyPage()
-        if (this.pageReady) {
-        setTimeout(() => {
-          const model = angular.element(document.querySelector('input[name="employeePositionName"]') ?? document.body).controller().model;
-          model.employeeFullName = "Reda Miliauskienė"
-          model.employeeId = 39
-          model.employeePositionName = "direktorė"
-          this.notification.success(i18n('employeeDataFilled'))
-        }, 5000)
+        switch (this.currentUrl) {
+          case '/en/warehouse/light-sales/edit':
+          case '/warehouse/light-sales/edit':
+            this.pageReady = this.interface.simplifyPage(false) 
+            break
+          case '/en/reference-book/items':
+          case '/en/warehouse/purchases/edit':
+          case '/reference-book/items':
+          case '/en/reference-book/items/edit':
+          case '/reference-book/items/edit':
+            this.pageReady = this.interface.simplifyPage(false) && this.addPrintButton('.buttons-left', true) && this.addFilters()
+            break
+          default:
+            this.pageReady = this.interface.init()
+            break
         }
-      } else {
-        this.pageReady = this.interface.init()
-      }
     } else if (!this.user.isLoggedIn && this.currentUrl === '/login') {
       this.pageReady = this.user.addLoginOptions()
     } else {
@@ -142,18 +144,7 @@ class LabelsUserscript {
 
   private extractDataFromAngularItemList (): item[] {
     const dataRows = this.getDataRows()
-    const selectedRows = angular.element(dataRows).controller().grid.data.filter((a: row) => a._select)
-    return selectedRows.map((row: any) => ({
-      name: row.name,
-      barcode: row.barcode,
-      code: row.code,
-      priceWithVat: row.priceWithVat,
-      measurementUnitName: row.measurementUnitName,
-      departmentNumber: row.departmentNumber,
-      packageCode: row.packageCode,
-      isActive: row.isActive,
-      discountStatus: row.discountStatus
-    }))
+    return angular.element(dataRows).controller().grid.data.filter((a: row) => a._select)
   }
   async extractDataFromAngularPurchaseView (): Promise<item[]> {
     const dataRows = this.getDataRows()
@@ -214,41 +205,96 @@ class LabelsUserscript {
     }
     void new LabelGenerator(data)
   }
-
+// TODO: DYI rule!
   public addPrintButton (parentSelector: string = '.buttons-left', withName: boolean = false): boolean {
     const buttonsLeft = document.querySelector(parentSelector)
     if (buttonsLeft == null) {
       return false
     }
-    const printDiv = document.createElement('div')
+    const icon = document.querySelector('i.fa-cloud-upload')
+    if (icon != null) {
+      const grandParent = icon.parentElement?.parentElement
+      if (grandParent != null) {
+        grandParent.remove()
+      }
+    }
+    let printDiv = document.createElement('div')
     printDiv.className = 'print'
 
-    const button = document.createElement('button')
+    let button = document.createElement('button')
     button.title = i18n('print')
     button.type = 'button'
     button.className = 'btn btn-sm btn-purple'
 
-    const i = document.createElement('i')
+    let i = document.createElement('i')
     i.className = 'fa fa-fw fa-print'
     button.appendChild(i)
     if (withName) {
-      const span = document.createElement('span')
+      let span = document.createElement('span')
       span.className = 'margin-left-5'
       span.textContent = i18n('print')
       button.appendChild(span)
-    } else {
-      // make more space for the print button by removing the import button
-      const icon = document.querySelector('i.fa-cloud-upload')
-      if (icon != null) {
-        const grandParent = icon.parentElement?.parentElement
-        if (grandParent != null) {
-          grandParent.remove()
-        }
-      }
     }
-    printDiv.addEventListener('click', this.processItemsfromAngular.bind(this))
+    button.addEventListener('click', this.processItemsfromAngular.bind(this))
     printDiv.appendChild(button)
     buttonsLeft.appendChild(printDiv)
+    // Add weight label button
+    button = document.createElement('button')
+    button.title = i18n('weightLabel')
+    button.type = 'button'
+    button.className = 'btn btn-sm btn-pink'
+    i = document.createElement('i')
+    i.className = 'fa fa-fw fa-balance-scale'
+    button.appendChild(i)
+    if (withName) {
+      let span = document.createElement('span')
+      span.className = 'margin-left-5'
+      span.textContent = i18n('weightLabel')
+      button.appendChild(span)
+    }
+    button.addEventListener('click', this.goToWeightLabelModal.bind(this))
+    printDiv = document.createElement('div')
+    printDiv.appendChild(button)
+    buttonsLeft.appendChild(printDiv)
+
+    return true
+  }
+
+  goToWeightLabelModal (): void {
+    const items = this.extractDataFromAngularItemList()
+    if (items.length < 1) {
+      this.notification.error(i18n('noItemsSelected'))
+      return
+    } else if (items.length > 1) {
+      this.notification.error(i18n('tooManyItems'))
+      return
+    } else if (items[0].measurementUnitName !== 'kg' || items[0].priceWithVat < 0 || items[0].priceWithVat == null) {
+      this.notification.error(i18n('error'))
+      return
+    }
+    this.interface.init();
+    this.interface.modals?.weight.openWeightModal(items[0]);
+  }
+
+  addFilters (): boolean {
+    if (window.location.pathname !== '/en/reference-book/items' && window.location.pathname !== '/reference-book/items') {
+      return false
+    }
+    const dataRows = document.querySelector('.data-rows') as HTMLElement
+    if (dataRows == null) {
+      return false
+    }
+    const controller = angular.element(dataRows).controller().grid
+    controller.filter.asString = "[Aktyvi?:true] "
+    controller.filter.filters.rules['isActive'] = { data: true, field: 'isActive', op: 'eq' }
+    controller.filter.sort = { "id": "desc" }
+    setTimeout(() => {
+      controller.provider.refresh()
+      this.notification.info({
+        message: i18n('show') +': ' + controller.filter.asString,
+        positionY: 'bottom'
+      });
+    }, 700);
     return true
   }
 

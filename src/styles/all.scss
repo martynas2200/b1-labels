@@ -1,36 +1,3 @@
-// Forms
-
-ng-form textarea.form-control.input-sm.ng-pristine.ng-untouched.ng-valid {
-  height: 50px;
-}
-
-ng-form label:has(input[name=isActive]) {
-  margin-left: -0.5em;
-}
-
-ng-form input[name=isActive].ace+span {
-  background-color: #b74635;
-  color: white;
-  padding: 0.75em 5em 0.75em 0.5em;
-  border-radius: 4px
-}
-
-ng-form input[name=isActive].ace:checked+span {
-  background-color: white;
-  color: inherit;
-}
-
-ng-form.simplified-form h5.header.blue,
-ng-form .alert.alert-warning {
-  display: none;
-}
-
-// .navbar li:has(a#manage-plan) {
-.navbar li:has(a#manage-wallet-partner),
-.navbar a[invite-manager] {
-  display: none !important
-}
-
 // Look-up container
 
 body.labeler-interface {
@@ -39,6 +6,10 @@ body.labeler-interface {
   .sidebar {
     display: none !important;
     pointer-events: none;
+  }
+
+  .input-group {
+    display: flex;
   }
 
   .main-content {
@@ -51,11 +22,9 @@ body.labeler-interface {
       border-radius: unset !important;
     }
 
-    .table.table-bordered input:not(:focus) {
-      border: unset;
-    }
 
-    .btn-ctrl:has(.fa-print) button.btn.btn-sm:has(.fa-print) {
+    .btn-ctrl:has(.fa-print) button.btn.btn-sm:has(.fa-print),
+    span.resizer {
       filter: contrast(0.6);
       pointer-events: none;
     }
@@ -79,9 +48,20 @@ body.labeler-interface {
     .form-horizontal:nth-child(3)> :nth-child(2)> :nth-child(3),
     .form-horizontal:nth-child(3)> :nth-child(5),
     .form-horizontal:nth-child(1)> :nth-child(2)> :nth-child(1)> :nth-child(2)> :nth-child(2),
-    .form-horizontal:nth-child(1)> :nth-child(2)> :nth-child(3)> :nth-child(2)> :nth-child(2) {
+    .form-horizontal:nth-child(1)> :nth-child(2)> :nth-child(3)> :nth-child(2)> :nth-child(2),
+    .extd-grid-control .extd-grid-buttons.buttons-right,
+    tr.sub-grid-row,
+    td.sub-grid,
+    .extd-grid-title,
+    td[ng-if="config.subGrid"] {
       display: none !important;
       pointer-events: none;
+    }
+
+    td[extd-touch-resize],
+    a {
+      -webkit-user-drag: none;
+      user-drag: none;
     }
 
     .input-group-addon,
@@ -91,16 +71,19 @@ body.labeler-interface {
 
     .sticky {
       background: transparent;
+
       .btn-ctrl>div {
         border: unset;
         padding: unset;
       }
     }
 
-    input[name="series"],
-    select[name="operationTypeId"] {
-      background: whitesmoke !important;
-      pointer-events: none;
+    input[ng-model="filter.page"] {
+      width: 30px;
+    }
+
+    .pagination-wrap button.btn.btn-sm.btn-transparent {
+      background: white !important;
     }
   }
 
@@ -118,8 +101,14 @@ body.labeler-interface {
       }
     }
 
-    .navbar-shortcut {
+    a.navbar-shortcut {
       color: #eee;
+
+      i {
+        font-size: 1.2em;
+        margin: 0 2px;
+        text-align: center;
+      }
     }
 
     li:has(.navbar-shortcut):hover {
@@ -159,8 +148,8 @@ body.labeler-interface {
       }
 
       a .nav-user-company {
-        font-size: unset;
-        line-height: unset;
+        font-size: unset !important;
+        line-height: unset !important;
       }
 
       //Could add `>` to make sure it is only the nav part, not the items in the dropdown, but a touch screen user might have trouble
@@ -188,41 +177,20 @@ body.labeler-interface {
   }
 }
 
-// Search modal contain some items
-.item {
-  font-size: 1.1em;
-  background-color: white;
-  border: 1px solid #ddd;
-  padding: 10px;
-  margin-bottom: 4px;
-  cursor: pointer;
-  position: relative;
-
-  .item-price, .item-stock {
-    font-weight: bold;
-    background-color: var(--theme-blue--dark-bg);
-    color: white;
-    padding: 2px 8px;
-    margin-right: 4px;
-  }
-  .item-stock {
-    background-color: #777;
-  }
-}
-
 .look-up-container {
 
   *:not(.header) {
     border-radius: 4px;
   }
 
-  .form-section,
-  .item:not(.mark):not(.inactive) {
-    background-color: white;
-  }
-
   .load-data {
     padding: 10px;
+  }
+
+  @media screen and (max-width: 992px) {
+    .load-data {
+      padding: 10px 0 !important;
+    }
   }
 
   .load-overlay {
@@ -232,12 +200,16 @@ body.labeler-interface {
   .form-section {
     border: 1px solid #ddd;
     margin-top: 10px;
-    background-color: white;
+    box-shadow: 0 0px 8px rgba(0,0,0,0.1);
   }
 
   .item-list {
     max-height: calc(100vh - 70px);
     overflow: auto;
+
+    .item:not(.mark):not(.inactive) {
+      background-color: white;
+    }
 
     .item {
       transition: 0.5s;
@@ -245,6 +217,25 @@ body.labeler-interface {
       display: grid;
       grid-template-columns: auto min-content min-content;
       column-gap: 5px;
+      font-size: 1.1em;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      position: relative;
+    
+      .item-price,
+      .item-stock {
+        font-weight: bold;
+        background-color: var(--theme-blue--dark-bg);
+        color: white;
+        padding: 2px 8px;
+        margin-right: 4px;
+      }
+    
+      .item-stock {
+        background-color: #777;
+      }
 
       .item-main {
         grid-row: 1;
@@ -321,7 +312,7 @@ body.labeler-interface {
     width: 80px;
     text-align: right;
     color: var(--theme-orange--base-bg);
-    padding-top: 5px;
+    padding-top: 35px;
     text-transform: lowercase;
   }
 
@@ -342,6 +333,7 @@ body.labeler-interface {
   * {
     border-radius: 4px !important;
   }
+
   .keyboard {
     display: grid;
     background-color: #f5f5f5;
@@ -350,29 +342,15 @@ body.labeler-interface {
     gap: 10px;
     width: 200px;
     margin: 0px auto;
-    & > * {
-        padding: 10px;
-        font-size: 18px;
+
+    &>* {
+      padding: 10px;
+      font-size: 18px;
     }
+
     // .backspace {
     //     grid-column: span 2;
     // }
-  }
-}
-
-#search-results {
-  * {
-    border-radius: 4px !important;
-  }
-
-  .item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .item-name {
-    margin-right: 10px;
   }
 }
 

@@ -20,7 +20,7 @@ export class FormSimplifier {
     const fieldsToHide = [
       'vatRate', 'minQuantity', 'netWeight', 'grossWeight', 'expenseCorrespondenceAccountCode',
       'saleCorrespondenceAccountCode', 'purchaseCorrespondenceAccountCode', 'externalId', 'isCommentRequired',
-      'defaultSaleService', 'countryOfOriginName', 'intrastatShortDescription', 'intrastatCode', 'priceFrom', 'priceUntil', 'minPriceWithVat', 'priceMinQuantity', 'stock',
+      'defaultSaleService', 'countryOfOriginName', 'intrastatShortDescription', 'intrastatCode', 'priceFrom', 'priceUntil', 'minPriceWithVat', 'priceMinQuantity',
       'discountStatus', 'maxDiscount', 'discountPointsStatus', 'ageLimit', 'certificateDate',
       'certificateNumber', 'validFrom', 'validUntil', 'attribute1', 'attribute2', 'attribute3'
     ]
@@ -48,7 +48,7 @@ export class FormSimplifier {
       if (formGroup != null) {
         (formGroup as HTMLElement).style.display = 'none'
         const parent = formGroup.parentElement
-        if ((parent != null) && !parent.classList.contains('col-lg-12') && !parent.tagName.includes('form')) {
+        if ((parent != null) && !parent.classList.contains('col-lg-12') && !parent.tagName.includes('FORM')) {
           (parent).style.display = 'none'
         }
       }
