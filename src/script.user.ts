@@ -3,11 +3,9 @@
 import all from './styles/all.scss'
 import { UserSession } from './userSession'
 import { LabelerInterface } from './labelerInterface'
-import { Request } from './request'
 import { type item } from './item'
 import { i18n } from './i18n'
 import { LabelGenerator } from './labelGenerator'
-import { FormSimplifier } from './formSimplifier'
 import { UINotification } from './ui-notification'
 interface row extends item {
   _select: boolean
@@ -92,9 +90,6 @@ class LabelsUserscript {
         case '/en/reference-book/items/edit':
         case '/reference-book/items/edit':
           success = this.addPrintButton('.btn-ctrl', true)
-          if (success) {
-            void new FormSimplifier()
-          }
           break
         default:
           success = true
@@ -146,35 +141,23 @@ class LabelsUserscript {
     const dataRows = this.getDataRows()
     return angular.element(dataRows).controller().grid.data.filter((a: row) => a._select)
   }
-  async extractDataFromAngularPurchaseView (): Promise<item[]> {
+  async extractDataFromAngularPurchaseView (): item[] {
     const dataRows = this.getDataRows()
     const selectedRows = angular.element(dataRows).controller().data.filter((a: row) => a._select)
-    const extractedData = []
-    if (confirm(i18n('askingForPackageCode'))) { // Get full item data from the server
-      this.notification.primary(i18n('aboutToCheckPackageCode'))
-      const barcodes = selectedRows.map((row: any) => row.itemBarcode)
-      const req = new Request(this.notification)
-      for (const barcode of barcodes) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        const item = await req.getItem(barcode)
-        if (item != null) {
-          extractedData.push(item)
-        }
-        await new Promise(resolve => setTimeout(resolve, 200))
-      }
-    } else { // Use the limited data from the view
+    const items: item[] = []
       selectedRows.forEach((row: any) => {
-        extractedData.push({
+        items.push({
           name: row.itemName,
           barcode: row.itemBarcode,
           code: row.itemCode,
+          id: row.itemId,
           priceWithVat: row.itemPriceWithVat,
+          priceWithoutVat: row.itemPriceWithoutVat,
           measurementUnitName: row.measurementUnitName,
           isActive: true
         })
       })
-    }
-    return extractedData
+    return items
   }
 
   extractDataFromAngularItemView (): item[] {
@@ -187,23 +170,23 @@ class LabelsUserscript {
     return [data]
   }
 
-  processItemsfromAngular (): void {
-    let data: item[] | Promise<item[]> = []
+  getViewItems (): item[] {
+    let items: item[] = []
     switch (window.location.pathname) {
       case '/en/reference-book/items':
       case '/reference-book/items':
-        data = this.extractDataFromAngularItemList()
+        items = this.extractDataFromAngularItemList()
         break
       case '/en/warehouse/purchases/edit':
       case '/warehouse/purchases/edit':
-        data = this.extractDataFromAngularPurchaseView()
+        items = this.extractDataFromAngularPurchaseView()
         break
       case '/en/reference-book/items/edit':
       case '/reference-book/items/edit':
-        data = this.extractDataFromAngularItemView()
+        items = this.extractDataFromAngularItemView()
         break
     }
-    void new LabelGenerator(data)
+    return items
   }
 // TODO: DYI rule!
   public addPrintButton (parentSelector: string = '.buttons-left', withName: boolean = false): boolean {
@@ -235,7 +218,14 @@ class LabelsUserscript {
       span.textContent = i18n('print')
       button.appendChild(span)
     }
-    button.addEventListener('click', this.processItemsfromAngular.bind(this))
+    button.addEventListener('click', () => {
+      const items = this.getViewItems()
+      if (items.length < 1) {
+        this.notification.error(i18n('noItemsSelected'))
+        return
+      }
+      new LabelGenerator(items)
+    });
     printDiv.appendChild(button)
     buttonsLeft.appendChild(printDiv)
     // Add weight label button
@@ -261,7 +251,7 @@ class LabelsUserscript {
   }
 
   goToWeightLabelModal (): void {
-    const items = this.extractDataFromAngularItemList()
+    const items = this.getViewItems()
     if (items.length < 1) {
       this.notification.error(i18n('noItemsSelected'))
       return

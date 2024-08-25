@@ -109,10 +109,12 @@ export class LabelerInterface {
     const ul = document.createElement('ul')
     parentElement.appendChild(ul)
     if (navAll) {
-      const writeOff = this.createNavItem(i18n('markdowns'), () => {}, 'fa-book')
-      writeOff.setAttribute('data-toggle', 'modal')
-      writeOff.setAttribute('data-target', '#markdownModal')
-      ul.appendChild(writeOff)
+      const markdown = this.createNavItem(i18n('markdowns'), () => {
+        this.modals?.markdown.load()
+      }, 'fa-book')
+      markdown.setAttribute('data-toggle', 'modal')
+      markdown.setAttribute('data-target', '#markdownModal')
+      ul.appendChild(markdown)
       const itemsList = this.createNavItem(i18n('itemCatalog'), () => { window.location.href = '/reference-book/items' }, 'fa-folder-open')
       ul.appendChild(itemsList)
     } else {
@@ -302,7 +304,7 @@ export class LabelerInterface {
     const labels = ['packageCode', 'weight', 'departmentNumber', 'packageQuantity'] as const
     const ago = this.getSeconds(item.retrievedAt ?? new Date())
     const labelHtml = labels.map(label => item[label] != null ? `<span>${i18n(label)}: ${item[label]}</span>` : '').join('')
-    return labelHtml + (item.weight != null ? `<span>${i18n('kiloPrice')}: <b>${item.priceWithVat.toFixed(3)}</b></span>` : '') 
+    return labelHtml + (item.weight != null ? `<span>${i18n('kiloPrice')}: <b>${item.priceWithVat.toFixed(2)}</b></span>` : '') 
     + (item.measurementUnitCanBeWeighed ? `<span>${i18n('weightedItem')}</span>` : '')
     + `<span class="text-primary">${ this.getAgoText(ago) }</span>`
   }

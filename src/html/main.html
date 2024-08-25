@@ -159,27 +159,25 @@
 </div>
 <div class="modal fade" id="markdownModal" tabindex="-1" role="dialog" aria-labelledby="markdownModal"
   aria-hidden="true">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title inline">${i18n('markdowns')}</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"> <span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">${i18n('markdowns')}</h4>
       </div>
       <div class="modal-body">
-        <div class="form-group">
-          <button class="btn btn-white" id="loadMarkdowns">
-            <i class="fa fa-refresh"></i>&nbsp;
-            ${i18n('showByDate')}
-          </button>
-        </div>
         <div class="table-responsive">
           <table class="table table-striped table-bordered table-hover" id="markdownTable"></table>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn" data-dismiss="modal">${i18n('close')}</button>
+        <button class="btn btn-white" id="loadMarkdowns">
+          <i class="fa fa-refresh"></i>&nbsp;
+          ${i18n('showByDate')}
+        </button>
+        <button type="button" class="btn" data-dismiss="modal">
+          <i class="fa fa-times"></i>&nbsp;
+          ${i18n('close')}</button>
       </div>
     </div>
   </div>
