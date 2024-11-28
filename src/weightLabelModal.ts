@@ -10,7 +10,6 @@ export class WeightLabelModal {
   addManufacturer = document.getElementById('addManufacturer') as HTMLInputElement
   addPackageFeeNote = document.getElementById('addPackageFeeNote') as HTMLInputElement
   addButton = document.getElementById('addWeightedItem') as HTMLButtonElement
-  batchNumber = document.getElementById('batchNumber') as HTMLInputElement
   expiryDate = document.getElementById('expiryDate') as HTMLInputElement
   kgPrice = document.getElementById('kgPrice') as HTMLInputElement
   manufacturerField = document.getElementById('manufacturerField')
@@ -39,12 +38,6 @@ export class WeightLabelModal {
     this.productWeight.addEventListener('keypress', this.interface.handleEnterPress(() => { this.add() }))
     this.productWeight.addEventListener('input', this.handleWeightChange.bind(this))
     this.toggleButton.addEventListener('click', this.toggleKeyboard.bind(this))
-    const fields = [this.productWeight, this.batchNumber];
-    fields.forEach(field => {
-      field.addEventListener('click', () => {
-        this.activeInput = field;
-      });
-    });
     this.keys.forEach(key => {
       key.addEventListener('click', () => {
         const keyValue = key.getAttribute('data-key');
@@ -92,7 +85,6 @@ export class WeightLabelModal {
       return null
     }
     this.currentItem.expiryDate = (this.expiryDate?.value != null && this.expiryDate.value.length > 0) ? this.expiryDate.value.slice(5) : undefined
-    this.currentItem.batchNumber = (this.batchNumber?.value != null && this.batchNumber.value.length > 0) ? this.batchNumber.value : undefined
     this.currentItem.addManufacturer = this.addManufacturer?.checked && this.currentItem.manufacturerName != null
     this.currentItem.addPackageFeeNote = this.addPackageFeeNote?.checked
     this.notifier.info({

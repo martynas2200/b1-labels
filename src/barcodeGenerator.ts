@@ -1,3 +1,4 @@
+/* eslint-disable */
 /** Reference:
 * @author alois zingl
 * @link https://zingl.github.io/

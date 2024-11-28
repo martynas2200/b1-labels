@@ -142,7 +142,7 @@ export class LabelGenerator {
     const barcode = document.createElement('div')
     barcode.className = 'barcode'
     // Prefix 2200, then 13 digits of barcode, then 4 digits of weight
-    const barcodeString = (data.addPackageFeeNote == true ? '1102\n' : '') + '2200' + '0'.repeat(13 - data.barcode.length) + data.barcode + '0'.repeat(5 - data.weight.toFixed(3).length) + data.weight.toFixed(3).replace('.', '')
+    const barcodeString = (data.addPackageFeeNote == true ? '1102\r' : '') + '2200' + '0'.repeat(13 - data.barcode.length) + data.barcode + '0'.repeat(5 - data.weight.toFixed(3).length) + data.weight.toFixed(3).replace('.', '')
     const svgNS = "http://www.w3.org/2000/svg";
     const svg: SVGSVGElement = document.createElementNS(svgNS, 'svg');
     const path = document.createElementNS(svgNS, 'path');
@@ -163,13 +163,6 @@ export class LabelGenerator {
 
       expiryText.appendChild(expiryDate)
       label.appendChild(expiryText)
-    }
-
-    if (data.batchNumber != null) {
-      const series = document.createElement('div')
-      series.className = 'batch-no'
-      series.textContent = `Part. nr. ${data.batchNumber}`
-      label.appendChild(series)
     }
 
     if (data.addManufacturer == true && data.manufacturerName != null) {
@@ -205,6 +198,17 @@ export class LabelGenerator {
     labels.forEach(label => {
       popup.document.body.appendChild(label)
     })
+
+    // wait for the images to load if there are any
+    const images = popup.document.getElementsByTagName('img')
+    const promises = Array.from(images).map(image => {
+      return new Promise((resolve, reject) => {
+        image.onload = resolve
+        image.onerror = reject
+      })
+    })
+
+    await Promise.all(promises)
 
     popup.addEventListener('afterprint', () => {
       popup.close()

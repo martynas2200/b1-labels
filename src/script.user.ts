@@ -77,7 +77,7 @@ class LabelsUserscript {
         case '/en/warehouse/purchases/edit':
         case '/reference-book/items':
         case '/warehouse/purchases/edit':
-          success = this.addPrintButton()
+          success = await this.addPrintButton()
           // Check after a delay, we could have added the button to the old view
           if (success) {
             setTimeout(() => {
@@ -89,7 +89,7 @@ class LabelsUserscript {
           break
         case '/en/reference-book/items/edit':
         case '/reference-book/items/edit':
-          success = this.addPrintButton('.btn-ctrl', true)
+          success = await this.addPrintButton('.btn-ctrl', true)
           break
         default:
           success = true
@@ -109,7 +109,7 @@ class LabelsUserscript {
           case '/reference-book/items':
           case '/en/reference-book/items/edit':
           case '/reference-book/items/edit':
-            this.pageReady = this.interface.simplifyPage(false) && this.addPrintButton('.buttons-left', true) && this.addFilters()
+            this.pageReady = this.interface.simplifyPage(false) && await this.addPrintButton('.buttons-left', true) && this.addFilters()
             break
           default:
             this.pageReady = this.interface.init()
@@ -141,10 +141,10 @@ class LabelsUserscript {
     const dataRows = this.getDataRows()
     return angular.element(dataRows).controller().grid.data.filter((a: row) => a._select)
   }
-  async extractDataFromAngularPurchaseView (): item[] {
+  async extractDataFromAngularPurchaseView (): Promise<any[]> {
     const dataRows = this.getDataRows()
     const selectedRows = angular.element(dataRows).controller().data.filter((a: row) => a._select)
-    const items: item[] = []
+    const items: any[] = []
       selectedRows.forEach((row: any) => {
         items.push({
           name: row.itemName,
@@ -170,7 +170,7 @@ class LabelsUserscript {
     return [data]
   }
 
-  getViewItems (): item[] {
+ async getViewItems (): Promise<item[]> {
     let items: item[] = []
     switch (window.location.pathname) {
       case '/en/reference-book/items':
@@ -179,7 +179,7 @@ class LabelsUserscript {
         break
       case '/en/warehouse/purchases/edit':
       case '/warehouse/purchases/edit':
-        items = this.extractDataFromAngularPurchaseView()
+        items = await this.extractDataFromAngularPurchaseView()
         break
       case '/en/reference-book/items/edit':
       case '/reference-book/items/edit':
@@ -188,8 +188,8 @@ class LabelsUserscript {
     }
     return items
   }
-// TODO: DYI rule!
-  public addPrintButton (parentSelector: string = '.buttons-left', withName: boolean = false): boolean {
+
+  public async addPrintButton (parentSelector: string = '.buttons-left', withName: boolean = false): Promise<boolean> {
     const buttonsLeft = document.querySelector(parentSelector)
     if (buttonsLeft == null) {
       return false
@@ -218,8 +218,8 @@ class LabelsUserscript {
       span.textContent = i18n('print')
       button.appendChild(span)
     }
-    button.addEventListener('click', () => {
-      const items = this.getViewItems()
+    button.addEventListener('click', async () => {
+      const items = await this.getViewItems()
       if (items.length < 1) {
         this.notification.error(i18n('noItemsSelected'))
         return
@@ -250,8 +250,8 @@ class LabelsUserscript {
     return true
   }
 
-  goToWeightLabelModal (): void {
-    const items = this.getViewItems()
+  async goToWeightLabelModal (): Promise<void> {
+    const items = await this.getViewItems()
     if (items.length < 1) {
       this.notification.error(i18n('noItemsSelected'))
       return
@@ -284,7 +284,7 @@ class LabelsUserscript {
         message: i18n('show') +': ' + controller.filter.asString,
         positionY: 'bottom'
       });
-    }, 700);
+    }, 1200);
     return true
   }
 

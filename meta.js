@@ -21,7 +21,7 @@ export async function getVersion() {
   }
 }
 
-const metadata = {
+const defaultMetadata = {
   name: "Label Generator for the items in b1.lt",
   namespace: "http://tampermonkey.net/",
   homepage: "https://github.com/martynas2200/b1-labels",
@@ -42,6 +42,7 @@ function addSpaces(key) {
 }
 
 export default async function addUserScriptMetadata(overwrites = {}) {
+  let metadata = { ...defaultMetadata };
   for (const key in overwrites) {
     if (key in metadata) {
       metadata[key] = overwrites[key];

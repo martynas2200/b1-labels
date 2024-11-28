@@ -72,10 +72,13 @@ export class Request {
     return /^\d+$/.test(barcode)
   }
 
-  removeLeadingZeros(barcode: string): string {
-    return barcode.replace(/^0+/, '');
-  }
-
+  /**
+   * Get item by barcode
+   * @param barcode - barcode of the item
+   * @returns item object
+   * @example
+   * const item = await req.getItem('1234567890123')
+   */
   async getItem (barcode: string): Promise<any> {
     if (!this.isItDigits(barcode)) {
       this.notifier.error('Invalid barcode')
@@ -94,7 +97,13 @@ export class Request {
       pageSize: 20,
       filters: {
         groupOp: 'AND',
-        rules: { barcode: { data: this.removeLeadingZeros(barcode), field: 'barcode', op: 'eq' } }
+        rules: { 
+          barcode: { 
+            data: barcode, 
+            field: 'barcode', 
+            op: (barcode[0] === '0' ? 'cn' : 'eq')
+          }
+        }
       },
       allSelected: false,
       asString: '',
@@ -107,6 +116,10 @@ export class Request {
     }
     data.data[0].retrievedAt = new Date()
     this.items[barcode] = data.data[0]
+    // if there more than one item with the same barcode, return the first one, and notify the user
+    if (data.data.length > 1) {
+      this.notifier.warning(i18n('multipleItemsFound') + ' ' + data.data.length)
+    }
     return data.data[0]
   }
   async saveItem(id: string, data: Record<string, any>): Promise<boolean> {

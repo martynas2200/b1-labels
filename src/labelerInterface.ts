@@ -167,7 +167,6 @@ export class LabelerInterface {
     })
     
     const files = Array.from(target.files);
-    console.info(files);
     accountFileUploadCtrl.uploadToCompany(files, currentCompanyUser.company.id)
 
     await new Promise(resolve => setTimeout(resolve, 5000))
@@ -391,6 +390,9 @@ export class LabelerInterface {
     item.id = this.generateItemId(item.id)
     if (!this.settings.sayOutLoud) {
       // Nothing
+    } else if (this.settings.showStock && this.settings.sayOutLoud && item.stock != null) {
+      void this.textToVoice.speak(item.stock.toString())
+      console.info('\t'+ item.barcode +'\t'+ item.stock);
     } else if (this.items.length > 0 && item.priceWithVat > 0 && (this.items[this.items.length - 1]).barcode == item.barcode && item.weight == this.items[this.items.length - 1].weight) {
       void this.textToVoice.speak(i18n('asMentioned') + ', ' + i18n('price') + ' ' + this.textToVoice.digitsToPrice(item.totalPrice ?? item.priceWithVat) + (item.weight !== undefined ? '. ' + i18n('weight') + this.textToVoice.numberToWords(item.weight) + item.measurementUnitName : '') + ' ' + i18n('thisIs') + ' ' + item.name)
     } else if (item.priceWithVat > 0) {
@@ -433,8 +435,19 @@ export class LabelerInterface {
 
   async searchforAPackagedItem (barcode: string): Promise<void> {
     let item = null
-    const barcodePart = (barcode.length > 13) ? barcode.slice(4, 17) : barcode.slice(0, 8)
-    this.showLoading()
+    let barcodePart = barcode;
+    // long barcode: 2200 + 13 digits of barcode + 4 digits of weight
+    // short barcode: 23 or 24 + 6 digits of barcode + 4 digits of weight
+    // short barcode: 25 or 29 + 5 digits of barcode + 5 digits of weight
+    // const barcodePart = (barcode.length > 13) ? barcode.slice(4, 17) : barcode.slice(0, 8)
+    if (barcode.length === 13 && barcode.slice(0, 2) === '23' || barcode.slice(0, 2) === '24') {
+      barcodePart = barcode.slice(0, 8)
+    } else if (barcode.length === 13 && barcode.slice(0, 2) === '25' || barcode.slice(0, 2) === '29') {
+      barcodePart = barcode.slice(0, 7)
+    } else if (barcode.length === 21) {
+      barcodePart = barcode.slice(4, 17)
+    } 
+
     item = await this.req.getItem(barcodePart) as packagedItem
     this.hideLoading()
     if (item != null) {
