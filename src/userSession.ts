@@ -1,31 +1,43 @@
-/* eslint-disable @typescript-eslint/quotes */
-import { i18n } from "./i18n"
-import { UINotification } from "./ui-notification"
+import { i18n } from './i18n'
+import { UINotification } from './ui-notification'
 
 declare let angular: angular.IAngularStatic
 declare let GM: any
 declare let currentCompanyUser: any
 declare let currentUser: any
+
 export class UserSession {
   notification = new UINotification()
   interfaceInUse: boolean = false
   isLoggedIn: boolean = false
   admin: boolean = false
   user: {
-    name: string
-    typeId: number
+    name: string,
+    typeId: number,
   } | null
+  defaultPermissions = {
+    create: false,
+    read: false,
+    update: false,
+    delete: false,
+  }
+  readPermissions = {
+    create: false,
+    read: true,
+    update: false,
+    delete: false,
+  }
 
-  constructor () {
+  constructor() {
     this.user = null
     this.checkLoginStatus()
   }
 
-  public checkLoginStatus (): boolean {
+  checkLoginStatus(): boolean {
     if (currentUser?.name != null) {
       this.isLoggedIn = true
       this.user = currentUser
-      this.admin = (this.user != null) ? this.user.typeId <= 3 : false
+      this.admin = this.user != null ? this.user.typeId <= 3 : false
       if (!this.admin) {
         this.limitPermissions()
       }
@@ -36,17 +48,22 @@ export class UserSession {
     return false
   }
 
-  private limitPermissions (): void {
-    currentCompanyUser.permissions.crudKlientai = { create: false, read: false, update: false, delete: false }
-    currentCompanyUser.permissions.crudBankaisaskait = { create: false, read: false, update: false, delete: false }
-    currentCompanyUser.permissions.crudPardavim = { create: true, read: true, update: true, delete: true }
-    currentCompanyUser.permissions.crudPrekes = { create: false, read: true, update: false, delete: false }
-    currentCompanyUser.permissions.crudDokSer = { create: false, read: false, update: false, delete: false }
+  limitPermissions(): void {
+    currentCompanyUser.permissions.crudBankaisaskait = {
+      ...this.defaultPermissions,
+    }
+    currentCompanyUser.permissions.crudKlientai = { ...this.defaultPermissions }
+    currentCompanyUser.permissions.crudDokSer = { ...this.defaultPermissions }
+    currentCompanyUser.permissions.crudPardavim = { ...this.readPermissions }
+    currentCompanyUser.permissions.crudPrekes = { ...this.readPermissions }
+    currentCompanyUser.permissions['warehouse-tempFiles'].delete = false
   }
 
-  private addContainer (): boolean {
+  addContainer(): boolean {
     const h5Elements = document.querySelectorAll('h5')
-    h5Elements.forEach(element => { element.remove() })
+    h5Elements.forEach((element) => {
+      element.remove()
+    })
 
     const formElement = document.querySelector('form')
     const html = `
@@ -65,14 +82,17 @@ export class UserSession {
     }
   }
 
-  public addLoginOptions (): boolean {
+  addLoginOptions(): boolean {
     if (!this.addContainer()) {
       return false
     }
-    const optionsButton: HTMLButtonElement | null = document.querySelector('#show-login-options')
-    const autoLoginButton: HTMLButtonElement | null = document.querySelector('#auto-login')
+    const optionsButton: HTMLButtonElement | null = document.querySelector(
+      '#show-login-options',
+    )
+    const autoLoginButton: HTMLButtonElement | null =
+      document.querySelector('#auto-login')
     const form: HTMLFormElement | null = document.querySelector('form')
-    if ((optionsButton === null) || (autoLoginButton === null) || (form === null)) {
+    if (optionsButton === null || autoLoginButton === null || form === null) {
       return false
     }
     optionsButton.addEventListener('click', function () {
@@ -86,10 +106,14 @@ export class UserSession {
     return true // success
   }
 
-  private async autoLogin (): Promise<boolean> {
-    const usernameInput: HTMLInputElement | null = document.querySelector('input[name="username"]')
-    const passwordInput: HTMLInputElement | null = document.querySelector('input[name="password"]')
-    if ((usernameInput === null) || (passwordInput === null)) {
+  async autoLogin(): Promise<boolean> {
+    const usernameInput: HTMLInputElement | null = document.querySelector(
+      'input[name="username"]',
+    )
+    const passwordInput: HTMLInputElement | null = document.querySelector(
+      'input[name="password"]',
+    )
+    if (usernameInput === null || passwordInput === null) {
       this.notification.error(i18n('loginDetailsNotFound'))
       return false
     }
@@ -130,9 +154,8 @@ export class UserSession {
   }
 
   // function to prompt user to save login details
-  private async saveLoginDetails (): Promise<void> {
+  async saveLoginDetails(): Promise<void> {
     if (window.confirm('Do you want to save these login details?')) {
-      // prompt user to enter login details
       const username = window.prompt('Enter your username')
       const password = window.prompt('Enter your password')
       if (username != null && password != null) {
@@ -151,4 +174,4 @@ export class UserSession {
     await GM.setValue('api-key', apiKey)
     alert('API key saved')
   }
-};
+}

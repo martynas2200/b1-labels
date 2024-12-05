@@ -9,8 +9,10 @@ export class Request {
   headers: Record<string, string>
   notifier: UINotification
 
-  constructor (notifier: UINotification) {
-    const csrfTokenElement: HTMLMetaElement | null = document.querySelector('meta[name="csrf-token"]')
+  constructor(notifier: UINotification) {
+    const csrfTokenElement: HTMLMetaElement | null = document.querySelector(
+      'meta[name="csrf-token"]',
+    )
     this.csrfToken = csrfTokenElement != null ? csrfTokenElement.content : ''
     this.notifier = notifier
     this.headers = {
@@ -24,11 +26,15 @@ export class Request {
       'sec-fetch-site': 'same-origin',
       'x-requested-with': 'XMLHttpRequest',
       'x-csrf-token': this.csrfToken,
-      cookie: ''
+      cookie: '',
     }
   }
 
-  async fetchData (method: string, path: string, body: Record<string, any>): Promise<any> {
+  async fetchData(
+    method: string,
+    path: string,
+    body: Record<string, any>,
+  ): Promise<any> {
     if (this.csrfToken === '') {
       console.error('CSRF token is missing')
       this.notifier.error('CSRF token is missing')
@@ -42,7 +48,7 @@ export class Request {
       const response = await fetch(`${this.baseUrl}${path}`, {
         method,
         headers: this.headers,
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       })
 
       if (response.ok) {
@@ -50,25 +56,42 @@ export class Request {
         return data
       } else {
         console.error('Request failed with status:', response.status)
-        this.notifier.error({ title: i18n('error'), message: response.statusText })
+        this.notifier.error({
+          title: i18n('error'),
+          message: response.statusText,
+        })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error)
       this.notifier.error('Error: ' + error)
     }
   }
 
-  private getCookies (): void {
-    const cookies = document.cookie.split(';').map(cookie => cookie.trim())
-    cookies.forEach(cookie => {
+  getCookies(): void {
+    const cookies = document.cookie.split(';').map((cookie) => cookie.trim())
+    cookies.forEach((cookie) => {
       const [name, value] = cookie.split('=')
-      if (['_fbp', 'YII_CSRF_TOKEN', 'b1-device_id', 'b1-session_id', 'b1-use-cookies', 'b1-wss_srv', '_ga', 'b1-ref_url', '_ga_F9V3KM1JRX'].includes(name.trim())) {
-        this.headers.cookie = (this.headers.cookie.length > 0) ? `${this.headers.cookie}; ${name}=${value}` : `${name}=${value}`
+      if (
+        [
+          'YII_CSRF_TOKEN',
+          'b1-device_id',
+          'b1-session_id',
+          'b1-use-cookies',
+          'b1-wss_srv',
+          'b1-ref_url',
+          'cf_clearance',
+          '_ga',
+        ].includes(name.trim())
+      ) {
+        this.headers.cookie =
+          this.headers.cookie.length > 0
+            ? `${this.headers.cookie}; ${name}=${value}`
+            : `${name}=${value}`
       }
     })
   }
 
-  isItDigits (barcode: string): boolean {
+  isItDigits(barcode: string): boolean {
     return /^\d+$/.test(barcode)
   }
 
@@ -79,35 +102,44 @@ export class Request {
    * @example
    * const item = await req.getItem('1234567890123')
    */
-  async getItem (barcode: string): Promise<any> {
+  async getItem(barcode: string): Promise<any> {
     if (!this.isItDigits(barcode)) {
       this.notifier.error('Invalid barcode')
       return null
     }
     if (Object.keys(this.items).includes(barcode)) {
       const retrievedAt = this.items[barcode].retrievedAt
-      if (retrievedAt != null && barcode.length > 10 && new Date().getTime() - retrievedAt.getTime() < 10000) {
-        return JSON.parse(JSON.stringify(this.items[barcode]))
-      } else if (retrievedAt != null && barcode.length < 10 && new Date().getTime() - retrievedAt.getTime() < 30000) {
-        return JSON.parse(JSON.stringify(this.items[barcode]))
+      if (
+        retrievedAt != null &&
+        barcode.length > 10 &&
+        new Date().getTime() - retrievedAt.getTime() < 30000
+      ) {
+        return { ...this.items[barcode] }
+      } else if (
+        retrievedAt != null &&
+        barcode.length < 10 &&
+        new Date().getTime() - retrievedAt.getTime() < 60000
+      ) {
+        return { ...this.items[barcode] }
       }
     }
+
     // Prepare the request body
     const body = {
       pageSize: 20,
       filters: {
         groupOp: 'AND',
-        rules: { 
-          barcode: { 
-            data: barcode, 
-            field: 'barcode', 
-            op: (barcode[0] === '0' ? 'cn' : 'eq')
-          }
-        }
+        rules: {
+          barcode: {
+            data: barcode,
+            field: 'barcode',
+            op: barcode[0] === '0' ? 'cn' : 'eq',
+          },
+        },
       },
       allSelected: false,
       asString: '',
-      page: 1
+      page: 1,
     }
 
     const data = await this.fetchData('POST', this.path, body)
@@ -118,49 +150,70 @@ export class Request {
     this.items[barcode] = data.data[0]
     // if there more than one item with the same barcode, return the first one, and notify the user
     if (data.data.length > 1) {
-      this.notifier.warning(i18n('multipleItemsFound') + ' ' + data.data.length)
+      this.notifier.warning({
+        title: i18n('multipleItemsFound'),
+        delay: 20000,
+        message:
+          i18n('barcode') +
+          ' ' +
+          barcode +
+          ' ' +
+          i18n('found') +
+          ' ' +
+          data.data.length +
+          ' ' +
+          i18n('items'),
+      })
     }
     return data.data[0]
   }
   async saveItem(id: string, data: Record<string, any>): Promise<boolean> {
     // Check if the id is provided and it consists of digits only
     if (!this.isItDigits(id)) {
-      this.notifier.error(i18n('invalidId'));
-      return false;
+      this.notifier.error(i18n('invalidId'))
+      return false
     }
-    const response = await this.fetchData('POST', `/reference-book/items/update?id=${id}`, data);
-    
+    const response = await this.fetchData(
+      'POST',
+      `/reference-book/items/update?id=${id}`,
+      data,
+    )
+
     if (response.code === 200) {
       this.notifier.success({
         title: i18n('itemUpdated'),
         message: i18n('newPriceIs') + data.priceWithVat,
-        delay: 15000
+        delay: 15000,
       })
     } else {
       this.notifier.error({
         title: i18n('failedToUpdateItem'),
-        message: response.message
+        message: response.message,
       })
-    } 
-    return response.code === 200 
-}
-  async createItem (data: Record<string, any>): Promise<boolean> {
-    const response = await this.fetchData('POST', '/reference-book/items/create', data);
+    }
+    return response.code === 200
+  }
+  async createItem(data: Record<string, any>): Promise<boolean> {
+    const response = await this.fetchData(
+      'POST',
+      '/reference-book/items/create',
+      data,
+    )
     if (response.code === 200) {
-      this.notifier.success(i18n('itemCreated'));
+      this.notifier.success(i18n('itemCreated'))
       setTimeout(() => {
-        void this.saveItem(response.data.id, { isActive: true });
-      }, 400);
+        void this.saveItem(response.data.id, { isActive: true })
+      }, 400)
     } else {
       this.notifier.error({
         title: i18n('failedToCreateItem'),
-        message: response.message
+        message: response.message,
       })
     }
     return response.code === 200
   }
 
-  async getSales (operationTypeName: string): Promise<any> {
+  async getSales(operationTypeName: string): Promise<any> {
     const body = {
       sort: { saleDate: 'desc' },
       page: 1,
@@ -169,33 +222,37 @@ export class Request {
       asString: '',
       filters: {
         rules: {
-          operationTypeName: { data: operationTypeName, field: 'operationTypeName', op: 'cn' }
-        }
-      }
+          operationTypeName: {
+            data: operationTypeName,
+            field: 'operationTypeName',
+            op: 'cn',
+          },
+        },
+      },
     }
     const path = '/warehouse/light-sales/search'
     return this.fetchData('POST', path, body)
   }
 
-  public getSaleItems (lightSaleId: string): Promise<any> {
+  getSaleItems(lightSaleId: string): Promise<any> {
     const body = {
       page: 1,
       pageSize: -1,
       filters: {
         rules: {
-          lightSaleId: { field: 'lightSaleId', op: 'eq', data: lightSaleId }
-        }
-      }
+          lightSaleId: { field: 'lightSaleId', op: 'eq', data: lightSaleId },
+        },
+      },
     }
     return this.fetchData('POST', '/warehouse/light-sale-items/search', body)
   }
 
-  public clearCache() {
+  clearCache() {
     const nItems = Object.keys(this.items).length
     this.items = {}
-    this.notifier.info({ 
-      title: i18n('cacheCleared'), 
-      message: nItems + i18n('nItemsRemoved')
+    this.notifier.info({
+      title: i18n('cacheCleared'),
+      message: nItems + i18n('nItemsRemoved'),
     })
   }
 }

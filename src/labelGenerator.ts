@@ -143,9 +143,9 @@ export class LabelGenerator {
     barcode.className = 'barcode'
     // Prefix 2200, then 13 digits of barcode, then 4 digits of weight
     const barcodeString = (data.addPackageFeeNote == true ? '1102\r\n' : '') + '2200' + '0'.repeat(13 - data.barcode.length) + data.barcode + '0'.repeat(5 - data.weight.toFixed(3).length) + data.weight.toFixed(3).replace('.', '')
-    const svgNS = "http://www.w3.org/2000/svg";
-    const svg: SVGSVGElement = document.createElementNS(svgNS, 'svg');
-    const path = document.createElementNS(svgNS, 'path');
+    const svgNS = "http://www.w3.org/2000/svg"
+    const svg: SVGSVGElement = document.createElementNS(svgNS, 'svg')
+    const path = document.createElementNS(svgNS, 'path')
     path.setAttribute('transform', 'scale(1)')
     svg.appendChild(path)
     barcode.appendChild(svg)

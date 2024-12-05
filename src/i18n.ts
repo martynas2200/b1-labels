@@ -1,5 +1,6 @@
 function lettersToNumbers(barcode: string): string {
-  return barcode.replace(/ą/g, '1')
+  return barcode
+    .replace(/ą/g, '1')
     .replace(/č/g, '2')
     .replace(/ę/g, '3')
     .replace(/ė/g, '4')
@@ -49,8 +50,7 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     enterNewPrice: 'Enter new price',
     error: 'Error',
     expiryDate: 'Expiry Date',
-    failedToCreateItem: 'Failed to create item',
-    failedToUpdateItem: 'Failed to update item',
+    files: 'Files',
     fitRaso: 'Fit Raso',
     freePrice: 'Free Price',
     fullBarcode: 'Full Barcode',
@@ -73,6 +73,7 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     kiloPrice: 'Price per kilo',
     labelsAndPrices: 'Labels and Prices',
     leftover: 'Leftover',
+    loading: 'Loading...',
     login: 'Login',
     loginDetailsNotFound: 'Login details not found',
     manufacturerName: 'Manufacturer Name',
@@ -86,6 +87,7 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     missingElements: 'Missing UI elements',
     missingName: 'Missing name',
     missingWeight: 'Missing weight',
+    multipleItemsFound: 'Multiple items found!',
     name: 'Name',
     netWeight: 'Net Weight',
     newItem: 'New Item',
@@ -98,9 +100,11 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     noItemsFound: 'No items found',
     noItemsScanned: 'No items scanned',
     noItemsSelected: 'No items selected!',
-    notAllItemsActive: 'Not all selected items are active. Do you want to continue?',
+    notAllItemsActive:
+      'Not all selected items are active. Do you want to continue?',
     number: 'Number',
-    onlyAvailableInPurchaseView: 'This is not a purchase view. This feature is only available in the purchase view',
+    onlyAvailableInPurchaseView:
+      'This is not a purchase view. This feature is only available in the purchase view',
     packageCode: 'Package',
     packageQuantity: 'Package Quantity',
     pcs: 'pcs',
@@ -136,7 +140,6 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     tooManyItems: 'Too many items',
     total: 'Total',
     totalPrice: 'Total Price',
-    uploadFile: 'Upload File',
     validFrom: 'Valid From',
     validUntil: 'Valid Until',
     vatRate: 'VAT Rate',
@@ -145,14 +148,14 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     weightedItemAdded: 'Weighted item added',
     weightLabel: 'Weight Label',
     yes: 'Yes',
-    zero: 'zero'
+    zero: 'zero',
   },
   lt: {
     add: 'Pridėti',
     ago: '',
     addDescription: 'Pridėti aprašymą',
     addManufacturer: 'Pridėti gamintoją',
-    addPackageFeeNote: 'Pridėti pakuočių mokestį',
+    addPackageFeeNote: 'Pridėti fasavimo maišelį',
     ageLimit: 'Amžiaus limitas',
     alcohol: 'Alkoholis',
     alternativeLabelFormat: 'Etiketėje tik brūkšninis kodas',
@@ -165,7 +168,8 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     checked: 'Tikrinta prieš',
     cleanAll: 'Išvalyti',
     clearAfterPrint: 'Išvalyti po spausdinimo',
-    clickToAdd: 'Paspauskite ant prekės, kad ją pridėtumėte į spausdinimo sąrašą',
+    clickToAdd:
+      'Paspauskite ant prekės, kad ją pridėtumėte į spausdinimo sąrašą',
     close: 'Uždaryti',
     code: 'Kodas',
     cost: 'Savikaina',
@@ -185,6 +189,7 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     enterNewPrice: 'Įveskite naują kainą',
     error: 'Įvyko klaida',
     expiryDate: 'Galiojimo data',
+    files: 'Failai',
     fitRaso: 'Tinkamas RASO importui',
     freePrice: 'Laisva kaina',
     fullBarcode: 'Pilnas brūkšninis kodas',
@@ -207,6 +212,7 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     kiloPrice: 'Kilogramo kaina',
     labelsAndPrices: 'Etiketės ir kainos',
     leftover: 'Liko',
+    loading: 'Kraunama...',
     login: 'Prisijungimas darbo vietoje',
     loginDetailsNotFound: 'Prisijungimo duomenys nerasti',
     manufacturerName: 'Gamintojo pavadinimas',
@@ -220,6 +226,7 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     missingElements: 'Trūksta UI elementų',
     missingName: 'Trūksta pavadinimo',
     missingWeight: 'Trūksta svorio',
+    multipleItemsFound: 'Rasta daugiau nei viena prekė!',
     name: 'Pavadinimas',
     netWeight: 'Neto svoris',
     newItem: 'Nauja prekė',
@@ -232,9 +239,11 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     noItemsFound: 'Nieko nerasta',
     noItemsScanned: 'Nėra skenuotų prekių',
     noItemsSelected: 'Nėra pasirinktų prekių',
-    notAllItemsActive: 'Ne visos pasirinktos prekės yra aktyvios. Ar norite tęsti?',
+    notAllItemsActive:
+      'Ne visos pasirinktos prekės yra aktyvios. Ar norite tęsti?',
     number: 'Numeris',
-    onlyAvailableInPurchaseView: 'Tai ne pirkimo peržiūra. Ši funkcija yra prieinama tik Pirkimai, atidarius vieną iš jų',
+    onlyAvailableInPurchaseView:
+      'Tai ne pirkimo peržiūra. Ši funkcija yra prieinama tik Pirkimai, atidarius vieną iš jų',
     packageCode: 'Pakuotė',
     packageQuantity: 'Pakuotės kiekis',
     pcs: 'vnt.',
@@ -270,7 +279,6 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     tooManyItems: 'Per daug prekių',
     total: 'Bendra suma',
     totalPrice: 'Apskaičiuota kaina',
-    uploadFile: 'Įkelti failą',
     validFrom: 'Galioja nuo',
     validUntil: 'Galioja iki',
     vatRate: 'PVM tarifas',
@@ -280,7 +288,7 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     weightLabel: 'Svorio etiketė',
     yes: 'Taip',
     zero: 'nulis',
-  }
+  },
 }
 
 let userLanguage: string = navigator.language.split('-')[0]
@@ -291,7 +299,9 @@ if (languagePattern.test(currentUrl)) {
   userLanguage = 'en'
 }
 
-const currentLanguage: string = LANGUAGES[userLanguage] != null ? userLanguage : 'en'
-const i18n = (key: string): string => LANGUAGES[currentLanguage][key] ?? LANGUAGES.en[key] ?? key
+const currentLanguage: string =
+  LANGUAGES[userLanguage] != null ? userLanguage : 'en'
+const i18n = (key: string): string =>
+  LANGUAGES[currentLanguage][key] ?? LANGUAGES.en[key] ?? key
 
 export { i18n, lettersToNumbers }

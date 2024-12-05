@@ -1,6 +1,5 @@
 import { createFilter } from '@rollup/pluginutils';
 import { promises as fs } from 'fs';
-import { connect } from 'http2';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -41,21 +40,21 @@ function addSpaces(key) {
   return ' '.repeat(16 - key.length);
 }
 
-export default async function addUserScriptMetadata(overwrites = {}) {
+export default function addUserScriptMetadata(overwrites = {}) {
   let metadata = { ...defaultMetadata };
   for (const key in overwrites) {
     if (key in metadata) {
       metadata[key] = overwrites[key];
     }
   }
-  metadata.version = await getVersion();
-  const filter = createFilter(['**/*.js']);
-
+  
   return {
     name: 'add-userscript-metadata',
-    generateBundle(_, bundle) {
+    async generateBundle(_, bundle) {
       for (const fileName in bundle) {
+        const filter = createFilter(['**/*.js']);
         if (filter(fileName)) {
+          metadata.version = await getVersion();
           const content = bundle[fileName].code;
           let metadataBlock = `// ==UserScript==\n`;
           for (const key in metadata) {

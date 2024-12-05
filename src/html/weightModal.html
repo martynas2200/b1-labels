@@ -1,0 +1,75 @@
+      <div class="modal-header">
+        <button type="button" class="close" ng-click="close()" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        <h4 class="modal-title" id="weightLabelModalLabel">${i18n('weightLabel')}</h4>
+      </div>
+      <div class="modal-body {{ item.weight > 9999 ? 'background-white-red' : '' }}">
+        <div class="form">
+          <div class="form-group">
+            <label for="productName">${i18n('name')}</label>
+            <input type="text" class="form-control" ng-model="item.name" readonly>
+          </div>
+          <div class="row">
+            <div class="form-group col-sm-4">
+              <label for="productWeight" >${i18n('weight')} (g)</label>
+              <input type="text" class="form-control" ng-model="item.weight" ng-keyup="handleWeightChange(item.weight)" ng-keydown="hideVirtualKeyboard()">
+            </div>
+            <div class="form-group col-sm-4">
+              <label for="totalPrice">${i18n('totalPrice')} (EUR)</label>
+              <input type="number" step="0.01" class="form-control" readonly ng-model="item.totalPrice" >
+            </div>
+            <div class="form-group col-sm-4">
+              <label for="kgPrice">${i18n('pricePerKg')} (EUR)</label>
+              <input type="number" step="0.01" class="form-control" readonly ng-model="item.priceWithVat">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-6">
+              <div class="form-group">
+                <label for="expiryDate">${i18n('expiryDate')}</label>
+                <input type="date" class="form-control" ng-model="item.expiryDate"
+                ng-click="picker($event)">
+              </div>
+              <div class="form-group">
+                <div class="checkbox-form">
+                  <label>
+                    <input type="checkbox" class="ace" ng-model="item.addManufacturer">
+                    <span class="lbl display-inline">&nbsp;${i18n('addManufacturer')}&nbsp; {{ item.manufacturerName }}</span>
+                  </label>
+                </div>
+                <div class="checkbox-form">
+                  <label>
+                    <input type="checkbox" class="ace" ng-model="item.addPackageFeeNote" checked>
+                    <span class="lbl display-inline">&nbsp;${i18n('addPackageFeeNote')}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-6" ng-show="virtualKeyboardVisible">
+              <div class="keyboard">
+                <button class="key btn" ng-click="key('1')">1</button>
+                <button class="key btn" ng-click="key('2')">2</button>
+                <button class="key btn" ng-click="key('3')">3</button>
+                <button class="key btn" ng-click="key('4')">4</button>
+                <button class="key btn" ng-click="key('5')">5</button>
+                <button class="key btn" ng-click="key('6')">6</button>
+                <button class="key btn" ng-click="key('7')">7</button>
+                <button class="key btn" ng-click="key('8')">8</button>
+                <button class="key btn" ng-click="key('9')">9</button>
+                <button class="key btn" ng-click="key('0')">0</button>
+                <button class="key btn btn-grey" ng-click="key('c')">C</button>
+                <button class="key btn btn-danger backspace" ng-click="key('d')">⌫</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" ng-click="close()">
+          <i class="fa fa-times"></i>&nbsp;${i18n('close')}</button>
+        <button type="button" class="btn btn-primary" ng-click="add()" >
+          <i class="fa fa-plus"></i>&nbsp;${i18n('add')}</button>
+        <button type="button" class="btn btn-purple" ng-click="print()" ">
+          <i class="fa fa-print"></i>&nbsp;${i18n('print')}</button>
+      </div>

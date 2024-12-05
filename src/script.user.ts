@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-confusing-void-expression */
-/* eslint-disable @typescript-eslint/unbound-method */
 import all from './styles/all.scss'
 import { UserSession } from './userSession'
 import { LabelerInterface } from './labelerInterface'
@@ -82,7 +80,7 @@ class LabelsUserscript {
           if (success) {
             setTimeout(() => {
               if (document.querySelector('.print') == null) {
-                this.addPrintButton()
+                void this.addPrintButton()
               }
             }, 1000)
           }
@@ -108,8 +106,8 @@ class LabelsUserscript {
           case '/en/warehouse/purchases/edit':
           case '/reference-book/items':
           case '/en/reference-book/items/edit':
-          case '/reference-book/items/edit':
-            this.pageReady = this.interface.simplifyPage(false) && await this.addPrintButton('.buttons-left', true) && this.addFilters()
+          case '/reference-book/items/edit': 
+            this.pageReady = this.interface.simplifyPage(false) && await this.addPrintButton('.buttons-left', true)
             break
           default:
             this.pageReady = this.interface.init()
@@ -213,19 +211,14 @@ class LabelsUserscript {
     i.className = 'fa fa-fw fa-print'
     button.appendChild(i)
     if (withName) {
-      let span = document.createElement('span')
+      const span = document.createElement('span')
       span.className = 'margin-left-5'
       span.textContent = i18n('print')
       button.appendChild(span)
     }
-    button.addEventListener('click', async () => {
-      const items = await this.getViewItems()
-      if (items.length < 1) {
-        this.notification.error(i18n('noItemsSelected'))
-        return
-      }
-      new LabelGenerator(items)
-    });
+    button.addEventListener('click', () => {
+      void this.printLabels()
+    })
     printDiv.appendChild(button)
     buttonsLeft.appendChild(printDiv)
     // Add weight label button
@@ -237,12 +230,12 @@ class LabelsUserscript {
     i.className = 'fa fa-fw fa-balance-scale'
     button.appendChild(i)
     if (withName) {
-      let span = document.createElement('span')
+      const span = document.createElement('span')
       span.className = 'margin-left-5'
       span.textContent = i18n('weightLabel')
       button.appendChild(span)
     }
-    button.addEventListener('click', this.goToWeightLabelModal.bind(this))
+    button.addEventListener('click', () => { void this.goToWeightLabelModal() })
     printDiv = document.createElement('div')
     printDiv.appendChild(button)
     buttonsLeft.appendChild(printDiv)
@@ -252,40 +245,16 @@ class LabelsUserscript {
 
   async goToWeightLabelModal (): Promise<void> {
     const items = await this.getViewItems()
+    this.interface.modals?.weight.openWeightModal(items[0])
+  }
+
+  async printLabels (): Promise<void> {
+    const items = await this.getViewItems()
     if (items.length < 1) {
       this.notification.error(i18n('noItemsSelected'))
       return
-    } else if (items.length > 1) {
-      this.notification.error(i18n('tooManyItems'))
-      return
-    } else if (items[0].measurementUnitName !== 'kg' || items[0].priceWithVat < 0 || items[0].priceWithVat == null) {
-      this.notification.error(i18n('error'))
-      return
     }
-    this.interface.init();
-    this.interface.modals?.weight.openWeightModal(items[0]);
-  }
-
-  addFilters (): boolean {
-    if (window.location.pathname !== '/en/reference-book/items' && window.location.pathname !== '/reference-book/items') {
-      return false
-    }
-    const dataRows = document.querySelector('.data-rows') as HTMLElement
-    if (dataRows == null) {
-      return false
-    }
-    const controller = angular.element(dataRows).controller().grid
-    controller.filter.asString = "[Aktyvi?:true] "
-    controller.filter.filters.rules['isActive'] = { data: true, field: 'isActive', op: 'eq' }
-    controller.filter.sort = { "id": "desc" }
-    setTimeout(() => {
-      controller.provider.refresh()
-      this.notification.info({
-        message: i18n('show') +': ' + controller.filter.asString,
-        positionY: 'bottom'
-      });
-    }, 1200);
-    return true
+    void new LabelGenerator(items)
   }
 
   private addStyles (): void {

@@ -1,27 +1,25 @@
 import { i18n, lettersToNumbers } from './i18n'
 import { LabelGenerator } from './labelGenerator'
-import { newItem, type item, type packagedItem } from './item'
+import { type item, type packagedItem } from './item'
 import { UINotification } from './ui-notification'
 import mainHTML from './html/main.html'
 import { TextToVoice } from './textToVoice'
 import { MarkdownModal } from './markdownModal'
 import { WeightLabelModal } from './weightLabelModal'
 import { Request } from './request'
+import { ModalService } from './modal'
 
-declare let $: any
-declare let GM: any
-declare let currentCompanyUser: any
 declare let angular: any
 
 export class LabelerInterface {
   private notification = new UINotification()
   private readonly req: Request = new Request(this.notification)
-  private textToVoice = new TextToVoice(this.notification);
+  private textToVoice = new TextToVoice(this.notification)
+  private modalService = new ModalService()
   private items: packagedItem[] = []
   private active: boolean = false
   settings = {
     alternativeLabelFormat: false,
-    clearAfterPrint: true,
     sayOutLoud: true,
     showStock: false
   }
@@ -29,32 +27,32 @@ export class LabelerInterface {
   modals: {
     weight: WeightLabelModal
     markdown: MarkdownModal
-    itemDetails: HTMLElement | null
-    newItem: newItem
   } | undefined
 
   loadingIndicator: HTMLElement | null = null
   mainInput: HTMLInputElement | null = null
   itemList: HTMLElement | null = null
 
-  constructor () {
+  constructor() {
+    this.modals = {
+      weight: new WeightLabelModal(this.notification, this),
+      markdown: new MarkdownModal(this.req)
+    }
   }
 
-
-  public isActive (): boolean {
+  public isActive(): boolean {
     this.active = (document.querySelector('.look-up-container') !== null)
     return this.active
   }
 
-  public init (): boolean {
-    if (this.isActive()) return true
+  public init(): boolean {
+    if (this.isActive()) {return true}
     const mainPage = document.querySelector('.main-container')
     const navbarShortcuts = document.querySelector('.navbar-shortcuts')
     const footer = document.querySelector('.footer')
     if ((navbarShortcuts == null) || (footer == null) || (mainPage == null)) {
       return false
     }
-
     this.injectHtml(mainPage)
     this.removeElements(footer, mainPage)
     this.simplifyPage()
@@ -63,7 +61,7 @@ export class LabelerInterface {
     return true
   }
 
-  public simplifyPage (navAll: boolean = true): boolean {
+  public simplifyPage(navAll: boolean = true): boolean {
     this.hideDropdownMenuItems()
     this.changeDocumentTitle()
     this.addNavItems(navAll)
@@ -71,21 +69,21 @@ export class LabelerInterface {
     return true
   }
 
-  hideDropdownMenuItems (): void {
+  hideDropdownMenuItems(): void {
     document.querySelectorAll('.dropdown-menu li').forEach((li, index) => {
-      if (index < 9) (li as HTMLElement).style.display = 'none'
+      if (index < 9) {(li as HTMLElement).style.display = 'none'}
     })
   }
 
-  removeElements (...elements: Element[]): void {
+  removeElements(...elements: Element[]): void {
     elements.forEach((el => { el.remove() }))
   }
 
-  injectHtml (mainPage: Element): void {
+  injectHtml(mainPage: Element): void {
     mainPage.insertAdjacentHTML('beforebegin', mainHTML(i18n))
   }
 
-  createNavItem (text: string, onClick: () => void, icon: string): HTMLElement {
+  createNavItem(text: string, onClick: () => void, icon: string): HTMLElement {
     const li = document.createElement('li')
     const a = document.createElement('a')
     a.className = 'navbar-shortcut'
@@ -99,7 +97,7 @@ export class LabelerInterface {
     return li
   }
 
-  addNavItems (navAll: boolean = true): void {
+  addNavItems(navAll: boolean = true): void {
     const parentElement = document.querySelector('.navbar-shortcuts')
     const isNavInitialized = parentElement != null && parentElement.querySelector('.fa-upload') != null
     if (parentElement == null) {
@@ -110,19 +108,20 @@ export class LabelerInterface {
     parentElement.appendChild(ul)
     if (navAll) {
       const markdown = this.createNavItem(i18n('markdowns'), () => {
-        this.modals?.markdown.load()
+        this.modals?.markdown.open()
       }, 'fa-book')
       markdown.setAttribute('data-toggle', 'modal')
       markdown.setAttribute('data-target', '#markdownModal')
       ul.appendChild(markdown)
-      const itemsList = this.createNavItem(i18n('itemCatalog'), () => { window.location.href = '/reference-book/items' }, 'fa-folder-open')
+      const itemsList = this.createNavItem(i18n('itemCatalog'), () => { void this.showReferenceBookItemsModal() }, 'fa-folder-open')
       ul.appendChild(itemsList)
     } else {
       const back = this.createNavItem(i18n('labelsAndPrices'), () => { window.location.href = '/' }, 'fa-arrow-left')
       ul.appendChild(back)
     }
-    const uploadFileElement = this.createNavItem(i18n('uploadFile'), () => { this.uploadFile() }, 'fa-upload')
-    ul.appendChild(uploadFileElement)
+    const fileManager = this.createNavItem(i18n('files'), () => { void this.showTempFileListModal() }, 'fa-files-o')
+    ul.appendChild(fileManager)
+    // lar.module("b1").directive("extdLightPurchaseVirtualNameInput", ["ware
     const logoutButtons = document.querySelectorAll('.nav-user-dropdown__title')
     if (logoutButtons != null && !isNavInitialized) {
       logoutButtons.forEach(button => {
@@ -131,60 +130,104 @@ export class LabelerInterface {
         button.appendChild(i)
         const company = button.querySelector('.nav-user-company') as HTMLDivElement
         company.style.display = 'none'
-      });
+      })
     }
   }
-
-  uploadFile (): void {
-    const fileInput = document.createElement('input')
-    fileInput.type = 'file'
-    fileInput.accept = '.pdf'
-    fileInput.addEventListener('change', (event) => { this.handleFile(event) })
-    fileInput.click()
-  }
-
-  async handleFile (event: Event): Promise<void> {
-    const target = event.target as HTMLInputElement
-    if (target.files == null || target.files.length === 0) {
-      this.notification.error(i18n('noFileSelected'))
-      return
-    }
-    const injector = angular.element(document.body).injector()
-    const $uibModal = injector.get('$uibModal')
-    const $controller = injector.get('$controller')
-
-    // Create a new scope and controller instance
-    const $scope = injector.get('$rootScope').$new();
-    const accountFileUploadCtrl: any = $controller('AccountFileUpload', {
-        $translate: injector.get('$translate'),
-        $uibModal: $uibModal,
-        $confirm: injector.get('$confirm'),
-        util: injector.get('util'),
-        notification: this.notification,
-        accountFileUpload: injector.get('accountFileUpload'),
-        $scope: $scope,
-        socket: injector.get('socket')
+  async showReferenceBookItemsModal() {
+    await this.modalService.showModal({
+      template: `
+        <div class="modal-body">
+          <div ng-controller="ReferenceBookItems as c" class="row">
+            <div class="col-xs-12">
+              <div class="margin-bottom-5 row sticky row-no-gutters">
+                <button ng-show="!c.grid.config.isLoading" 
+                        ng-disabled="selected(c.grid) == 0" 
+                        type="button" 
+                        class="btn btn-sm btn-purple" 
+                        ng-click="print(c.grid.provider.getSelected())">
+                  <i class="fa fa-fw fa-print"></i> ` + i18n('print') + `
+                </button>
+                <button ng-show="!c.grid.config.isLoading" 
+                        ng-disabled="!isWeighted(c.grid)" 
+                        type="button" 
+                        class="btn btn-sm btn-pink" 
+                        ng-click="weightLabel(c.grid.provider.getSelected())">
+                  <i class="fa fa-fw fa-balance-scale"></i> ` + i18n('weightLabel') + `
+                </button>
+                <button class="btn btn-sm pull-right" ng-click="closeModal()">
+                  <i class="fa fa-fw fa-times"></i> ` + i18n('close') + `
+                </button>
+              </div>
+              <extd-grid
+                config="c.grid.config"
+                filter="c.grid.filter"
+                data="c.grid.data">
+              </extd-grid>
+            </div>
+          </div>
+        </div>`,
+      scopeProperties: {
+        weightLabel: (a: any) => {
+          if (!a || a.length !== 1 || !a[0].measurementUnitCanBeWeighed) {
+            this.notification.error(i18n('weightedItem') + '?')
+            return
+          }
+          this.modals?.weight.openWeightModal(a[0])
+        },
+        print: (e: any) => this.print(e),
+        selected: (a: any) => a.provider.getSelected().length,
+        isWeighted: (a: any) => {
+          const selected = a.provider.getSelected()
+          return selected.length === 1 && selected[0].measurementUnitCanBeWeighed
+        },
+      },
+      size: 'ext',
     })
-    
-    const files = Array.from(target.files);
-    accountFileUploadCtrl.uploadToCompany(files, currentCompanyUser.company.id)
-
-    await new Promise(resolve => setTimeout(resolve, 5000))
+  
+    // Additional logic after modal is closed
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    const dataRows = document.querySelector('.data-rows') as HTMLElement
+    if (!dataRows) {
+      return false
+    }
+    const c = angular.element(dataRows).controller().grid
+    c.config.hideTopPager = true
+    c.filter.addRule('isActive', 1)
+    c.filter.sort = { id: 'desc' }
+    c.reload()
   }
 
-  bindEvents (): void {
+  async showTempFileListModal(): Promise<void> {
+    await this.modalService.showModal({
+      template: `
+        <div class="modal-body">
+          <temp-file-list type-id="{{typeId}}" open-for-select="openForSelect"></temp-file-list>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" ng-click="closeModal()">
+            <i class="fa fa-times"></i> ` + i18n('close') + `
+          </button>
+        </div>`,
+      scopeProperties: {
+        typeId: null,
+        openForSelect: false,
+      },
+    })
+  }
+
+  bindEvents(): void {
     document.getElementById('cleanAllButton')?.addEventListener('click', () => { this.cleanAll() })
     document.getElementById('printButton')?.addEventListener('click', () => { this.print() })
     if (this.mainInput != null) {
       this.mainInput.addEventListener('keypress', this.handleEnterPress(this.searchByBarcode.bind(this, this.mainInput)))
       document.getElementById('searchButton')?.addEventListener('click', this.searchByBarcode.bind(this, this.mainInput))
       this.mainInput.focus()
-      const modals = document.querySelectorAll('.modal')
       document.addEventListener('click', (event) => {
         let clickedInsideModal = false
+        const modals = document.querySelectorAll('.modal.in')
         modals.forEach(modal => {
           if (modal.contains(event.target as Node))
-            clickedInsideModal = true
+            {clickedInsideModal = true}
         })
         if (!clickedInsideModal && this.mainInput != null) {
           this.mainInput.focus()
@@ -193,17 +236,18 @@ export class LabelerInterface {
     }
     this.bindCheckboxChange('alternativeLabelFormat', 'alternativeLabelFormat')
     this.bindCheckboxChange('sayOutLoud', 'sayOutLoud')
-    this.bindCheckboxChange('clearAfterPrint', 'clearAfterPrint')
     this.bindCheckboxChange('showStock', 'showStock')
   }
 
-  handleEnterPress (callback: () => void): (event: KeyboardEvent) => void {
+  handleEnterPress(callback: () => void): (event: KeyboardEvent) => void {
     return (event) => {
-      if (event.key == 'Enter') callback()
+      if (event.key == 'Enter') {
+        callback()
+      }
     }
   }
 
-  bindCheckboxChange (elementId: string, settingKey: keyof typeof this.settings): void {
+  bindCheckboxChange(elementId: string, settingKey: keyof typeof this.settings): void {
     document.getElementById(elementId)?.addEventListener('change', (event) => {
       if (event.target instanceof HTMLInputElement) {
         this.settings[settingKey] = event.target.checked
@@ -211,46 +255,36 @@ export class LabelerInterface {
     })
   }
 
-  cacheElements (): void {
+  cacheElements(): void {
     this.itemList = document.querySelector('.item-list')
     this.mainInput = document.getElementById('barcode') as HTMLInputElement
     this.loadingIndicator = document.getElementById('loadingOverlay')
-    this.modals = {
-      itemDetails: document.getElementById('itemDetails'),
-      newItem: new newItem(this.req),
-      weight: new WeightLabelModal(this.notification, this),
-      markdown: new MarkdownModal(this.req)
-    }
   }
 
-  showLoading (): void {
+  showLoading(): void {
     if (this.loadingIndicator != null) {
       this.loadingIndicator.style.display = 'flex'
     }
   }
 
-  hideLoading (): void {
+  hideLoading(): void {
     if (this.loadingIndicator != null) {
       this.loadingIndicator.style.display = 'none'
     }
   }
-
-  print (clearAfterPrint: boolean = this.settings.clearAfterPrint): void {
-    this.items = this.items.filter(item => item)
-    if (this.items.length === 0) {
+  print(items: item[] = this.items.filter(item => item)): void {
+    if (items.length === 0) {
       this.notification.error(i18n('noData'))
       return
     }
-    if (!this.items.every(item => item.isActive == true && item.barcode != null)) {
+    if (!items.every(item => item.isActive == true && item.barcode != null)) {
       this.notification.warning(i18n('notAllItemsActive'))
     }
-    void new LabelGenerator(this.items, this.settings.alternativeLabelFormat)
-    if (clearAfterPrint) {
-      this.cleanAll(true)
-    }
+    void new LabelGenerator(items, this.settings.alternativeLabelFormat)
+    this.cleanAll(true)
   }
 
-  cleanAll (donePrinting: boolean = false): void {
+  cleanAll(donePrinting: boolean = false): void {
     this.items = []
     if (this.itemList == null) {
       console.error('itemList is not defined')
@@ -263,35 +297,35 @@ export class LabelerInterface {
     }
   }
 
-  private createItemElement (item: packagedItem): HTMLElement {
+  private createItemElement(item: packagedItem): HTMLElement {
     const itemElement = document.createElement('div')
     itemElement.className = 'item'
     itemElement.id = item.id ?? ''
     itemElement.innerHTML = this.getItemHtml(item, true)
-    if (item.barcode == null || item.isActive == false) itemElement.classList.add('inactive')
-    else if (item.weight != null) itemElement.classList.add('mark')
-    const cornerButton = this.createItemButton('btn-yellow', 'fa-trash', () => { 
-      this.removeItem(itemElement, item.id) 
-    });
+    if (item.barcode == null || item.isActive == false) {
+      itemElement.classList.add('inactive')
+    }
+    else if (item.weight != null) {
+      itemElement.classList.add('mark')
+    }
+    const cornerButton = this.createItemButton('btn-yellow', 'fa-trash', () => {
+      this.removeItem(itemElement, item.id)
+    })
     itemElement.appendChild(cornerButton)
-    if (item.measurementUnitCanBeWeighed) {
+    if (item.measurementUnitCanBeWeighed && item.priceWithVat > 0) {
       const tagButton = this.createItemButton('btn-pink', 'fa-balance-scale', () => { this.modals?.weight.openWeightModal(item) })
       itemElement.appendChild(tagButton)
-    } else if (item.id == null) {
-      // we can add a button to add a new item
-      const addNewItemButton = this.createItemButton('btn-info', 'fa-plus', () => { this.modals?.newItem.openModal(item) })
-      itemElement.appendChild(addNewItemButton)
-    }
+    } 
     if (item.priceWithVat > 0) {
-      itemElement.querySelector('.item-price')?.addEventListener('click', () => { this.showDetails(item) });
+      itemElement.querySelector('.item-price')?.addEventListener('click', () => { this.showDetails(item) })
     } else if (item.id != null) {
-      const priceButton = this.createItemButton('btn-danger', 'fa-euro', () => { this.quickPriceChange(item) })
+      const priceButton = this.createItemButton('btn-danger', 'fa-euro', () => { void this.quickPriceChange(item) })
       itemElement.appendChild(priceButton)
     }
     return itemElement
   }
 
-  getItemHtml (item: packagedItem, addLabels: boolean): string {
+  getItemHtml(item: packagedItem, addLabels: boolean): string {
     return `
       <div class="item-main">
         ${(item.priceWithVat > 0 ? `<span class="item-price">${(item.totalPrice ?? item.priceWithVat).toFixed(2)}</span>` : '') + (this.settings.showStock ? `<span class="item-stock text-primary"><i class="fa fa-home margin-right-5"></i>${(item.stock || '0')}</span>` : '')}
@@ -299,25 +333,29 @@ export class LabelerInterface {
       </div>` + (addLabels ? `<div class="item-labels">${this.getItemLabelsHtml(item)}</div>` : '')
   }
 
-  getItemLabelsHtml (item: packagedItem): string {
+  getItemLabelsHtml(item: packagedItem): string {
     const labels = ['packageCode', 'weight', 'departmentNumber', 'packageQuantity'] as const
     const ago = this.getSeconds(item.retrievedAt ?? new Date())
     const labelHtml = labels.map(label => item[label] != null ? `<span>${i18n(label)}: ${item[label]}</span>` : '').join('')
-    return labelHtml + (item.weight != null ? `<span>${i18n('kiloPrice')}: <b>${item.priceWithVat.toFixed(2)}</b></span>` : '') 
-    + (item.measurementUnitCanBeWeighed ? `<span>${i18n('weightedItem')}</span>` : '')
-    + `<span class="text-primary">${ this.getAgoText(ago) }</span>`
+    return labelHtml + (item.weight != null && item.priceWithVat != null ? `<span>${i18n('kiloPrice')}: <b>${item.priceWithVat.toFixed(2)}</b></span>` : '')
+      + (item.measurementUnitCanBeWeighed ? `<span>${i18n('weightedItem')}</span>` : '')
+      + `<span class="text-primary">${this.getAgoText(ago)}</span>`
   }
 
   getSeconds(date: Date): number {
-    if (date == null) return 0
+    if (date == null) {
+      return 0
+    }
     const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000)
     return seconds
   }
-  getAgoText (s: number): string {
-    if (s === 0) return ''
+  getAgoText(s: number): string {
+    if (s === 0) {
+      return ''
+    }
     return i18n('checked') + ' ' + s + ' s ' + i18n('ago')
   }
-  createItemButton (buttonClass: string, iconClass: string, onClick: () => void): HTMLElement {
+  createItemButton(buttonClass: string, iconClass: string, onClick: () => void): HTMLElement {
     const button = document.createElement('button')
     button.addEventListener('click', onClick)
     button.className = 'btn btn-sm ' + buttonClass
@@ -328,54 +366,73 @@ export class LabelerInterface {
     return button
   }
 
-  removeItem (element: HTMLElement, itemId?: string): void {
+  removeItem(element: HTMLElement, itemId?: string): void {
     element.remove()
     this.items = this.items.filter(item => item.id !== itemId)
   }
 
-  showDetails (item: packagedItem): void {
+  showDetails(item: packagedItem): void {
     const filteredItem = Object.fromEntries(
-      Object.entries(item).filter(([key, value]) => value !== null && !key.toString().toLowerCase().includes('id'))
+      Object.entries(item).filter(([key, value]) => value !== null && !key.toString().toLowerCase().includes('id') && !key.toString().toLowerCase().includes('account'))
     )
+  
     const resultString = Object.entries(filteredItem)
-      .map(([key, value]) => `<div class="row col-xs-12 ${key.includes('price') ? 'price' : ''}"><div class="col-sm-5">${i18n(key)}:</div><div class="col-sm-7">${value}</div></div>`)
+      .map(([key, value]) => `
+        <div class="row col-xs-12">
+          <div class="col-sm-5" >${i18n(key)}:</div>
+          <div class="col-sm-7" ${key.includes('price') ? 'ng-click="change(item)"' : ''}>${value}</div>
+        </div>
+      `)
       .join('')
-
-    if (this.modals?.itemDetails != null) {
-      const modalBody = this.modals.itemDetails.querySelector('.modal-body')
-      if (modalBody != null) {
-        modalBody.innerHTML = `<div class="container width-auto">${resultString}</div>`
+    const modalTemplate = `
+      <div class="modal-header">
+        <h5 class="modal-title inline">${i18n('itemDetails')}</h5>
+        <button type="button" class="close" aria-label="Close" ng-click="closeModal()">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="container width-auto">${resultString}</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm" ng-click="closeModal()"
+        >${i18n('close')}</button>
+      </div>
+    `
+  
+    void this.modalService.showModal({
+      template: modalTemplate,
+      scopeProperties: {
+        item: item,
+        change: (item: item) => {
+          void this.quickPriceChange(item)
+        }
       }
-      const button = this.modals.itemDetails.querySelectorAll('.price')
-      button.forEach(e => e.addEventListener('click', () => { this.quickPriceChange(item) }))
-    }
-    // show the modal by using jQuery
-    $(this.modals?.itemDetails).modal('show')
+    })
   }
-  quickPriceChange (item: packagedItem): void {
-    let price = prompt(i18n('enterNewPrice'), item.priceWithVat.toString())
+  async quickPriceChange(item: packagedItem): Promise<void> {
+    const price = prompt(i18n('enterNewPrice'), (item.priceWithVat ?? 0).toString())
     if (price == null || item.id == null) {
       this.notification.info(i18n('error'))
-      return;
-    } 
-    let data = new Object() as item
+      return
+    }
+    const data = new Object() as item
     data.id = item.id.split('-')[0]
     data.isActive = true
     data.priceWithVat = parseFloat(price.replace(',', '.'))
     if (data.priceWithVat <= 0) {
       this.notification.error(i18n('missingPrice'))
-      return;
+      return
     }
     data.priceWithoutVat = (data.priceWithVat / 1.21)
     data.priceWithoutVat = Math.round((data.priceWithoutVat + Number.EPSILON) * 10000) / 10000
     item.priceWithVat = data.priceWithVat
     item.priceWithoutVat = data.priceWithoutVat
-    this.req.saveItem(data.id, data)
-    $(this.modals?.itemDetails).modal('hide')
+    await this.req.saveItem(data.id, data)
     this.cleanAll()
   }
 
-  addItemToView (item: packagedItem): void {
+  addItemToView(item: packagedItem): void {
     const itemElement = this.createItemElement(item)
     if (this.itemList != null) {
       this.itemList.appendChild(itemElement)
@@ -385,14 +442,14 @@ export class LabelerInterface {
     }
   }
 
-  proccessItem (item: packagedItem): void {
+  proccessItem(item: packagedItem): void {
     // we might get duplicate items, so item id or barcode is not enough
     item.id = this.generateItemId(item.id)
     if (!this.settings.sayOutLoud) {
       // Nothing
     } else if (this.settings.showStock && this.settings.sayOutLoud && item.stock != null) {
       void this.textToVoice.speak(item.stock.toString())
-      console.info('\t'+ item.barcode +'\t'+ item.stock);
+      console.info('\t' + item.barcode + '\t' + item.stock)
     } else if (this.items.length > 0 && item.priceWithVat > 0 && (this.items[this.items.length - 1]).barcode == item.barcode && item.weight == this.items[this.items.length - 1].weight) {
       void this.textToVoice.speak(i18n('asMentioned') + ', ' + i18n('price') + ' ' + this.textToVoice.digitsToPrice(item.totalPrice ?? item.priceWithVat) + (item.weight !== undefined ? '. ' + i18n('weight') + this.textToVoice.numberToWords(item.weight) + item.measurementUnitName : '') + ' ' + i18n('thisIs') + ' ' + item.name)
     } else if (item.priceWithVat > 0) {
@@ -407,22 +464,19 @@ export class LabelerInterface {
     this.addItemToView(item)
   }
 
-  canItBePackaged (barcode: string): boolean {
+  canItBePackaged(barcode: string): boolean {
     // barcode rules: prefix is 21-29(a part of barcode) + 6 barcode digits + 4 digits for weight
     // '2200' + 13 digits of barcode + 4 digits of weight
     const prefix = parseInt(barcode.slice(0, 2), 10)
-    return (barcode.toString().length === 13 || barcode.toString().length === 21) && prefix > 20 && prefix < 30 
+    return (barcode.toString().length === 13 || barcode.toString().length === 21) && prefix > 20 && prefix < 30
   }
 
-  searchByBarcode (inputField: HTMLInputElement): void {
+  searchByBarcode(inputField: HTMLInputElement): void {
     const barcode = lettersToNumbers(inputField.value)
     inputField.value = ''
     inputField.focus()
     if (barcode.length == 0) {
       this.notification.error(i18n('missingBarcode'))
-      return
-    } else if (barcode.toLowerCase() === 'stop') {
-      this.print()
       return
     }
 
@@ -433,9 +487,9 @@ export class LabelerInterface {
     }
   }
 
-  async searchforAPackagedItem (barcode: string): Promise<void> {
+  async searchforAPackagedItem(barcode: string): Promise<void> {
     let item = null
-    let barcodePart = barcode;
+    let barcodePart = barcode
     // long barcode: 2200 + 13 digits of barcode + 4 digits of weight
     // short barcode: 23 or 24 + 6 digits of barcode + 4 digits of weight
     // short barcode: 25 or 29 + 5 digits of barcode + 5 digits of weight
@@ -446,7 +500,7 @@ export class LabelerInterface {
       barcodePart = barcode.slice(0, 7)
     } else if (barcode.length === 21) {
       barcodePart = barcode.slice(4, 17)
-    } 
+    }
 
     item = await this.req.getItem(barcodePart) as packagedItem
     this.hideLoading()
@@ -454,14 +508,14 @@ export class LabelerInterface {
       // TODO: function to handle weight or simple units
       // TODO: rename to quantity or packageQuantity
       item.weight = parseInt((barcode.length > 13) ? barcode.slice(17, 21) : barcode.slice(8, 12), 10) / 1000
-      item.totalPrice = this.calculateTotalPrice(item)
+      item.totalPrice = this.calculateTotalPrice(item.priceWithVat, item.weight)
       this.proccessItem(item)
     } else {
       this.notFound(barcode)
     }
   }
 
-  async searchItem (barcode: string): Promise<void> {
+  async searchItem(barcode: string): Promise<void> {
     this.showLoading()
     const item = await this.req.getItem(barcode) as item
     this.hideLoading()
@@ -472,24 +526,23 @@ export class LabelerInterface {
     }
   }
 
-  private notFound (barcode: string): void {
-    let item: item = new Object() as item
+  private notFound(barcode: string): void {
+    const item: item = new Object() as item
     item.name = i18n('itemNotFound') + ' (' + i18n('barcode') + ': ' + barcode + ')'
     item.barcode = barcode
     item.isActive = false
     this.addItemToView(item)
   }
 
-  public calculateTotalPrice (item: packagedItem): number {
-    if (item.weight == null) {
+  public calculateTotalPrice(priceWithVat: number, weight: number): number {
+    if (priceWithVat == null || weight == null) {
       return 0
     }
-    const totalPrice = item.priceWithVat * item.weight
-    const totalFinalPrice = Math.round((totalPrice + Number.EPSILON) * 100) / 100
-    return totalFinalPrice
+    const totalPrice = priceWithVat * weight
+    return Math.round((totalPrice + Number.EPSILON) * 100) / 100
   }
 
-  addActivateButton (): boolean {
+  addActivateButton(): boolean {
     const navbarShortcuts = document.querySelector('.breadcrumbs')
     if (navbarShortcuts != null) {
       const button = document.createElement('button')
@@ -501,11 +554,11 @@ export class LabelerInterface {
     return navbarShortcuts != null
   }
 
-  generateItemId (id: string): string {
+  generateItemId(id: string): string {
     return id + '-' + Math.random().toString(36).substring(7)
   }
 
-  changeDocumentTitle (): void {
+  changeDocumentTitle(): void {
     document.title = i18n('labelsAndPrices')
   }
 }

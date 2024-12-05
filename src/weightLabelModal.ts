@@ -1,140 +1,149 @@
-import { i18n } from "./i18n"
-import { packagedItem } from "./item"
-import { LabelGenerator } from "./labelGenerator"
-import { LabelerInterface } from "./labelerInterface"
-import { NotificationService } from "./ui-notification"
+import { i18n } from './i18n'
+import { packagedItem } from './item'
+import { LabelGenerator } from './labelGenerator'
+import { LabelerInterface } from './labelerInterface'
+import { NotificationService } from './ui-notification'
+import modalHTML from './html/weightModal.html'
+import type * as ng from 'angular'
 
-declare const $: any
+declare const angular: ng.IAngularStatic
 
 export class WeightLabelModal {
-  addManufacturer = document.getElementById('addManufacturer') as HTMLInputElement
-  addPackageFeeNote = document.getElementById('addPackageFeeNote') as HTMLInputElement
-  addButton = document.getElementById('addWeightedItem') as HTMLButtonElement
-  expiryDate = document.getElementById('expiryDate') as HTMLInputElement
-  kgPrice = document.getElementById('kgPrice') as HTMLInputElement
-  manufacturerField = document.getElementById('manufacturerField')
-  parent = document.getElementById('weightLabelModal')
-  printButton = document.getElementById('printWeightLabel') as HTMLButtonElement
-  productName = document.getElementById('productName') as HTMLInputElement
-  productWeight = document.getElementById('productWeight') as HTMLInputElement
-  totalPrice = document.getElementById('totalPrice') as HTMLInputElement
-  keyboard = document.getElementById('keyboard')
-  toggleButton = document.getElementById('toggleKeyboard') as HTMLButtonElement
-  keys = document.querySelectorAll('.key');
-  quantityLabel = document.getElementById('quantityLabel') as HTMLLabelElement
-  private activeInput: HTMLInputElement | null = this.productWeight
-  private currentItem: null | packagedItem = null
-  private readonly notifier: NotificationService
-  private readonly interface: LabelerInterface
-  constructor(notifier: NotificationService, ui: LabelerInterface) {
+  notifier: NotificationService
+  interface: LabelerInterface
+  $uibModal: any
+  modalScope: any
+
+  constructor(
+    notifier: NotificationService,
+    labelerInterface: LabelerInterface,
+  ) {
     this.notifier = notifier
-    this.interface = ui
-    this.bindEvents()
+    this.interface = labelerInterface
+
+    const injector = angular.element(document.body).injector()
+    const $rootScope = injector.get('$rootScope')
+    this.$uibModal = injector.get('$uibModal')
+    this.modalScope = $rootScope.$new(true)
+
+    this.initializeModalScope()
   }
 
-  private bindEvents(): void {
-    this.addButton.addEventListener('click', this.add.bind(this))
-    this.printButton.addEventListener('click', this.print.bind(this))
-    this.productWeight.addEventListener('keypress', this.interface.handleEnterPress(() => { this.add() }))
-    this.productWeight.addEventListener('input', this.handleWeightChange.bind(this))
-    this.toggleButton.addEventListener('click', this.toggleKeyboard.bind(this))
-    this.keys.forEach(key => {
-      key.addEventListener('click', () => {
-        const keyValue = key.getAttribute('data-key');
-        if (this.activeInput == null && keyValue == null) {
-          this.notifier.error(i18n('noActiveInput'));
-          return
-          // TODO: unnecessary null checks (linter...)
-        } else if (this.activeInput != null && keyValue == 'del' && this.activeInput?.value.length > 0) {
-          this.activeInput.value = this.activeInput.value.slice(0, -1);
-        } else if (this.activeInput != null) {
-          this.activeInput.value += keyValue;
-        }
-        this.handleWeightChange();
-      });
-    });
-    this.expiryDate.addEventListener('click', () => {
-      this.expiryDate.showPicker();
-    });
+  initializeModalScope(): void {
+    this.modalScope.item = null
+    this.modalScope.weight = ''
+    this.modalScope.virtualKeyboardVisible = true
+
+    // Bind methods to the modal scope
+    this.modalScope.hideVirtualKeyboard = this.hideVirtualKeyboard.bind(this)
+    this.modalScope.handleWeightChange = this.handleWeightChange.bind(this)
+    this.modalScope.key = this.key.bind(this)
+    this.modalScope.add = this.add.bind(this)
+    this.modalScope.print = this.print.bind(this)
+    this.modalScope.picker = this.showPicker.bind(this)
   }
 
-  public openWeightModal(item: packagedItem): void {
-    if (item == null || this.productWeight == null || this.kgPrice == null || this.expiryDate == null || this.addManufacturer == null || this.manufacturerField == null) {
+  hideVirtualKeyboard(): void {
+    this.modalScope.virtualKeyboardVisible = false
+  }
+
+  key(input: string): void {
+    if (input === 'd') {
+      this.modalScope.item.weight = this.modalScope.item.weight.slice(0, -1)
+    } else if (input === 'c') {
+      this.modalScope.item.weight = ''
+    } else {
+      this.modalScope.item.weight += input
+    }
+
+    this.modalScope.handleWeightChange()
+  }
+
+  openWeightModal(item: packagedItem): void {
+    if (!item || !item.name || !item.priceWithVat) {
       this.notifier.error(i18n('missingElements'))
       return
     }
-    this.currentItem = JSON.parse(JSON.stringify(item))
-    this.productWeight.value = ''
-    this.quantityLabel.innerHTML = (this.currentItem?.measurementUnitCanBeWeighed) ? i18n('weight') : i18n('quantity') + ' (' + this.currentItem?.measurementUnitName + ')'
-    this.productName.value = item.name
-    this.kgPrice.value = item.priceWithVat.toString()
-    this.expiryDate.min = new Date().toISOString().split('T')[0]
-    this.expiryDate.value = ''
-    this.addManufacturer.style.display = item.manufacturerName != null ? 'block' : 'none'
-    this.manufacturerField.innerHTML = item.manufacturerName ?? ''
-    $(this.parent).modal('show')
-    this.productWeight.focus()
+
+    this.setupModalItem(item)
+
+    const modalInstance = this.$uibModal.open({
+      template: modalHTML(i18n),
+      scope: this.modalScope,
+      windowClass: 'weight-label-modal',
+    })
+
+    this.modalScope.close = () => {
+      modalInstance.close()
+    }
   }
 
-  public getWeightItem(): packagedItem | null {
-    if (this.currentItem?.weight == null || isNaN(this.currentItem.weight)) {
+  setupModalItem(item: packagedItem): void {
+    this.modalScope.item = {
+      ...item,
+      weight: '',
+      addManufacturer: false,
+      addPackageFeeNote: true,
+    }
+    this.modalScope.packageWeight = 0
+  }
+
+  getWeightItem(): packagedItem | null {
+    const item = { ...this.modalScope.item }
+
+    if (!item || !item.weight || isNaN(item.weight)) {
       this.notifier.error(i18n('missingWeight'))
       return null
-    } else if (this.currentItem?.weight > 9.999) {
+    }
+    item.weight = this.gToKg(parseFloat(item.weight))
+    if (item.weight > 9.999) {
       this.notifier.error(i18n('maxWeight'))
       return null
     }
-    this.currentItem.expiryDate = (this.expiryDate?.value != null && this.expiryDate.value.length > 0) ? this.expiryDate.value.slice(5) : undefined
-    this.currentItem.addManufacturer = this.addManufacturer?.checked && this.currentItem.manufacturerName != null
-    this.currentItem.addPackageFeeNote = this.addPackageFeeNote?.checked
-    this.notifier.info({
-      title: i18n('weightedItemAdded'),
-      message: this.currentItem.weight + this.currentItem.measurementUnitName
-    })
-    // copy current item to a new object, so that the original object is not modified
-    this.currentItem = JSON.parse(JSON.stringify(this.currentItem))
 
-    return this.currentItem
+    item.addManufacturer =
+      !!item.addManufacturer && !!item.manufacturerName?.length
+
+    return item
   }
 
-  private add(): void {
+  add(): void {
     const item = this.getWeightItem()
-    if (item != null) {
+    if (item) {
+      this.notifier.success(i18n('weightedItemAdded'))
       this.interface.proccessItem(item)
     }
   }
 
-  private print(): void {
+  print(): void {
     const item = this.getWeightItem()
-    if (item != null) {
-      void new LabelGenerator([item], this.interface.settings.alternativeLabelFormat)
+    if (item) {
+      this.notifier.success({
+        title: i18n('printJobIsSent'),
+        message: `${item.weight}${item.measurementUnitName}`,
+      })
+      new LabelGenerator([item], this.interface.settings.alternativeLabelFormat)
     }
   }
-  debounce(func: Function, wait: number): Function {
-    let timeout: any
-    return (...args: any) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-  }
-  private handleWeightChange(): void {
-    if (this.currentItem == null) {
+
+  handleWeightChange(): void {
+    if (!this.modalScope.item) {
       return
     }
-    this.currentItem.weight = (this.productWeight?.value != null) ? parseInt(this.productWeight.value) / 1000 : 0
-    this.currentItem.totalPrice = this.interface.calculateTotalPrice(this.currentItem)
-    if (this.totalPrice != null) {
-      this.totalPrice.value = this.currentItem.totalPrice.toFixed(2)
-    }
+    this.modalScope.item.totalPrice = this.interface.calculateTotalPrice(
+      this.modalScope.item.priceWithVat,
+      this.gToKg(this.modalScope.item.weight),
+    )
   }
 
-  private toggleKeyboard(): void {
-    if (this.keyboard != null) {
-      this.keyboard.classList.toggle('hidden')
-    }
-    if (this.productWeight != null) {
-      this.productWeight.focus()
-    }
+  gToKg(weight: number): number {
+    return weight / 1000
   }
 
+  showPicker(event: PointerEvent): void {
+    const target = event.target as HTMLInputElement
+    if (target?.showPicker) {
+      target.showPicker()
+    }
+  }
 }
