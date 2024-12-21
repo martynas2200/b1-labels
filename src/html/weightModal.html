@@ -40,10 +40,13 @@
                 </div>
                 <div class="checkbox-form">
                   <label>
-                    <input type="checkbox" class="ace" ng-model="item.addPackageFeeNote" checked>
-                    <span class="lbl display-inline">&nbsp;${i18n('addPackageFeeNote')}</span>
+                    <input type="checkbox" class="ace" ng-model="item.addPackageFee" checked>
+                    <span class="lbl display-inline">&nbsp;${i18n('addPackageFee')}</span>
                   </label>
                 </div>
+              </div>
+              <div class="alert-xs alert-info" >
+                <i class="fa fa-info-circle"></i>&nbsp;${i18n('weightModalLabelInfo')}
               </div>
             </div>
             <div class="col-sm-6" ng-show="virtualKeyboardVisible">
@@ -65,11 +68,12 @@
           </div>
         </div>
       </div>
+
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" ng-click="close()">
           <i class="fa fa-times"></i>&nbsp;${i18n('close')}</button>
         <button type="button" class="btn btn-primary" ng-click="add()" >
           <i class="fa fa-plus"></i>&nbsp;${i18n('add')}</button>
         <button type="button" class="btn btn-purple" ng-click="print()" ">
-          <i class="fa fa-print"></i>&nbsp;${i18n('print')}</button>
+          <i class="fa fa-print"></i>&nbsp;${i18n('print')}&nbsp;[${ i18n('normal') }]</button>
       </div>

@@ -23,9 +23,8 @@ interface item {
 }
 
 interface packagedItem extends item {
-  addPackageFeeNote?: boolean
+  addPackageFee?: boolean
   addManufacturer?: boolean
-  batchNumber?: string
   expiryDate?: string
   totalPrice?: number
   weight?: number

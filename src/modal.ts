@@ -1,11 +1,11 @@
-import * as ang from "angular"
+import type * as ang from "angular";
 
 declare const angular: ang.IAngularStatic
 
 export class ModalService {
   $uibModal: any
   $rootScope: any
-
+  modalInstance: any = null
   constructor() {
     const injector = angular.element(document.body).injector()
     this.$uibModal = injector.get('$uibModal')
@@ -21,12 +21,11 @@ export class ModalService {
   }): Promise<void> {
     const modalScope = this.$rootScope.$new(true)
 
-    // Add custom properties to the scope if provided
     if (config.scopeProperties) {
       Object.assign(modalScope, config.scopeProperties)
     }
 
-    const modalInstance = this.$uibModal.open({
+    this.modalInstance = this.$uibModal.open({
       animation: true,
       template: config.template,
       scope: modalScope,
@@ -35,9 +34,10 @@ export class ModalService {
     })
 
     modalScope.closeModal = () => {
-      modalInstance.close()
+      this.modalInstance.close()
       modalScope.$destroy()
       config.onClose?.()
     }
   }
+
 }

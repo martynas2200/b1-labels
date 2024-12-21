@@ -24,25 +24,20 @@ export class WeightLabelModal {
     const injector = angular.element(document.body).injector()
     const $rootScope = injector.get('$rootScope')
     this.$uibModal = injector.get('$uibModal')
-    this.modalScope = $rootScope.$new(true)
-
-    this.initializeModalScope()
+    
+    this.modalScope = Object.assign($rootScope.$new(true), {
+      item: null,
+      weight: '',
+      virtualKeyboardVisible: true,
+      hideVirtualKeyboard: this.hideVirtualKeyboard.bind(this),
+      handleWeightChange: this.handleWeightChange.bind(this),
+      key: this.key.bind(this),
+      add: this.add.bind(this),
+      print: this.print.bind(this),
+      picker: this.showPicker.bind(this),
+    })
   }
-
-  initializeModalScope(): void {
-    this.modalScope.item = null
-    this.modalScope.weight = ''
-    this.modalScope.virtualKeyboardVisible = true
-
-    // Bind methods to the modal scope
-    this.modalScope.hideVirtualKeyboard = this.hideVirtualKeyboard.bind(this)
-    this.modalScope.handleWeightChange = this.handleWeightChange.bind(this)
-    this.modalScope.key = this.key.bind(this)
-    this.modalScope.add = this.add.bind(this)
-    this.modalScope.print = this.print.bind(this)
-    this.modalScope.picker = this.showPicker.bind(this)
-  }
-
+    
   hideVirtualKeyboard(): void {
     this.modalScope.virtualKeyboardVisible = false
   }
@@ -61,7 +56,7 @@ export class WeightLabelModal {
 
   openWeightModal(item: packagedItem): void {
     if (!item || !item.name || !item.priceWithVat) {
-      this.notifier.error(i18n('missingElements'))
+      this.notifier.error(i18n('noData'))
       return
     }
 
@@ -83,7 +78,7 @@ export class WeightLabelModal {
       ...item,
       weight: '',
       addManufacturer: false,
-      addPackageFeeNote: true,
+      addPackageFee: true,
     }
     this.modalScope.packageWeight = 0
   }
@@ -110,8 +105,7 @@ export class WeightLabelModal {
   add(): void {
     const item = this.getWeightItem()
     if (item) {
-      this.notifier.success(i18n('weightedItemAdded'))
-      this.interface.proccessItem(item)
+      this.interface.proccessItem(item, true)
     }
   }
 
@@ -122,7 +116,7 @@ export class WeightLabelModal {
         title: i18n('printJobIsSent'),
         message: `${item.weight}${item.measurementUnitName}`,
       })
-      new LabelGenerator([item], this.interface.settings.alternativeLabelFormat)
+      new LabelGenerator([item])
     }
   }
 

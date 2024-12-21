@@ -17,12 +17,14 @@ body.labeler-interface {
   }
 
   .modal {
-    
+
     h5.header.blue.header-temp-files-list {
       margin-top: 0;
     }
 
-    .btn, select, input[type=text] {
+    .btn,
+    select,
+    input[type=text] {
       border-radius: 4px !important;
     }
   }
@@ -98,10 +100,12 @@ body.labeler-interface {
       background: white !important;
     }
   }
+
   &.dark,
   &.dark .navbar {
     background-color: #000;
   }
+
   .navbar {
     background-color: var(--theme-blue--dark-bg);
 
@@ -248,6 +252,11 @@ body.labeler-interface {
         margin-right: 4px;
       }
 
+      &.inactive span.item-price {
+        filter: blur(1px);
+        background-color: red;
+      }
+
       .item-stock {
         background-color: #777;
       }
@@ -358,13 +367,74 @@ body.labeler-interface {
   }
 }
 
-.modal-backdrop {
-  display: none;
+.list-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 15px;
+
+  .label p:empty:nth-of-type(1)::before {
+    content: " ";
+    display: block;
+    background: #999;
+    position: static;
+    height: 15px;
+    width: 120px;
+  }
+
+  .label.barcodeOnly p:empty:nth-of-type(1)::before {
+    height: 50px;
+  }
+
+  .label .barcode.dm {
+    background: #999;
+  }
+
+  .label.fridge::after {
+    content: "";
+    height: 20px;
+    width: 100%;
+    background-image: url('https://one-pro-public-bucket.s3.eu-central-1.amazonaws.com/ONE/css/scissors-icon.png');
+    background-size: 15% 100%;
+    background-repeat: no-repeat;
+    background-position: 94% 50%;
+    position: absolute;
+    bottom: 4.6mm;
+    opacity: 0.7;
+  }
+
+  .label {
+    border: 1px solid #ff9b79;
+  }
+
+  .label-preview:has(.half) {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .label-preview:has(.half)::after {
+    content: "";
+    height: 100%;
+    width: 20px;
+    background-image: url(https://one-pro-public-bucket.s3.eu-central-1.amazonaws.com/ONE/css/scissors-icon-v.png);
+    background-size: 100% 25%;
+    background-repeat: no-repeat;
+    background-position: 50% 86%;
+    position: absolute;
+    left: calc(100% - 10px);
+    margin-right: -10px;
+    z-index: 1;
+    opacity: 0.7;
+  }
 }
 
-.modal {
-  background-color: rgba(0, 0, 0, 0.5);
-}
+// .modal-backdrop {
+//   display: none;
+// }
+
+// .modal {
+//   background-color: rgba(0, 0, 0, 0.5);
+// }
 
 @keyframes emphasizeItem {
   from {

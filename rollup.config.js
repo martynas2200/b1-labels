@@ -22,7 +22,44 @@ function htmlToTemplateString() {
 }
 
 
-export default {
+export default [{
+    input: 'src/admin/admin.user.ts',
+    output: {
+      file: 'dist/admin.user.js',
+      format: 'iife',
+      name: 'b1userscript',
+    },
+    plugins: [
+      scss({
+        output: false,
+        outputStyle: 'compressed',
+        failOnError: true
+      }),
+      htmlToTemplateString(),
+      typescript({
+        tsconfig: 'tsconfig.json',
+        module: 'esnext',
+        removeComments: true,
+        declaration: false,
+        sourceMap: false,
+        inlineSources: false,
+        inlineSourceMap: false
+      }),
+      addUserScriptMetadata({
+        name: "B1 additional functions",
+        description: "Markup calculator",
+      }),
+      // terser()
+    ],
+    onwarn: (warning, warn) => {
+      // Suppress warnings for barcodeGenerator.ts
+      if (warning.loc && warning.loc.file.includes('barcodeGenerator.ts')) {
+        return;
+      }
+      // Use default for everything else
+      warn(warning)
+    },
+  }, {
   input: 'src/script.user.ts',
   output: {
     file: 'dist/script.user.js',
@@ -49,4 +86,12 @@ export default {
     addUserScriptMetadata(),
     terser()
   ],
-};
+  onwarn: (warning, warn) => {
+    // Suppress warnings for barcodeGenerator.ts
+    if (warning.loc && warning.loc.file.includes('barcodeGenerator.ts')) {
+      return;
+    }
+    // Use default for everything else
+    warn(warning)
+  },
+}];

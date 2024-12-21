@@ -1,5 +1,5 @@
 import { i18n, lettersToNumbers } from './i18n'
-import { LabelGenerator } from './labelGenerator'
+import { LabelGenerator, labelType } from './labelGenerator'
 import { type item, type packagedItem } from './item'
 import { UINotification } from './ui-notification'
 import mainHTML from './html/main.html'
@@ -8,6 +8,7 @@ import { MarkdownModal } from './markdownModal'
 import { WeightLabelModal } from './weightLabelModal'
 import { Request } from './request'
 import { ModalService } from './modal'
+import { LabelTypeModal } from './labelTypeModal'
 
 declare let angular: any
 
@@ -18,13 +19,17 @@ export class LabelerInterface {
   private modalService = new ModalService()
   private items: packagedItem[] = []
   private active: boolean = false
-  settings = {
-    alternativeLabelFormat: false,
+  settings: {
+    type: labelType,
+    sayOutLoud: boolean,
+    showStock: boolean
+  } = {
+    type: 'normal',
     sayOutLoud: true,
     showStock: false
   }
-
   modals: {
+    type: LabelTypeModal
     weight: WeightLabelModal
     markdown: MarkdownModal
   } | undefined
@@ -35,6 +40,7 @@ export class LabelerInterface {
 
   constructor() {
     this.modals = {
+      type: new LabelTypeModal(this),
       weight: new WeightLabelModal(this.notification, this),
       markdown: new MarkdownModal(this.req)
     }
@@ -154,6 +160,13 @@ export class LabelerInterface {
                         ng-click="weightLabel(c.grid.provider.getSelected())">
                   <i class="fa fa-fw fa-balance-scale"></i> ` + i18n('weightLabel') + `
                 </button>
+                <button ng-show="!c.grid.config.isLoading" 
+                        ng-disabled="selected(c.grid) == 0" 
+                        type="button" 
+                        class="btn btn-sm btn-primary" 
+                        ng-click="proccessItem(c.grid.provider.getSelected())">
+                  <i class="fa fa-fw fa-plus"></i> ` + i18n('add') + `
+                </button>
                 <button class="btn btn-sm pull-right" ng-click="closeModal()">
                   <i class="fa fa-fw fa-times"></i> ` + i18n('close') + `
                 </button>
@@ -180,6 +193,11 @@ export class LabelerInterface {
           const selected = a.provider.getSelected()
           return selected.length === 1 && selected[0].measurementUnitCanBeWeighed
         },
+        proccessItem: (a: any) => {
+          a.forEach((item: item) => {
+            this.proccessItem(item, true)
+          })
+        }
       },
       size: 'ext',
     })
@@ -196,7 +214,13 @@ export class LabelerInterface {
     c.filter.sort = { id: 'desc' }
     c.reload()
   }
-
+  setLabelType(type: labelType): void {
+    this.settings.type = type
+    const labelTypeElement = document.getElementById('labelType')
+    if (labelTypeElement) {
+      labelTypeElement.textContent = i18n(type)
+    }
+  }
   async showTempFileListModal(): Promise<void> {
     await this.modalService.showModal({
       template: `
@@ -216,6 +240,7 @@ export class LabelerInterface {
   }
 
   bindEvents(): void {
+    document.getElementById('labelType')?.addEventListener('click', () => { this.modals?.type.open() })
     document.getElementById('cleanAllButton')?.addEventListener('click', () => { this.cleanAll() })
     document.getElementById('printButton')?.addEventListener('click', () => { this.print() })
     if (this.mainInput != null) {
@@ -234,7 +259,6 @@ export class LabelerInterface {
         }
       })
     }
-    this.bindCheckboxChange('alternativeLabelFormat', 'alternativeLabelFormat')
     this.bindCheckboxChange('sayOutLoud', 'sayOutLoud')
     this.bindCheckboxChange('showStock', 'showStock')
   }
@@ -277,11 +301,11 @@ export class LabelerInterface {
       this.notification.error(i18n('noData'))
       return
     }
-    if (!items.every(item => item.isActive == true && item.barcode != null)) {
-      this.notification.warning(i18n('notAllItemsActive'))
+
+    const labelGenerator = new LabelGenerator(items, this.settings.type)
+    if (labelGenerator.success) {
+      this.cleanAll(true)
     }
-    void new LabelGenerator(items, this.settings.alternativeLabelFormat)
-    this.cleanAll(true)
   }
 
   cleanAll(donePrinting: boolean = false): void {
@@ -410,6 +434,7 @@ export class LabelerInterface {
       }
     })
   }
+
   async quickPriceChange(item: packagedItem): Promise<void> {
     const price = prompt(i18n('enterNewPrice'), (item.priceWithVat ?? 0).toString())
     if (price == null || item.id == null) {
@@ -442,11 +467,17 @@ export class LabelerInterface {
     }
   }
 
-  proccessItem(item: packagedItem): void {
+  proccessItem(item: packagedItem, silence: boolean = false): void {
     // we might get duplicate items, so item id or barcode is not enough
     item.id = this.generateItemId(item.id)
-    if (!this.settings.sayOutLoud) {
-      // Nothing
+    if (silence) {
+      this.notification.success({
+        title: i18n('itemAdded'),
+        message: item.name,
+        delay: 2000
+      })
+    } else if (!this.settings.sayOutLoud) {
+      // no need to say out loud
     } else if (this.settings.showStock && this.settings.sayOutLoud && item.stock != null) {
       void this.textToVoice.speak(item.stock.toString())
       console.info('\t' + item.barcode + '\t' + item.stock)

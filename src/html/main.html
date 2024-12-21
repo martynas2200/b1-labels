@@ -9,12 +9,6 @@
         <button type="button" class="btn btn-info" id="searchButton">${i18n('code')}</button>
       </div>
       <div class="form-group">
-        <div class="checkbox-form hidden-sm">
-          <label>
-            <input type="checkbox" class="ace" id="alternativeLabelFormat">
-            <span class="lbl display-inline">&nbsp;${i18n('alternativeLabelFormat')}</span>
-          </label>
-        </div>
         <div class="checkbox-form">
           <label>
             <input type="checkbox" class="ace" id="sayOutLoud" checked>
@@ -30,6 +24,16 @@
       </div>
       <div class="clearfix margin-bottom-10">
         <div class="pull-right">
+          <!-- select for label type: normal, half, fridge, barcodeOnly -->
+          <button class="btn btn-white" id="labelType">
+            ${i18n('normal')} <i class="fa fa-caret-down"></i>
+          </button>
+          <!-- <select class="form-control" id="labelType">
+            <option value="normal">${i18n('normal')}</option>
+            <option value="half">${i18n('half')}</option>
+            <option value="fridge">${i18n('fridge')}</option>
+            <option value="barcode">${i18n('barcodeOnly')}</option>
+          </select> -->
           <button type="button" class="btn btn-purple" id="printButton">
             <i class="fa fa-print"></i>&nbsp;${i18n('print')}</button>
           <button type="button" class="btn btn-danger" id="cleanAllButton">${i18n('cleanAll')}</button>

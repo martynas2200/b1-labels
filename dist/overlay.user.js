@@ -47,15 +47,11 @@ window.addEventListener('load', () => {
 const isInAppMode = window.matchMedia('(display-mode: standalone)').matches
                  || window.matchMedia('(display-mode: fullscreen)').matches;
 let loadTime = Date.now();
-let checkInterval = 20 * 60 * 1000; // 20 minutes
+let checkInterval = 30 * 60 * 1000;
 let isMinimized = false;
 
 function checkWindowState() {
-    if (document.hidden || document.visibilityState === 'hidden') {
-        isMinimized = true;
-    } else {
-        isMinimized = false;
-    }
+    isMinimized = document.hidden || document.visibilityState === 'hidden';
 }
 
 function checkInactivity() {
@@ -63,17 +59,6 @@ function checkInactivity() {
         window.close();
     }
 }
-
-// Update the load time whenever the window is focused
-window.onfocus = function() {
-    loadTime = Date.now();
-};
-
-document.addEventListener('visibilitychange', checkWindowState);
-checkWindowState();
-setInterval(checkInactivity, 301000);
-
-
 
 if (isInAppMode) {
     console.log('Website is opened in App Mode.');

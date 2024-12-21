@@ -3,12 +3,15 @@ import { type packagedItem, type item } from './item'
 import printStyles from './styles/label-print.scss'
 import { Code128, getDataMatrixMat, toPath } from './barcodeGenerator'
 
-export class LabelGenerator {
-  private items: item[] = []
-  private readonly alternativeLabelFormat: boolean
+export type labelType = 'normal' | 'half' | 'fridge' | 'barcodeOnly';
 
-  constructor(data: item[] | Promise<item[]> | packagedItem[] | Promise<packagedItem[]> | undefined = undefined, alternativeLabelFormat: boolean = false) {
-    this.alternativeLabelFormat = alternativeLabelFormat
+export class LabelGenerator {
+  items: item[] = []
+  success: boolean = false
+  readonly type: labelType
+
+  constructor(data: item[] | Promise<item[]> | packagedItem[] | Promise<packagedItem[]> | undefined = undefined, type: labelType = 'normal') {
+    this.type = type
     if (data == null) {
       // The constructor was called without data.
     } else if (data instanceof Promise) {
@@ -23,10 +26,20 @@ export class LabelGenerator {
   }
 
   print(): void {
-    this.items = this.items.filter(item => item.isActive == true && item.barcode != null)
-    if (!this.isAllItemsActive() && !confirm(i18n('notAllItemsActive'))) {
-      return
+    this.items = this.items.filter(
+      (item) => item.barcode != null,
+    )
+    if (!this.isAllItemsActive()) {
+      if (!confirm(i18n('notAllItemsActive'))) {
+        return
+      }
     }
+    if (this.type == 'half' && this.items.length % 2 != 0) {
+      if (!confirm(i18n('oddNumberOfItems'))) {
+        return
+      }
+    }
+
     if (this.items.length > 0) {
       void this.printLabelsUsingBrowser(this.items)
     } else {
@@ -34,185 +47,266 @@ export class LabelGenerator {
     }
   }
 
-  private isAllItemsActive(): boolean {
+  isAllItemsActive(): boolean {
     return this.items.every(item => item.isActive)
   }
 
-  private makeUpperCaseBold(text: string): string {
+  makeUpperCaseBold(text: string): string {
     const regex = /("[^"]+"|[A-ZŽĄČĘĖĮŠŲŪ]{3,})/g
     return text.replace(regex, '<b>$1</b>')
   }
 
-  private generateLabel(data: packagedItem): HTMLDivElement {
+  pricePerUnit(item: item): string | null {
+    // Extended regex to handle cases like "4 x 100g"
+    const regex = /(?:(\d+)\s*x\s*)?(\d+(\.\d+)?(?:,\d+)?)[\s]*(k?g|m?l|vnt|pak|rul)\b/i
+    const match = item.name.match(regex)
+
+    if (match) {
+      // if match is found, double check if there is another number in the string by removing the first match
+      const match2 = item.name.replace(match[0], '').match(regex)
+      if (match2) {
+        return null
+      }
+
+      const multiplier = match[1] ? parseInt(match[1]) : 1 // Multiplier if "4 x" pattern exists
+      const amount = parseFloat(match[2].replace(',', '.')) * multiplier // Total amount
+      const unit = match[4].replace('.', '').toLowerCase() // Normalize unit
+      let pricePerUnit
+
+      if (unit === 'g' || unit === 'ml') {
+        pricePerUnit = (item.priceWithVat / (amount / 1000)).toFixed(2) +
+          (unit === 'ml' ? ' €/l' : ' €/kg')
+      } else {
+        pricePerUnit = (item.priceWithVat / amount).toFixed(2) + " €/" + unit
+      }
+      if (
+        parseFloat(pricePerUnit) < 0.5 ||
+        parseFloat(pricePerUnit) > 25 ||
+        parseFloat(pricePerUnit) === item.priceWithVat
+      ) {
+        return null
+      }
+      return pricePerUnit
+    }
+    return null
+  }
+
+  generateLabel(
+    data: packagedItem,
+    type: labelType = this.type,
+  ): HTMLDivElement {
     const label = document.createElement('div')
     label.className = 'label'
-    if (this.alternativeLabelFormat) {
-      label.classList.add('alternative')
-    } else if (data.weight != null) {
-      return this.generateWeightLabel(data)
+    if (data.weight != null) {
+      return this.generateWeightLabel(data, type === 'half')
+    } else if (type !== 'normal') {
+      label.classList.add(type)
     }
 
-    const item = document.createElement('div')
-    item.className = 'item'
-    item.innerHTML = this.makeUpperCaseBold(data.name)
+    label.appendChild(
+      this.createDivWithClass('item', this.makeUpperCaseBold(data.name), true),
+    )
 
-    if (data.barcode != null) {
-      const barcode = document.createElement('div')
-      barcode.className = 'barcode'
-      const barcodeText = document.createElement('div')
-      barcodeText.innerHTML = (data.departmentNumber != null ? 'S' + data.departmentNumber + ' ' : '') + data.barcode
-      barcode.appendChild(barcodeText)
-      const code128 = new Code128(data.barcode)
-      const p = document.createElement('p')
-      p.innerHTML = code128.toHtml(code128.encode(), this.alternativeLabelFormat ? [1, 50] : [1, 15])
-      barcode.appendChild(p)
-      label.appendChild(barcode)
+    if (data.barcode != null && type !== 'half') {
+      label.appendChild(this.createCode123Div(data))
+    } else if (data.barcode != null) {
+      label.appendChild(this.createDMDiv(data))
     }
-    
-    if (data.priceWithVat != 0) {
-      const price = document.createElement('div')
-      price.className = 'price'
-      if (typeof data.priceWithVat === 'number') {
-        price.textContent = data.priceWithVat.toFixed(2)
-      } else {
-        price.textContent = parseFloat(data.priceWithVat).toFixed(2).toString()
-      }
-      label.appendChild(price)
-    }
+
+    label.appendChild(this.createDivWithClass('price', this.getItemPrice(data)))
 
     if (data.packageCode != null) {
-      const deposit = document.createElement('div')
-      deposit.className = 'deposit'
-      deposit.textContent = 'Tara +0.10'
-      label.appendChild(deposit)
+      label.appendChild(this.createDivWithClass('subtext', 'Tara +0.10'))
     } else if (data.measurementUnitCanBeWeighed == true) {
-      const deposit = document.createElement('div')
-      deposit.className = 'deposit'
-      deposit.textContent = '/ 1 ' + data.measurementUnitName
-      label.appendChild(deposit)
+      label.appendChild(
+        this.createDivWithClass('subtext', '/ 1 ' + data.measurementUnitName),
+      )
     }
 
-    label.appendChild(item)
     return label
   }
 
-  private generateWeightLabel(data: packagedItem): HTMLDivElement {
-    const parent = document.createElement('div')
-    if (data.weight == null || data.totalPrice == null || data.priceWithVat == null || data.barcode == null || data.barcode.length > 13) {
-      return parent
+  getItemPrice(data: item): string {
+    if (data.priceWithVat == null || data.priceWithVat === 0) {
+      return ''
     }
-    parent.className = 'label'
-    const label = document.createElement('div')
-    label.className = 'weighted'
-
-    const item = document.createElement('div')
-    item.className = 'item'
-    item.innerHTML = data.name
-    label.appendChild(item)
-
-    const price = document.createElement('div')
-    price.className = 'fprice'
-    price.textContent = (data.totalPrice != null) ? data.totalPrice.toFixed(2) + ' €' : ''
-    label.appendChild(price)
-
-    const weight = document.createElement('div')
-    weight.className = 'weight'
-    if (data.measurementUnitCanBeWeighed == true) {
-      weight.textContent = data.weight.toFixed(3)
+    if (typeof data.priceWithVat === 'number') {
+      return data.priceWithVat.toFixed(2)
     } else {
-      weight.textContent = data.weight.toString()
+      return parseFloat(data.priceWithVat).toFixed(2).toString()
     }
-    label.appendChild(weight)
+  }
 
-    const kgPrice = document.createElement('div')
-    kgPrice.className = 'kg-price'
-    kgPrice.textContent = data.priceWithVat.toFixed(2)
-    label.appendChild(kgPrice)
-
-    const weightText = document.createElement('div')
-    weightText.className = 'weight-text'
-    weightText.textContent = data.measurementUnitName
-    label.appendChild(weightText)
-
-    const kgText = document.createElement('div')
-    kgText.className = 'kg-text'
-    kgText.textContent = '€/' + data.measurementUnitName
-    label.appendChild(kgText)
-
+  createCode123Div(data: item): HTMLDivElement {
     const barcode = document.createElement('div')
     barcode.className = 'barcode'
+
+    const pricePerUnitText = this.pricePerUnit(data)
+    if (!data.measurementUnitCanBeWeighed && pricePerUnitText != null) {
+      barcode.appendChild(
+        this.createDivWithClass('price-per-unit', pricePerUnitText),
+      )
+    }
+
+    barcode.appendChild(this.createDivWithClass('barcode-text', data.barcode))
+
+    const code128 = new Code128(data.barcode)
+    const p = document.createElement('p')
+    p.innerHTML = code128.toHtml(
+      code128.encode(),
+      this.type == 'barcodeOnly' ? [1, 50] : [1, 15],
+    )
+    barcode.appendChild(p)
+    return barcode
+  }
+  generateWeightLabel(data: packagedItem, half = false): HTMLDivElement {
+    const label = document.createElement('div')
+
+    if (
+      data.weight == null ||
+      data.totalPrice == null ||
+      data.priceWithVat == null ||
+      data.barcode == null ||
+      data.barcode.length > 13
+    ) {
+      return label
+    }
+    label.className = 'label weight' + (half ? ' half' : '')
+
+    const elements = [
+      { className: 'item', text: data.name },
+      {
+        className: 'price',
+        text:
+          half && data.addPackageFee
+            ? (data.totalPrice + 0.01).toFixed(2)
+            : data.totalPrice.toFixed(2),
+      },
+      {
+        className: 'weight',
+        text:
+          (data.measurementUnitCanBeWeighed
+            ? data.weight.toFixed(3)
+            : data.weight.toString()) +
+          (half ? ' ' + data.measurementUnitName : ''),
+      },
+      {
+        className: 'kg-price',
+        text: data.priceWithVat.toFixed(2) + (half ? ' €/kg' : ''),
+      },
+      { className: 'weight-text', text: data.measurementUnitName },
+      { className: 'kg-text', text: '€/' + data.measurementUnitName },
+    ]
+    if (data.addPackageFee && !half) {
+      elements.push({ className: 'package', text: '+ 0,01 (fas. maišelis)' })
+    }
+    elements.forEach(({ className, text }) => {
+      label.appendChild(this.createDivWithClass(className, text))
+    })
+
+    label.appendChild(this.createDMDiv(data))
+
+    if (data.expiryDate != null) {
+      const date: string = new Date(data.expiryDate).toLocaleDateString(
+        'lt-LT',
+        {
+          month: '2-digit',
+          day: '2-digit',
+        },
+      )
+      label.appendChild(this.createDivWithClass('expiry', date))
+    }
+
+    if (data.addManufacturer == true && data.manufacturerName != null) {
+      label.appendChild(
+        this.createDivWithClass('manufacturer', data.manufacturerName),
+      )
+    }
+
+    return label
+  }
+
+  createDivWithClass(
+    className: string,
+    text: string,
+    raw = false,
+  ): HTMLDivElement {
+    const div = document.createElement('div')
+    div.className = className
+    if (raw) {
+      div.innerHTML = text
+    } else {
+      div.textContent = text
+    }
+    return div
+  }
+
+  createDMDiv(data: packagedItem): HTMLDivElement {
+    const barcode = document.createElement('div')
+    barcode.className = 'barcode dm'
     // Prefix 2200, then 13 digits of barcode, then 4 digits of weight
-    const barcodeString = (data.addPackageFeeNote == true ? '1102\r\n' : '') + '2200' + '0'.repeat(13 - data.barcode.length) + data.barcode + '0'.repeat(5 - data.weight.toFixed(3).length) + data.weight.toFixed(3).replace('.', '')
-    const svgNS = "http://www.w3.org/2000/svg"
+    if (data.barcode == null) {
+      return barcode
+    }
+    let barcodeString = data.barcode
+    if (data.weight != null) {
+      barcodeString =
+        (data.addPackageFee == true ? '1102\r\n' : '') +
+        '2200' +
+        '0'.repeat(13 - data.barcode.length) +
+        data.barcode +
+        '0'.repeat(5 - data.weight.toFixed(3).length) +
+        data.weight.toFixed(3).replace('.', '')
+    }
+    const svgNS = 'http://www.w3.org/2000/svg'
     const svg: SVGSVGElement = document.createElementNS(svgNS, 'svg')
     const path = document.createElementNS(svgNS, 'path')
     path.setAttribute('transform', 'scale(1)')
     svg.appendChild(path)
-    barcode.appendChild(svg)
     path.setAttribute('d', toPath(getDataMatrixMat(barcodeString)))
     svg.setAttribute('class', 'datamatrix')
     svg.setAttribute('viewBox', '0 0 18 18')
-    label.appendChild(barcode)
-
-    if (data.expiryDate != null) {
-      const expiryText = document.createElement('div')
-      expiryText.className = 'expiracy'
-      expiryText.textContent = 'Geriausia iki '
-      const expiryDate = document.createElement('span')
-      expiryDate.textContent = new Date(data.expiryDate).toLocaleDateString('lt-LT', { month: '2-digit', day: '2-digit' })
-
-      expiryText.appendChild(expiryDate)
-      label.appendChild(expiryText)
-    }
-
-    if (data.addManufacturer == true && data.manufacturerName != null) {
-      const manufacturer = document.createElement('div')
-      manufacturer.className = 'manufacturer'
-      manufacturer.textContent = data.manufacturerName
-      label.appendChild(manufacturer)
-    }
-
-    if (data.addPackageFeeNote == true) {
-      const packageCode = document.createElement('div')
-      packageCode.className = 'package'
-      packageCode.textContent = '+ 0,01 (fas. maišelis)'
-      label.appendChild(packageCode)
-    }
-    parent.appendChild(label)
-    return parent
+    barcode.appendChild(svg)
+    return barcode
   }
 
-  private async printLabelsUsingBrowser(data: item[]): Promise<void> {
+  isItInAppMode(): boolean {
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches
+    )
+  }
+
+  async printLabelsUsingBrowser(data: item[]): Promise<void> {
     const labels: HTMLElement[] = data.map(item => this.generateLabel(item))
 
-    const popup: Window | null = window.open('', '_blank', 'width=700,height=700')
+    const popup: Window | null = window.open(
+      '',
+      '_blank',
+      this.isItInAppMode() ? 'width=250,height=300' : 'width=800,height=600',
+    )
     if (popup == null) {
       alert('Please allow popups for this site')
       return
     }
     popup.document.title = `${labels.length} ${i18n('nlabelsToBePrinted')}`
-    const style: HTMLStyleElement = document.createElement('style')
-    style.innerHTML = `${printStyles}`
-    popup.document.head.appendChild(style)
+    popup.document.head.appendChild(this.createStyleElement())
 
     labels.forEach(label => {
       popup.document.body.appendChild(label)
     })
 
-    // wait for the images to load if there are any
-    const images = popup.document.getElementsByTagName('img')
-    const promises = Array.from(images).map(image => {
-      return new Promise((resolve, reject) => {
-        image.onload = resolve
-        image.onerror = reject
-      })
-    })
-
-    await Promise.all(promises)
+    this.success = true
 
     popup.addEventListener('afterprint', () => {
       popup.close()
     })
     popup.print()
+  }
+
+  createStyleElement(): HTMLStyleElement {
+    const style: HTMLStyleElement = document.createElement('style')
+    style.innerHTML = `${printStyles}`
+    return style
   }
 }
