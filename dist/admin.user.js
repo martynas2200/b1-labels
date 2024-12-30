@@ -2,7 +2,7 @@
 // @name              B1 additional functions
 // @namespace         http://tampermonkey.net/
 // @homepage          https://github.com/martynas2200/b1-labels
-// @version           1.7.0
+// @version           1.7.1
 // @description       Markup calculator
 // @author            Martynas Miliauskas
 // @match             https://www.b1.lt/*
@@ -106,10 +106,12 @@
             itemCatalog: 'Item Catalog',
             itemCreated: 'Item created',
             itemDetails: 'Item Details',
+            itemNotActive: 'Item not active',
             itemNotFound: 'Item not found!',
             itemsFound: 'Items found',
             itemUpdated: 'Item updated',
             kiloPrice: 'Price per kilo',
+            label: 'Label',
             labelsAndPrices: 'Labels and Prices',
             leftover: 'Leftover',
             loading: 'Loading...',
@@ -126,6 +128,7 @@
             missingElements: 'Missing UI elements',
             missingName: 'Missing name',
             missingWeight: 'Missing weight',
+            modifiedAt: 'Last modified',
             multipleItemsFound: 'Multiple items found!',
             name: 'Name',
             netWeight: 'Net Weight',
@@ -160,6 +163,7 @@
             readyForScan: 'Ready for scan',
             resetForm: 'Reset form',
             results: 'Results',
+            retrievedAt: 'Retrieved at',
             save: 'Save',
             sayOutLoud: 'Say out loud',
             search: 'Search',
@@ -173,6 +177,7 @@
             showStock: 'Show Stock',
             simplifyForm: 'Simplify Form',
             stock: 'Stock',
+            type: 'Label type',
             thisIs: 'This is',
             toggleKeyboard: 'Toggle Keyboard',
             tooManyItems: 'Too many items',
@@ -240,14 +245,16 @@
             isCommentRequired: 'Komentaro reikalavimas',
             isQuantitative: 'Kiekinė',
             isRefundable: 'Grąžinimo galimybė',
-            itemCatalog: 'Prekių žinynas',
             itemAdded: 'Prekė pridėta',
+            itemCatalog: 'Prekių žinynas',
             itemCreated: 'Prekė išsaugota',
             itemDetails: 'Prekės informacija',
+            itemNotActive: 'Prekė neaktyvi',
             itemNotFound: 'Prekė nerasta!',
             itemsFound: ' rasta',
             itemUpdated: 'Prekė atnaujinta',
             kiloPrice: 'Kilogramo kaina',
+            label: 'Etiketė',
             labelsAndPrices: 'Etiketės ir kainos',
             leftover: 'Liko',
             loading: 'Kraunama...',
@@ -264,6 +271,7 @@
             missingElements: 'Trūksta UI elementų',
             missingName: 'Trūksta pavadinimo',
             missingWeight: 'Trūksta svorio',
+            modifiedAt: 'Paskutinis keitimas',
             multipleItemsFound: 'Rasta daugiau nei viena prekė!',
             name: 'Pavadinimas',
             netWeight: 'Neto svoris',
@@ -298,6 +306,7 @@
             readyForScan: 'Pasiruošęs skenavimui',
             resetForm: 'Atkurti formą',
             results: 'Rezultatai',
+            retrievedAt: 'Gauta',
             save: 'Išsaugoti',
             sayOutLoud: 'Sakyti kainas balsu',
             search: 'Ieškoti',
@@ -311,6 +320,7 @@
             showStock: 'Rodyti likutį',
             simplifyForm: 'Supaprastinti formą',
             stock: 'Likutis',
+            type: 'Etiketės tipas',
             thisIs: 'Tai',
             toggleKeyboard: 'Klaviatūra',
             tooManyItems: 'Per daug prekių',
@@ -632,7 +642,7 @@
         goToItemMovement() {
             const dataRows = this.getDataRows();
             const controller = angular.element(dataRows).controller();
-            const item = controller.grid.data.filter((item) => item._select).pop();
+            const item = (controller.data ?? controller.grid.data).filter((item) => item._select).pop();
             if (item == null) {
                 this.notification.error('Pasirinkite prekę');
                 return;
@@ -646,7 +656,7 @@
             url.searchParams.append('itemName', item.name ?? item.itemName);
             url.searchParams.append('warehouseId', '1');
             url.searchParams.append('warehouseName', 'Pagrindinis');
-            window.location.href = url.toString();
+            window.open(url.toString(), '_blank');
         }
         calculateMarkup(price, cost) {
             return ((price - cost) / cost) * 100;

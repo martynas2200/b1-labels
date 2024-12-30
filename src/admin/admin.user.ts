@@ -78,7 +78,7 @@ class LabelsUserscript {
   goToItemMovement (): void {
     const dataRows = this.getDataRows()
     const controller = angular.element(dataRows).controller()
-    const item = controller.grid.data.filter((item: any) => item._select).pop()
+    const item = (controller.data ?? controller.grid.data).filter((item: any) => item._select).pop()
     if (item == null) {
       this.notification.error('Pasirinkite prekę')
       return
@@ -92,7 +92,8 @@ class LabelsUserscript {
     url.searchParams.append('itemName', item.name ?? item.itemName)
     url.searchParams.append('warehouseId', '1')
     url.searchParams.append('warehouseName', 'Pagrindinis')
-    window.location.href = url.toString()
+    window.open(url.toString(), '_blank')
+    
   }
 
   calculateMarkup (price: number, cost: number): number {

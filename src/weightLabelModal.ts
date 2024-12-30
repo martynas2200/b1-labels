@@ -35,6 +35,7 @@ export class WeightLabelModal {
       add: this.add.bind(this),
       print: this.print.bind(this),
       picker: this.showPicker.bind(this),
+      i18n: i18n
     })
   }
     
@@ -90,7 +91,7 @@ export class WeightLabelModal {
       this.notifier.error(i18n('missingWeight'))
       return null
     }
-    item.weight = this.gToKg(parseFloat(item.weight))
+    item.weight = item.measurementUnitCanBeWeighed ? this.gToKg(parseFloat(item.weight)) : parseFloat(item.weight)
     if (item.weight > 9.999) {
       this.notifier.error(i18n('maxWeight'))
       return null
@@ -126,7 +127,8 @@ export class WeightLabelModal {
     }
     this.modalScope.item.totalPrice = this.interface.calculateTotalPrice(
       this.modalScope.item.priceWithVat,
-      this.gToKg(this.modalScope.item.weight),
+      this.modalScope.item.measurementUnitCanBeWeighed ? 
+        this.gToKg(this.modalScope.item.weight) : this.modalScope.item.weight,
     )
   }
 

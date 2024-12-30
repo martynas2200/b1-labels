@@ -127,7 +127,6 @@ export class LabelerInterface {
     }
     const fileManager = this.createNavItem(i18n('files'), () => { void this.showTempFileListModal() }, 'fa-files-o')
     ul.appendChild(fileManager)
-    // lar.module("b1").directive("extdLightPurchaseVirtualNameInput", ["ware
     const logoutButtons = document.querySelectorAll('.nav-user-dropdown__title')
     if (logoutButtons != null && !isNavInitialized) {
       logoutButtons.forEach(button => {
@@ -151,24 +150,30 @@ export class LabelerInterface {
                         type="button" 
                         class="btn btn-sm btn-purple" 
                         ng-click="print(c.grid.provider.getSelected())">
-                  <i class="fa fa-fw fa-print"></i> ` + i18n('print') + `
+                  <i class="fa fa-fw fa-print"></i> ${i18n('print')}
                 </button>
                 <button ng-show="!c.grid.config.isLoading" 
                         ng-disabled="!isWeighted(c.grid)" 
                         type="button" 
                         class="btn btn-sm btn-pink" 
                         ng-click="weightLabel(c.grid.provider.getSelected())">
-                  <i class="fa fa-fw fa-balance-scale"></i> ` + i18n('weightLabel') + `
+                  <i class="fa fa-fw fa-balance-scale"></i> ${i18n('weightLabel')}
                 </button>
                 <button ng-show="!c.grid.config.isLoading" 
                         ng-disabled="selected(c.grid) == 0" 
                         type="button" 
                         class="btn btn-sm btn-primary" 
                         ng-click="proccessItem(c.grid.provider.getSelected())">
-                  <i class="fa fa-fw fa-plus"></i> ` + i18n('add') + `
+                  <i class="fa fa-fw fa-plus"></i> ${i18n('add')}
+                </button>
+                <button ng-show="!c.grid.config.isLoading" 
+                        type="button" 
+                        class="btn btn-sm btn-white" 
+                        ng-click="openTypeModal()">
+                   <i class="fa fa-caret-down"></i> ${i18n('type')}
                 </button>
                 <button class="btn btn-sm pull-right" ng-click="closeModal()">
-                  <i class="fa fa-fw fa-times"></i> ` + i18n('close') + `
+                  <i class="fa fa-fw fa-times"></i> ${i18n('close')}
                 </button>
               </div>
               <extd-grid
@@ -197,6 +202,9 @@ export class LabelerInterface {
           a.forEach((item: item) => {
             this.proccessItem(item, true)
           })
+        },
+        openTypeModal: () => {
+          this.modals?.type.open()
         }
       },
       size: 'ext',
@@ -209,8 +217,8 @@ export class LabelerInterface {
       return false
     }
     const c = angular.element(dataRows).controller().grid
-    c.config.hideTopPager = true
-    c.filter.addRule('isActive', 1)
+    // c.config.hideTopPager = true
+    // c.filter.addRule('isActive', 1)
     c.filter.sort = { id: 'desc' }
     c.reload()
   }
@@ -229,7 +237,7 @@ export class LabelerInterface {
         </div>
         <div class="modal-footer">
           <button class="btn" ng-click="closeModal()">
-            <i class="fa fa-times"></i> ` + i18n('close') + `
+            <i class="fa fa-times"></i>${ i18n('close') }
           </button>
         </div>`,
       scopeProperties: {
@@ -300,7 +308,7 @@ export class LabelerInterface {
     if (items.length === 0) {
       this.notification.error(i18n('noData'))
       return
-    }
+    } 
 
     const labelGenerator = new LabelGenerator(items, this.settings.type)
     if (labelGenerator.success) {
@@ -340,9 +348,8 @@ export class LabelerInterface {
       const tagButton = this.createItemButton('btn-pink', 'fa-balance-scale', () => { this.modals?.weight.openWeightModal(item) })
       itemElement.appendChild(tagButton)
     } 
-    if (item.priceWithVat > 0) {
-      itemElement.querySelector('.item-price')?.addEventListener('click', () => { this.showDetails(item) })
-    } else if (item.id != null) {
+    itemElement.querySelector('.item-main')?.addEventListener('click', () => { this.showDetails(item) })
+    if (item.id != null && !item.priceWithVat) {
       const priceButton = this.createItemButton('btn-danger', 'fa-euro', () => { void this.quickPriceChange(item) })
       itemElement.appendChild(priceButton)
     }
@@ -419,17 +426,20 @@ export class LabelerInterface {
         <div class="container width-auto">${resultString}</div>
       </div>
       <div class="modal-footer">
+        <button class="btn btn-sm btn-pink" type="button" ng-click="tagModal(item)"><i class="fa fa-tag"></i> ${i18n('label')}</button>
         <button type="button" class="btn btn-sm" ng-click="closeModal()"
         >${i18n('close')}</button>
       </div>
     `
-  
     void this.modalService.showModal({
       template: modalTemplate,
       scopeProperties: {
         item: item,
         change: (item: item) => {
           void this.quickPriceChange(item)
+        },
+        tagModal: (item: item) => {
+          void this.modals?.weight.openWeightModal(item)
         }
       }
     })
@@ -478,6 +488,8 @@ export class LabelerInterface {
       })
     } else if (!this.settings.sayOutLoud) {
       // no need to say out loud
+    } else if (item.isActive == false && item.priceWithVat > 0) {
+      void this.textToVoice.speak(i18n('itemNotActive'))
     } else if (this.settings.showStock && this.settings.sayOutLoud && item.stock != null) {
       void this.textToVoice.speak(item.stock.toString())
       console.info('\t' + item.barcode + '\t' + item.stock)
@@ -496,8 +508,6 @@ export class LabelerInterface {
   }
 
   canItBePackaged(barcode: string): boolean {
-    // barcode rules: prefix is 21-29(a part of barcode) + 6 barcode digits + 4 digits for weight
-    // '2200' + 13 digits of barcode + 4 digits of weight
     const prefix = parseInt(barcode.slice(0, 2), 10)
     return (barcode.toString().length === 13 || barcode.toString().length === 21) && prefix > 20 && prefix < 30
   }
@@ -532,7 +542,7 @@ export class LabelerInterface {
     } else if (barcode.length === 21) {
       barcodePart = barcode.slice(4, 17)
     }
-
+    this.showLoading()
     item = await this.req.getItem(barcodePart) as packagedItem
     this.hideLoading()
     if (item != null) {
@@ -565,11 +575,11 @@ export class LabelerInterface {
     this.addItemToView(item)
   }
 
-  public calculateTotalPrice(priceWithVat: number, weight: number): number {
-    if (priceWithVat == null || weight == null) {
+  public calculateTotalPrice(priceWithVat: number, quantity: number): number {
+    if (priceWithVat == null || quantity == null) {
       return 0
     }
-    const totalPrice = priceWithVat * weight
+    const totalPrice = priceWithVat * quantity
     return Math.round((totalPrice + Number.EPSILON) * 100) / 100
   }
 

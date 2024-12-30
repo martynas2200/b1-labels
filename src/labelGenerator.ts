@@ -57,8 +57,9 @@ export class LabelGenerator {
   }
 
   pricePerUnit(item: item): string | null {
-    // Extended regex to handle cases like "4 x 100g"
-    const regex = /(?:(\d+)\s*x\s*)?(\d+(\.\d+)?(?:,\d+)?)[\s]*(k?g|m?l|vnt|pak|rul)\b/i
+    // TODO: Temporary removed g and kg from the regex - the manager wants to think about it
+    // const regex = /(?:(\d+)\s*x\s*)?(\d+(\.\d+)?(?:,\d+)?)[\s]*(k?g|m?l|vnt|pak|rul)\b/i
+    const regex = /(?:,?\s*)?(?:(\d+)\s*x\s*)?(\d+(\.\d+)?(?:,\d+)?)[\s]*(m?l|vnt|pak|rul)\b/i
     const match = item.name.match(regex)
 
     if (match) {
@@ -77,7 +78,7 @@ export class LabelGenerator {
         pricePerUnit = (item.priceWithVat / (amount / 1000)).toFixed(2) +
           (unit === 'ml' ? ' €/l' : ' €/kg')
       } else {
-        pricePerUnit = (item.priceWithVat / amount).toFixed(2) + " €/" + unit
+        pricePerUnit = (item.priceWithVat / amount).toFixed(2) + ' €/' + unit
       }
       if (
         parseFloat(pricePerUnit) < 0.5 ||

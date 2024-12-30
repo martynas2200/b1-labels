@@ -59,7 +59,7 @@
   height: 6mm;
   transform: rotate(270deg);
   padding: 3px;
-  fill: #333;
+  fill: black;
 }
 
 .subtext {
@@ -83,7 +83,7 @@
   margin-right: 3px;
   line-height: 1em;
   font-family: "Book Antiqua", serif;
-  padding-right: 10px;
+  padding: 0px 10px;
   // there is an overflow of the name
   background: #ffffffe8;
   border-radius: 5px;
@@ -171,6 +171,10 @@
   display: block;
   border-right: 0.5px dashed #ff9b79;
 
+  & + .label.half:nth-of-type(even) {
+    border-right-style: solid;
+    border-left-style: none;
+  }
   .item {
     font-size: 0.75em;
     font-size: 12px;
@@ -371,4 +375,27 @@
     font-size: 10px;
     line-height: 0.8em;
   }
+}
+
+del {
+  color: grey;
+  position: relative;
+  text-decoration: none;
+  position: absolute;
+  bottom: 0;
+  right: 5px;
+  font-size: 1.4em;
+  line-height:1em;
+}
+del:after {
+  content: "";
+  display: block;
+  position: absolute;
+  width: 110%;
+  height: 2px;
+  border-radius: 1px;
+  background: darkred;
+  top: 9px;
+  left: -5%;
+  transform: skewY(-14deg);
 }

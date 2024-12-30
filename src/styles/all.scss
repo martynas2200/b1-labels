@@ -147,6 +147,13 @@ body.labeler-interface {
       }
     }
 
+    .navbar-toggle.toggle-sidebar,
+    .navbar-collapse a.navbar-brand,
+    .caret {
+      display: none;
+    }
+
+
     .navbar-collapse-2 {
 
       img,
@@ -171,7 +178,7 @@ body.labeler-interface {
         line-height: unset !important;
       }
 
-      //Could add `>` to make sure it is only the nav part, not the items in the dropdown, but a touch screen user might have trouble
+      // Could add `>` to make sure it is only the nav part, not the items in the dropdown, but a touch screen user might have trouble
       a {
         padding: 15px 10px;
       }
@@ -183,10 +190,6 @@ body.labeler-interface {
       padding-right: 10px;
       font-size: 15px;
       max-width: unset;
-
-      .caret {
-        color: #d9d9d9;
-      }
 
       & *:first-child {
         // The user name
@@ -226,13 +229,10 @@ body.labeler-interface {
     max-height: calc(100vh - 70px);
     overflow: auto;
 
-    .item:not(.mark):not(.inactive) {
-      background-color: white;
-    }
-
     .item {
       transition: 0.5s;
       animation: highlight 0.5s ease-out;
+      background-color: white;
       display: grid;
       grid-template-columns: auto min-content min-content;
       column-gap: 5px;
@@ -254,7 +254,13 @@ body.labeler-interface {
 
       &.inactive span.item-price {
         filter: blur(1px);
-        background-color: red;
+        background-color: darkred;
+        display: inline-block;
+        animation: vibrate 0.3s linear infinite both;
+      }
+
+      &.inactive {
+        color: darkred;
       }
 
       .item-stock {
@@ -281,21 +287,21 @@ body.labeler-interface {
         grid-column: 3;
       }
 
-      &:last-child {
+      &:not(.inactive):last-child {
         margin-bottom: 30px;
         animation: highlight 0.5s ease-out, emphasizeItem 0.5s ease-in-out 5s backwards;
       }
 
       &.inactive {
-        background-color: #f8d7da !important;
+        background-color: #f8d7da;
       }
 
       &.mark {
-        background-color: #fcf8e3 !important;
+        background-color: #fcf8e3;
       }
 
       &:hover {
-        background-color: #f1f1f1 !important;
+        background-color: #f1f1f1;
       }
 
       *:empty:not(i) {
@@ -308,12 +314,11 @@ body.labeler-interface {
         transition: 0.5s;
       }
 
-      &:last-child .item-price {
+      &:not(.inactive):last-child .item-price {
         animation: emphasizePrice 0.5s ease-in-out 5s backwards;
       }
     }
   }
-
 
   .item-labels {
     font-size: 0.8em;
@@ -373,10 +378,11 @@ body.labeler-interface {
   gap: 15px;
   margin-top: 15px;
 
+  // code128 barcode
   .label p:empty:nth-of-type(1)::before {
     content: " ";
     display: block;
-    background: #999;
+    background-image: repeating-linear-gradient(to right, black, black 4px, white 5px, white 10px);
     position: static;
     height: 15px;
     width: 120px;
@@ -387,7 +393,11 @@ body.labeler-interface {
   }
 
   .label .barcode.dm {
-    background: #999;
+    background-image: repeating-linear-gradient(to top,
+        black,
+        black 4px,
+        white 4px,
+        white 8px)
   }
 
   .label.fridge::after {
@@ -458,5 +468,31 @@ body.labeler-interface {
     background-color: #1b6aaa;
     color: white;
     filter: opacity(0.5);
+  }
+}
+
+@keyframes vibrate {
+  0% {
+    transform: translate(0);
+  }
+
+  20% {
+    transform: translate(-2px, 2px);
+  }
+
+  40% {
+    transform: translate(-2px, -2px);
+  }
+
+  60% {
+    transform: translate(2px, 2px);
+  }
+
+  80% {
+    transform: translate(2px, -2px);
+  }
+
+  100% {
+    transform: translate(0);
   }
 }
