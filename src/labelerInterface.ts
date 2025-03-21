@@ -367,9 +367,11 @@ export class LabelerInterface {
   getItemLabelsHtml(item: packagedItem): string {
     const labels = ['packageCode', 'weight', 'departmentNumber', 'packageQuantity'] as const
     const ago = this.getSeconds(item.retrievedAt ?? new Date())
+    const pricePerUnit = LabelGenerator.getPricePerUnit(item)
     const labelHtml = labels.map(label => item[label] != null ? `<span>${i18n(label)}: ${item[label]}</span>` : '').join('')
     return labelHtml + (item.weight != null && item.priceWithVat != null ? `<span>${i18n('kiloPrice')}: <b>${item.priceWithVat.toFixed(2)}</b></span>` : '')
       + (item.measurementUnitCanBeWeighed ? `<span>${i18n('weightedItem')}</span>` : '')
+      + (!item.measurementUnitCanBeWeighed && pricePerUnit != null && item.priceWithVat != null ? `<span class="pull-right text-light-grey">${pricePerUnit}</span>` : '')
       + `<span class="text-primary">${this.getAgoText(ago)}</span>`
   }
 

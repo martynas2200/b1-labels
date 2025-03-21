@@ -107,8 +107,6 @@ class LabelsUserscript {
       return
     }
     const controller = angular.element(this.getDataRows()).controller()
-    const title  = controller.model.clientName + ' ' + controller.model.series + '-' + controller.model.number + ' ' + controller.model.purchaseDate
-    
     const modal  = new ModalService()
     void modal.showModal({
       template: `
@@ -130,13 +128,13 @@ class LabelsUserscript {
           <tbody>
             <tr ng-repeat="item in data">
               <td>{{ item.itemName }}</td>
-              <td>{{ item.priceWithoutVat.toFixed(3) }}</td>
-              <td ng-class="{ 'background-white-red': calculateMarkup(item.itemPriceWithVat, item.priceWithVat) < 19.5 }">{{ calculateMarkup(item.itemPriceWithVat, item.priceWithVat).toFixed(2) }}%</td>
+              <td>{{ item.priceWithoutVatWithDiscount.toFixed(3) }}</td>
+              <td ng-class="{ 'background-white-red': calculateMarkup(item.itemPriceWithVat, item.priceWithoutVatWithDiscount * (1 + (item.vatRate / 100))) < 19.5 }">{{ calculateMarkup(item.itemPriceWithVat, item.priceWithoutVatWithDiscount * (1 + (item.vatRate / 100))).toFixed(2) }}%</td>
               <td>
                 <span>{{ item.itemPriceWithVat == null ? "-" : item.itemPriceWithVat }}</span>
                 <button class="btn btn-xs btn-primary pull-right" style="margin-left: 10px;" ng-click="editPrice(item)">Keisti</button>
               </td>
-              <td>{{ (item.priceWithVat * 1.2).toFixed(3) }}</td>
+              <td>{{ (item.priceWithoutVatWithDiscount * (1 + (item.vatRate / 100)) * 1.2).toFixed(3) }}</td>
             </tr>
           </tbody>
         </table>
@@ -170,7 +168,7 @@ class LabelsUserscript {
     return navbarShortcuts != null
   }
 
-  async editPrice (item: any): Promise<void> {
+  async editPrice (item: { itemPriceWithVat: number, itemId: number}): Promise<void> {
     const prompt = window.prompt('Įveskite naują kainą', item.itemPriceWithVat?.toString() ?? '')
     if (prompt == null) {
       return
@@ -191,7 +189,7 @@ class LabelsUserscript {
         priceWithoutVat: priceWithoutVat
       }
       // id: item.itemId, // itemId in purchase view
-      void req.saveItem(item.itemId, data)
+      void req.saveItem(item.itemId.toString(), data)
     }
   }
 

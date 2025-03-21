@@ -56,10 +56,8 @@ export class LabelGenerator {
     return text.replace(regex, '<b>$1</b>')
   }
 
-  pricePerUnit(item: item): string | null {
-    // TODO: Temporary removed g and kg from the regex - the manager wants to think about it
-    // const regex = /(?:(\d+)\s*x\s*)?(\d+(\.\d+)?(?:,\d+)?)[\s]*(k?g|m?l|vnt|pak|rul)\b/i
-    const regex = /(?:,?\s*)?(?:(\d+)\s*x\s*)?(\d+(\.\d+)?(?:,\d+)?)[\s]*(m?l|vnt|pak|rul)\b/i
+  static getPricePerUnit(item: item): string | null {
+    const regex = /(?:,?\s*)?(?:(\d+)\s*x\s*)?(\d+(\.\d+)?(?:,\d+)?)[\s]*(k?g|m?l|vnt|pak|rul)\b/i
     const match = item.name.match(regex)
 
     if (match) {
@@ -80,11 +78,7 @@ export class LabelGenerator {
       } else {
         pricePerUnit = (item.priceWithVat / amount).toFixed(2) + ' €/' + unit
       }
-      if (
-        parseFloat(pricePerUnit) < 0.5 ||
-        parseFloat(pricePerUnit) > 25 ||
-        parseFloat(pricePerUnit) === item.priceWithVat
-      ) {
+      if (parseFloat(pricePerUnit) === item.priceWithVat) {
         return null
       }
       return pricePerUnit
@@ -141,13 +135,6 @@ export class LabelGenerator {
   createCode123Div(data: item): HTMLDivElement {
     const barcode = document.createElement('div')
     barcode.className = 'barcode'
-
-    const pricePerUnitText = this.pricePerUnit(data)
-    if (!data.measurementUnitCanBeWeighed && pricePerUnitText != null) {
-      barcode.appendChild(
-        this.createDivWithClass('price-per-unit', pricePerUnitText),
-      )
-    }
 
     barcode.appendChild(this.createDivWithClass('barcode-text', data.barcode))
 

@@ -24,7 +24,9 @@ body.labeler-interface {
 
     .btn,
     select,
-    input[type=text] {
+    input[type=text],
+    input[type=number],
+    input[type=date] {
       border-radius: 4px !important;
     }
   }
@@ -201,7 +203,7 @@ body.labeler-interface {
 
 .look-up-container {
 
-  *:not(.header) {
+  *:not(.header):not(svg) {
     border-radius: 4px;
   }
 
@@ -365,6 +367,7 @@ body.labeler-interface {
   gap: 10px;
   width: 200px;
   margin: 0px auto;
+  border-radius: 2px;
 
   &>* {
     padding: 10px;

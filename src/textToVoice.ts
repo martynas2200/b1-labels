@@ -40,7 +40,7 @@ export class TextToVoice {
     }
     this.numbers = this.languages[this.language]
     this.notifier = notifier
-    this.checkApiKey()
+    void this.checkApiKey()
   }
   async checkApiKey (): Promise<void> {
     this.apiKey = await GM.getValue('api-key', null)

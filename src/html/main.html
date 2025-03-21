@@ -28,12 +28,6 @@
           <button class="btn btn-white" id="labelType">
             ${i18n('normal')} <i class="fa fa-caret-down"></i>
           </button>
-          <!-- <select class="form-control" id="labelType">
-            <option value="normal">${i18n('normal')}</option>
-            <option value="half">${i18n('half')}</option>
-            <option value="fridge">${i18n('fridge')}</option>
-            <option value="barcode">${i18n('barcodeOnly')}</option>
-          </select> -->
           <button type="button" class="btn btn-purple" id="printButton">
             <i class="fa fa-print"></i>&nbsp;${i18n('print')}</button>
           <button type="button" class="btn btn-danger" id="cleanAllButton">${i18n('cleanAll')}</button>
@@ -47,7 +41,30 @@
         </div>
       </div>
       <div class="item-list">
-        <div class="alert alert-info text-center">${i18n('noItemsScanned')}</div>
+        <div class="alert alert-info text-center">
+          <svg width="65" height="40" viewBox="10 30 70 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="30" width="5" height="40" fill="#333"></rect>
+            <rect x="20" y="30" width="3" height="40" fill="#333"></rect>
+            <rect x="28" y="30" width="6" height="40" fill="#333"></rect>
+            <rect x="40" y="30" width="3" height="40" fill="#333"></rect>
+            <rect x="50" y="30" width="8" height="40" fill="#333"></rect>
+            <rect x="65" y="30" width="4" height="40" fill="#333"></rect>
+            <rect x="75" y="30" width="5" height="40" fill="#333"></rect>
+            <rect x="10" y="50" width="70" height="3" fill="red">
+              <animateTransform attributeName="transform" type="translate" values="0 0; 0 7; 0 -3; 0 4; 0 0"
+                keyTimes="0;0.2;0.5;0.8;1" dur="2.4s" calcMode="spline" keySplines="0.25 0.1 0.25 1;
+                      0.45 0 0.55 1;
+                      0.25 0.1 0.25 1;
+                      0.3 0 0.7 1" repeatCount="indefinite" />
+              <animateTransform attributeName="transform" type="rotate" additive="sum" values="0;2;-1;2;0"
+                keyTimes="0;0.3;0.6;0.8;1" dur="1.7s" calcMode="spline" keySplines="0.5 0 0.5 1;
+                      0.5 0 0.5 1;
+                      0.5 0 0.5 1;
+                      0.5 0 0.5 1" repeatCount="indefinite" />
+            </rect>
+          </svg>
+          <div>${i18n('noItemsScanned')}</div>
+        </div>
         <div class="alert-xs grey text-center">${i18n('help')}</div>
       </div>
     </div>

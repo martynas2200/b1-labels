@@ -2,7 +2,7 @@
 // @name              B1 additional functions
 // @namespace         http://tampermonkey.net/
 // @homepage          https://github.com/martynas2200/b1-labels
-// @version           1.7.1
+// @version           1.7.2
 // @description       Markup calculator
 // @author            Martynas Miliauskas
 // @match             https://www.b1.lt/*
@@ -140,7 +140,7 @@
             noActiveInput: 'No active input',
             noData: 'No data to print!',
             noItemsFound: 'No items found',
-            noItemsScanned: 'No items scanned',
+            noItemsScanned: 'No items scanned yet.',
             noItemsSelected: 'No items selected!',
             notAllItemsActive: 'Not all selected items are active. Do you want to continue?',
             number: 'Number',
@@ -190,7 +190,6 @@
             weightedItem: 'Weighted item',
             weightedItemAdded: 'Weighted item added',
             weightLabel: 'Weight Label',
-            weightModalLabelInfo: 'To print small weight labels, keep on clicking "Add" until you have added all the items you want to print, close the dialog, select "half" in the list and click "Print"',
             yes: 'Yes',
             zero: 'zero',
         },
@@ -261,7 +260,7 @@
             login: 'Prisijungimas darbo vietoje',
             loginDetailsNotFound: 'Prisijungimo duomenys nerasti',
             manufacturerName: 'Gamintojo pavadinimas',
-            markdowns: 'Nukainojimai',
+            markdowns: 'Nukainavimai',
             maxDiscount: 'Max nuolaida',
             measurementUnitCanBeWeighed: 'Prekė gali būti sveriama',
             measurementUnitName: 'Matavimo vieneto pavadinimas',
@@ -283,7 +282,7 @@
             noActiveInput: 'Nėra aktyvaus lauko',
             noData: 'Nepakanka duomenų spausdinimui!',
             noItemsFound: 'Nieko nerasta',
-            noItemsScanned: 'Nėra skenuotų prekių',
+            noItemsScanned: 'Dar nėra nuskaitytų prekių.',
             noItemsSelected: 'Nėra pasirinktų prekių',
             notAllItemsActive: 'Ne visos pasirinktos prekės yra aktyvios. Ar norite tęsti?',
             number: 'Numeris',
@@ -333,7 +332,6 @@
             weightedItem: 'Sveriama prekė',
             weightedItemAdded: 'Sveriama prekė pridėta',
             weightLabel: 'Svorio etiketė',
-            weightModalLabelInfo: 'Norėdami spausdinti mažas svorio etiketes, spauskite "Pridėti", kol pridėsite visas svorius, kuriuos norite spausdinti, uždarykite dialogą, pasirinkite tipą "pusė"  ir spauskite "Spausdinti"',
             yes: 'Taip',
             zero: 'nulis',
         },
@@ -667,7 +665,6 @@
                 return;
             }
             const controller = angular.element(this.getDataRows()).controller();
-            controller.model.clientName + ' ' + controller.model.series + '-' + controller.model.number + ' ' + controller.model.purchaseDate;
             const modal = new ModalService();
             void modal.showModal({
                 template: `
@@ -689,13 +686,13 @@
           <tbody>
             <tr ng-repeat="item in data">
               <td>{{ item.itemName }}</td>
-              <td>{{ item.priceWithoutVat.toFixed(3) }}</td>
-              <td ng-class="{ 'background-white-red': calculateMarkup(item.itemPriceWithVat, item.priceWithVat) < 19.5 }">{{ calculateMarkup(item.itemPriceWithVat, item.priceWithVat).toFixed(2) }}%</td>
+              <td>{{ item.priceWithoutVatWithDiscount.toFixed(3) }}</td>
+              <td ng-class="{ 'background-white-red': calculateMarkup(item.itemPriceWithVat, item.priceWithoutVatWithDiscount * (1 + (item.vatRate / 100))) < 19.5 }">{{ calculateMarkup(item.itemPriceWithVat, item.priceWithoutVatWithDiscount * (1 + (item.vatRate / 100))).toFixed(2) }}%</td>
               <td>
                 <span>{{ item.itemPriceWithVat == null ? "-" : item.itemPriceWithVat }}</span>
                 <button class="btn btn-xs btn-primary pull-right" style="margin-left: 10px;" ng-click="editPrice(item)">Keisti</button>
               </td>
-              <td>{{ (item.priceWithVat * 1.2).toFixed(3) }}</td>
+              <td>{{ (item.priceWithoutVatWithDiscount * (1 + (item.vatRate / 100)) * 1.2).toFixed(3) }}</td>
             </tr>
           </tbody>
         </table>
@@ -747,7 +744,7 @@
                     priceWithVat: newPrice,
                     priceWithoutVat: priceWithoutVat
                 };
-                void req.saveItem(item.itemId, data);
+                void req.saveItem(item.itemId.toString(), data);
             }
         }
         addStyles() {
