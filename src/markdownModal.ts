@@ -2,6 +2,7 @@ import { i18n } from './i18n'
 import { Request } from './request'
 
 declare const angular: any
+declare const GM: any
 
 export class MarkdownModal {
   request: Request
@@ -26,6 +27,7 @@ export class MarkdownModal {
     this.modalScope.showSaleItems = this.showSaleItems.bind(this)
     this.modalScope.noDataMessage = i18n('loading')
     this.modalScope.closeModal = this.closeModal.bind(this)
+    this.modalScope.goToURL = this.goToURL.bind(this)
   }
 
   open(): void {
@@ -33,10 +35,11 @@ export class MarkdownModal {
       animation: true,
       template: `
         <div class="modal-header">
-        <button type="button" class="close" ng-click="closeModal()">
-          <span>&times;</span>
-        </button>
-          <h4 class="modal-title">${i18n('markdowns')}</h4>
+        <h4 class="modal-title pull-left">${i18n('markdowns')}</h4>
+        <div class="pull-right">
+        <button ng-click="goToURL()" class="btn btn-sm btn-purple" type="button"><i class="fa fa-external-link"></i> ${i18n('weeklyReports')}</button>
+        <button ng-click="closeModal()" class="btn btn-sm btn-white" type="button"><i class="fa fa-times"></i> ${i18n('close')}</button>
+        </div>
         </div>
         <div class="modal-body">
           <div ng-if="tableData.length === 0" class="alert alert-info">{{ noDataMessage }}</div>
@@ -154,6 +157,14 @@ export class MarkdownModal {
   closeModal(): void {
     if (this.instances.length > 0) {
       this.instances.pop().close()
+    }
+  }
+  
+  async goToURL(): Promise<void> {
+      const url = await GM.getValue('url', '')
+      if (url !== '') {
+        window
+          .open(url, '_blank')
     }
   }
 }

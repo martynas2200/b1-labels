@@ -1,6 +1,9 @@
 import { i18n } from './i18n'
 import { type item } from './item'
 import { UINotification } from './ui-notification'
+
+declare let angular: any
+
 export class Request {
   items: Record<string, item> = {}
   baseUrl: string = 'https://www.b1.lt'
@@ -8,8 +11,19 @@ export class Request {
   csrfToken: string
   headers: Record<string, string>
   notifier: UINotification
+  turnstileService: {
+    render: () => Promise<void>,
+  }
 
   constructor(notifier: UINotification) {
+    const appElement = document.querySelector('[ng-app]') // TODO: refactor, a class could be responsible to get the app element, and load `imported` services
+    if (!appElement) {
+      throw new Error('Angular app not found')
+    }
+
+    const injector = angular.element(appElement).injector()
+    this.turnstileService = injector.get('turnstileService')
+
     const csrfTokenElement: HTMLMetaElement | null = document.querySelector(
       'meta[name="csrf-token"]',
     )
@@ -40,10 +54,12 @@ export class Request {
       this.notifier.error('CSRF token is missing')
       return
     }
+
     const pathParts = path.split('/')
     pathParts.pop()
     this.headers.referer = `${this.baseUrl}${pathParts.join('/')}`
     this.getCookies()
+
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         method,
@@ -52,8 +68,15 @@ export class Request {
       })
 
       if (response.ok) {
-        const data = await response.json()
-        return data
+        return await response.json()
+      } else if (
+        'challenge' === response.headers.get('cf-mitigated') ||
+        response.status === 403
+      ) {
+        if (await this.handleChallenge()) {
+          console.info('Challenge handled, repeat the request')
+          return await this.fetchData(method, path, body)
+        }
       } else {
         console.error('Request failed with status:', response.status)
         this.notifier.error({
@@ -254,5 +277,16 @@ export class Request {
       title: i18n('cacheCleared'),
       message: nItems + i18n('nItemsRemoved'),
     })
+  }
+
+  async handleChallenge(): Promise<boolean> {
+    try {
+      await this.turnstileService.render()
+      console.info('Turnstile challenge passed!')
+      return true
+    } catch (error) {
+      console.error('Turnstile challenge failed.', error)
+      return false
+    }
   }
 }

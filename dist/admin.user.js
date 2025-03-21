@@ -2,7 +2,7 @@
 // @name              B1 additional functions
 // @namespace         http://tampermonkey.net/
 // @homepage          https://github.com/martynas2200/b1-labels
-// @version           1.7.2
+// @version           1.7.3
 // @description       Markup calculator
 // @author            Martynas Miliauskas
 // @match             https://www.b1.lt/*
@@ -186,6 +186,7 @@
             validFrom: 'Valid From',
             validUntil: 'Valid Until',
             vatRate: 'VAT Rate',
+            weeklyReports: 'Weekly Reports',
             weight: 'Weight',
             weightedItem: 'Weighted item',
             weightedItemAdded: 'Weighted item added',
@@ -328,6 +329,7 @@
             validFrom: 'Galioja nuo',
             validUntil: 'Galioja iki',
             vatRate: 'PVM tarifas',
+            weeklyReports: 'Savaitės ataskaitos',
             weight: 'Svoris',
             weightedItem: 'Sveriama prekė',
             weightedItemAdded: 'Sveriama prekė pridėta',
@@ -352,7 +354,14 @@
         csrfToken;
         headers;
         notifier;
+        turnstileService;
         constructor(notifier) {
+            const appElement = document.querySelector('[ng-app]');
+            if (!appElement) {
+                throw new Error('Angular app not found');
+            }
+            const injector = angular.element(appElement).injector();
+            this.turnstileService = injector.get('turnstileService');
             const csrfTokenElement = document.querySelector('meta[name="csrf-token"]');
             this.csrfToken = csrfTokenElement != null ? csrfTokenElement.content : '';
             this.notifier = notifier;
@@ -387,8 +396,14 @@
                     body: JSON.stringify(body),
                 });
                 if (response.ok) {
-                    const data = await response.json();
-                    return data;
+                    return await response.json();
+                }
+                else if ('challenge' === response.headers.get('cf-mitigated') ||
+                    response.status === 403) {
+                    if (await this.handleChallenge()) {
+                        console.info('Challenge handled, repeat the request');
+                        return await this.fetchData(method, path, body);
+                    }
                 }
                 else {
                     console.error('Request failed with status:', response.status);
@@ -560,6 +575,17 @@
                 title: i18n('cacheCleared'),
                 message: nItems + i18n('nItemsRemoved'),
             });
+        }
+        async handleChallenge() {
+            try {
+                await this.turnstileService.render();
+                console.info('Turnstile challenge passed!');
+                return true;
+            }
+            catch (error) {
+                console.error('Turnstile challenge failed.', error);
+                return false;
+            }
         }
     }
 

@@ -3,6 +3,7 @@ import { UINotification } from './ui-notification'
 
 declare let angular: angular.IAngularStatic
 declare let GM: any
+declare let unsafeWindow: any
 declare let currentCompanyUser: any
 declare let currentUser: any
 
@@ -31,6 +32,8 @@ export class UserSession {
   constructor() {
     this.user = null
     this.checkLoginStatus()
+    unsafeWindow.saveLoginDetails = this.saveLoginDetails.bind(this)
+    unsafeWindow.saveURL = this.saveURL.bind(this)
   }
 
   checkLoginStatus(): boolean {
@@ -173,5 +176,13 @@ export class UserSession {
     }
     await GM.setValue('api-key', apiKey)
     alert('API key saved')
+  }
+  async saveURL(): Promise<void> { //not clear what this function does
+    const url = window.prompt('Enter the URL')
+    if (url === null) {
+      return
+    }
+    await GM.setValue('url', url)
+    alert('URL saved')
   }
 }
