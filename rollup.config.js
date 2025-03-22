@@ -48,6 +48,8 @@ export default [{
       addUserScriptMetadata({
         name: "B1 additional functions",
         description: "Markup calculator",
+        downloadURL: "https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/admin.user.js",
+        updateURL: "https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/admin.user.js",
       }),
       // terser()
     ],

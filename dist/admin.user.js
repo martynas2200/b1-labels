@@ -9,8 +9,8 @@
 // @icon              https://b1.lt/favicon.ico
 // @connect           b1.lt
 // @connect           raw.githubusercontent.com
-// @downloadURL       https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/script.user.js
-// @updateURL         https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/script.user.js
+// @downloadURL       https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/admin.user.js
+// @updateURL         https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/admin.user.js
 // @grant             GM.setValue
 // @grant             GM.getValue
 // @grant             unsafeWindow
