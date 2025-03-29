@@ -1,17 +1,4 @@
-function lettersToNumbers(barcode: string): string {
-  return barcode
-    .replace(/ą/g, '1')
-    .replace(/č/g, '2')
-    .replace(/ę/g, '3')
-    .replace(/ė/g, '4')
-    .replace(/į/g, '5')
-    .replace(/š/g, '6')
-    .replace(/ų/g, '7')
-    .replace(/ū/g, '8')
-    .replace(/ž/g, '9')
-}
-
-const LANGUAGES: Record<string, Record<string, string>> = {
+export const FULL_TRANSLATIONS: Record<string, Record<string, string>> = {
   en: {
     normal: 'Normal',
     half: 'Half',
@@ -27,7 +14,6 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     asMentioned: 'As mentioned',
     attributeName: 'Attribute Name',
     autoLogin: 'Instant Login',
-    barcode: 'Barcode',
     checked: 'Checked',
     chooseLabelType: 'Choose label type',
     chooseLabelTypeDescription: 'Choose the type of label you want to print',
@@ -48,7 +34,6 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     enterBarcode: 'Enter the barcode',
     enterName: 'Enter Name',
     enterNewPrice: 'Enter new price',
-    error: 'Error',
     expiryDate: 'Expiry Date',
     files: 'Files',
     fitRaso: 'Fit Raso',
@@ -65,17 +50,13 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     isRefundable: 'Is Refundable',
     itemAdded: 'Item added',
     itemCatalog: 'Item Catalog',
-    itemCreated: 'Item created',
     itemDetails: 'Item Details',
     itemNotActive: 'Item not active',
-    itemNotFound: 'Item not found!',
     itemsFound: 'Items found',
-    itemUpdated: 'Item updated',
     kiloPrice: 'Price per kilo',
     label: 'Label',
     labelsAndPrices: 'Labels and Prices',
     leftover: 'Leftover',
-    loading: 'Loading...',
     login: 'Login',
     loginDetailsNotFound: 'Login details not found',
     manufacturerName: 'Manufacturer Name',
@@ -86,28 +67,20 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     minPriceWithVat: 'Min Price With VAT',
     minQuantity: 'Min Quantity',
     missingBarcode: 'Missing barcode',
-    missingElements: 'Missing UI elements',
     missingName: 'Missing name',
     missingWeight: 'Missing weight',
     modifiedAt: 'Last modified',
-    multipleItemsFound: 'Multiple items found!',
     name: 'Name',
     netWeight: 'Net Weight',
     newItem: 'New Item',
-    newPriceIs: 'New price is: ',
-    nItemsRemoved: ' items removed',
     nlabelsToBePrinted: ' labels to be printed',
     no: 'No',
-    noActiveInput: 'No active input',
-    noData: 'No data to print!',
-    noItemsFound: 'No items found',
     noItemsScanned: 'No items scanned yet.',
     noItemsSelected: 'No items selected!',
     notAllItemsActive:
       'Not all selected items are active. Do you want to continue?',
     number: 'Number',
     oddNumberOfItems: 'Odd number of labels. Do you want to continue?',
-    onlyAvailableInPurchaseView: 'This is not a purchase view. This feature is only available in the purchase view',
     packageCode: 'Package',
     packageQuantity: 'Package Quantity',
     pcs: 'pcs',
@@ -123,16 +96,12 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     printJobIsSent: 'Print job is sent',
     quantity: 'Quantity',
     readyForScan: 'Ready for scan',
-    resetForm: 'Reset form',
-    results: 'Results',
+    recentItems: 'Recent Items',
+    recentlySearched: 'Recently Searched',
+    refresh: 'Refresh',
     retrievedAt: 'Retrieved at',
     save: 'Save',
     sayOutLoud: 'Say out loud',
-    search: 'Search',
-    searchByBarcode: 'Search by Barcode',
-    searchByName: 'Search by Name',
-    searchingFor: 'Searching for',
-    searchSuccessful: 'Search successful',
     show: 'Show',
     showByDate: 'Show by Date',
     showLoginOptions: 'Other ways to login',
@@ -171,10 +140,10 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     asMentioned: 'Kaip minėjau',
     attributeName: 'Atributo pavadinimas',
     autoLogin: 'Prisijungti automatiškai',
-    barcode: 'Brūkšninis kodas',
     checked: 'Tikrinta prieš',
     chooseLabelType: 'Pasirinkite etiketės tipą',
-    chooseLabelTypeDescription: 'Pasirinkite etiketės tipą, kurį norite spausdinti',
+    chooseLabelTypeDescription:
+      'Pasirinkite etiketės tipą, kurį norite spausdinti',
     cleanAll: 'Išvalyti',
     close: 'Uždaryti',
     code: 'Kodas',
@@ -192,7 +161,6 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     enterBarcode: 'Įveskite brūkšninį kodą',
     enterName: 'Įveskite prekės pavadinimą',
     enterNewPrice: 'Įveskite naują kainą',
-    error: 'Įvyko klaida',
     expiryDate: 'Galiojimo data',
     files: 'Failai',
     fitRaso: 'Tinkamas RASO importui',
@@ -209,17 +177,12 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     isRefundable: 'Grąžinimo galimybė',
     itemAdded: 'Prekė pridėta',
     itemCatalog: 'Prekių žinynas',
-    itemCreated: 'Prekė išsaugota',
     itemDetails: 'Prekės informacija',
     itemNotActive: 'Prekė neaktyvi',
-    itemNotFound: 'Prekė nerasta!',
-    itemsFound: ' rasta',
-    itemUpdated: 'Prekė atnaujinta',
     kiloPrice: 'Kilogramo kaina',
     label: 'Etiketė',
     labelsAndPrices: 'Etiketės ir kainos',
     leftover: 'Liko',
-    loading: 'Kraunama...',
     login: 'Prisijungimas darbo vietoje',
     loginDetailsNotFound: 'Prisijungimo duomenys nerasti',
     manufacturerName: 'Gamintojo pavadinimas',
@@ -230,29 +193,20 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     minPriceWithVat: 'Min kaina su PVM',
     minQuantity: 'Min kiekis',
     missingBarcode: 'Trūksta brūkšninio kodo',
-    missingElements: 'Trūksta UI elementų',
     missingName: 'Trūksta pavadinimo',
     missingWeight: 'Trūksta svorio',
     modifiedAt: 'Paskutinis keitimas',
-    multipleItemsFound: 'Rasta daugiau nei viena prekė!',
     name: 'Pavadinimas',
     netWeight: 'Neto svoris',
     newItem: 'Nauja prekė',
-    newPriceIs: 'Nauja kaina: ',
-    nItemsRemoved: ' prekių įrašai pašalinti',
     nlabelsToBePrinted: ' etiketės bus spausdinamos',
     no: 'Ne',
-    noActiveInput: 'Nėra aktyvaus lauko',
-    noData: 'Nepakanka duomenų spausdinimui!',
-    noItemsFound: 'Nieko nerasta',
     noItemsScanned: 'Dar nėra nuskaitytų prekių.',
     noItemsSelected: 'Nėra pasirinktų prekių',
     notAllItemsActive:
       'Ne visos pasirinktos prekės yra aktyvios. Ar norite tęsti?',
     number: 'Numeris',
     oddNumberOfItems: 'Nelyginis etikečių skaičius. Ar norite tęsti?',
-    onlyAvailableInPurchaseView:
-      'Tai ne pirkimo peržiūra. Ši funkcija yra prieinama tik Pirkimai, atidarius vieną iš jų',
     packageCode: 'Pakuotė',
     packageQuantity: 'Pakuotės kiekis',
     pcs: 'vnt.',
@@ -268,16 +222,12 @@ const LANGUAGES: Record<string, Record<string, string>> = {
     printJobIsSent: 'Spausdinimo užduotis nusiųsta',
     quantity: 'Kiekis',
     readyForScan: 'Pasiruošęs skenavimui',
-    resetForm: 'Atkurti formą',
-    results: 'Rezultatai',
+    recentItems: 'Paskutinės prekės',
+    recentlySearched: 'Neseniai ieškota',
+    refresh: 'Atnaujinti',
     retrievedAt: 'Gauta',
     save: 'Išsaugoti',
     sayOutLoud: 'Sakyti kainas balsu',
-    search: 'Ieškoti',
-    searchByBarcode: 'Ieškoti pagal brūkšninį kodą',
-    searchByName: 'Ieškoti pagal pavadinimą',
-    searchingFor: 'Ieškoma',
-    searchSuccessful: 'Paieška sėkminga',
     show: 'Rodyti',
     showByDate: 'Rodyti pagal datą',
     showLoginOptions: 'Kiti prisijungimo būdai',
@@ -303,17 +253,42 @@ const LANGUAGES: Record<string, Record<string, string>> = {
   },
 }
 
-let userLanguage: string = navigator.language.split('-')[0]
-// If the user is on the English version of the website, we should use the English language
-const currentUrl = window.location.pathname
-const languagePattern = /\/(en|ru)\//
-if (languagePattern.test(currentUrl)) {
-  userLanguage = 'en'
+
+export const MINIMAL_TRANSLATIONS: Record<string, Record<string, string>> = {
+  en: {
+    barcode: 'Barcode',
+    error: 'Error',
+    failed: 'Failed',
+    found: 'found',
+    invalidId: 'Invalid ID',
+    itemCreated: 'Item created',
+    itemNotFound: 'Item not found!',
+    items: 'items',
+    itemUpdated: 'Item updated',
+    loading: 'Loading...',
+    multipleItemsFound: 'Multiple items found',
+    newPriceIs: 'New price is',
+    nlabelsToBePrinted: 'labels to be printed',
+    noData: 'No data to print!',
+    notAllItemsActive: 'Not all items are active; Do you want to proceed?',
+    oddNumberOfItems: 'Odd number of items; Do you want to proceed?',
+  },
+  lt: {
+    barcode: 'Barkodas',
+    error: 'Įvyko klaida',
+    failed: 'Nepavyko',
+    found: 'rasta',
+    invalidId: 'Neteisingas ID',
+    itemCreated: 'Prekė sukurta',
+    itemNotFound: 'Prekė nerasta!',
+    items: 'prekės',
+    itemUpdated: 'Prekė atnaujinta',
+    loading: 'Kraunama...',
+    multipleItemsFound: 'Rasta daugiau negu viena prekė!',
+    newPriceIs: 'Nauja kaina yra',
+    nlabelsToBePrinted: 'etiketės spausdinimui',
+    noData: 'Nepakanka duomenų spausdinimui!',
+    notAllItemsActive: 'Ne visos prekės aktyvios, ar norite tęsti?',
+    oddNumberOfItems: 'Nelyginis prekių skaičius, ar norite tęsti?',
+  },
 }
-
-const currentLanguage: string =
-  LANGUAGES[userLanguage] != null ? userLanguage : 'en'
-const i18n = (key: string): string =>
-  LANGUAGES[currentLanguage][key] ?? LANGUAGES.en[key] ?? key
-
-export { i18n, lettersToNumbers }

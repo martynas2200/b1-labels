@@ -1,16 +1,17 @@
-import { i18n } from './i18n'
-import { type packagedItem, type item } from './item'
+import { i18n } from './services/i18n'
+import { type Item, type PackagedItem } from './types/item'
+import { type LabelType } from './types/label'
 import printStyles from './styles/label-print.scss'
-import { Code128, getDataMatrixMat, toPath } from './barcodeGenerator'
+import { Code128, getDataMatrixMat, toPath } from './services/barcodeGenerator'
 
-export type labelType = 'normal' | 'half' | 'fridge' | 'barcodeOnly';
+export { type LabelType } from './types/label'
 
 export class LabelGenerator {
-  items: item[] = []
+  items: Item[] = []
   success: boolean = false
-  readonly type: labelType
+  readonly type: LabelType
 
-  constructor(data: item[] | Promise<item[]> | packagedItem[] | Promise<packagedItem[]> | undefined = undefined, type: labelType = 'normal') {
+  constructor(data: Item[] | Promise<Item[]> | PackagedItem[] | Promise<PackagedItem[]> | undefined = undefined, type: LabelType = 'normal') {
     this.type = type
     if (data == null) {
       // The constructor was called without data.
@@ -56,7 +57,7 @@ export class LabelGenerator {
     return text.replace(regex, '<b>$1</b>')
   }
 
-  static getPricePerUnit(item: item): string | null {
+  static getPricePerUnit(item: Item): string | null {
     const regex = /(?:,?\s*)?(?:(\d+)\s*x\s*)?(\d+(\.\d+)?(?:,\d+)?)[\s]*(k?g|m?l|vnt|pak|rul)\b/i
     const match = item.name.match(regex)
 
@@ -87,8 +88,8 @@ export class LabelGenerator {
   }
 
   generateLabel(
-    data: packagedItem,
-    type: labelType = this.type,
+    data: PackagedItem,
+    type: LabelType = this.type,
   ): HTMLDivElement {
     const label = document.createElement('div')
     label.className = 'label'
@@ -121,7 +122,7 @@ export class LabelGenerator {
     return label
   }
 
-  getItemPrice(data: item): string {
+  getItemPrice(data: Item): string {
     if (data.priceWithVat == null || data.priceWithVat === 0) {
       return ''
     }
@@ -132,7 +133,7 @@ export class LabelGenerator {
     }
   }
 
-  createCode123Div(data: item): HTMLDivElement {
+  createCode123Div(data: Item): HTMLDivElement {
     const barcode = document.createElement('div')
     barcode.className = 'barcode'
 
@@ -147,7 +148,7 @@ export class LabelGenerator {
     barcode.appendChild(p)
     return barcode
   }
-  generateWeightLabel(data: packagedItem, half = false): HTMLDivElement {
+  generateWeightLabel(data: PackagedItem, half = false): HTMLDivElement {
     const label = document.createElement('div')
 
     if (
@@ -229,7 +230,7 @@ export class LabelGenerator {
     return div
   }
 
-  createDMDiv(data: packagedItem): HTMLDivElement {
+  createDMDiv(data: PackagedItem): HTMLDivElement {
     const barcode = document.createElement('div')
     barcode.className = 'barcode dm'
     // Prefix 2200, then 13 digits of barcode, then 4 digits of weight
@@ -265,7 +266,7 @@ export class LabelGenerator {
     )
   }
 
-  async printLabelsUsingBrowser(data: item[]): Promise<void> {
+  async printLabelsUsingBrowser(data: Item[]): Promise<void> {
     const labels: HTMLElement[] = data.map(item => this.generateLabel(item))
 
     const popup: Window | null = window.open(

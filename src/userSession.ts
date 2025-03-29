@@ -1,5 +1,5 @@
-import { i18n } from './i18n'
-import { UINotification } from './ui-notification'
+import { i18n } from './services/i18n'
+import { UINotification } from './services/notification'
 
 declare let angular: angular.IAngularStatic
 declare let GM: any
@@ -34,6 +34,15 @@ export class UserSession {
     this.checkLoginStatus()
     unsafeWindow.saveLoginDetails = this.saveLoginDetails.bind(this)
     unsafeWindow.saveURL = this.saveURL.bind(this)
+  }
+
+  //static to return the current company
+  static getCurrentCompany(): string {
+    const company = currentCompanyUser?.company?.name
+    if (company == null) {
+      return ''
+    }
+    return company
   }
 
   checkLoginStatus(): boolean {
@@ -185,4 +194,5 @@ export class UserSession {
     await GM.setValue('url', url)
     alert('URL saved')
   }
+
 }

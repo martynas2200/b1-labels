@@ -1,21 +1,16 @@
-import { i18n } from "./i18n"
-import { NotificationService } from "./ui-notification"
+import { i18n } from './i18n'
+import { type NotificationService } from "../types/notification"
+import { type LanguageNumbers } from "../types/common"
 
 declare let GM: any
-interface languageNumbers {
-    units: string[];
-    teens: string[];
-    tens: string[];
-    hundreds: string[];
-}
 
 export class TextToVoice {
   private language: string
   private readonly notifier: NotificationService
   private apiKey: string | null = null
-  private numbers: languageNumbers
+  private numbers: LanguageNumbers
   private languages: {
-    [key: string]: languageNumbers
+    [key: string]: LanguageNumbers
   } = {
     'lt-LT': {
       units: ['', 'vienas', 'du', 'trys', 'keturi', 'penki', 'šeši', 'septyni', 'aštuoni', 'devyni'],

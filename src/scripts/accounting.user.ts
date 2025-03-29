@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/no-confusing-void-expression */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { ModalService } from '../modal'
-import { Request } from '../request'
+import { ModalService } from '../services/modal'
+import { Request } from '../services/request'
 import adminCSS from '../styles/admin.scss'
-import { UINotification } from '../ui-notification'
+import { UINotification } from '../services/notification'
 declare const angular: angular.IAngularStatic
-// declare let history: History
 declare let window: Window
 
-class LabelsUserscript {
+class AdminExtraFunctionality {
   private wereButtonsAdded: boolean = false
   private readonly notification = new UINotification()
   private currentUrl: string
@@ -17,44 +16,13 @@ class LabelsUserscript {
     this.currentUrl = window.location.pathname
     this.init()
     void this.handleUrlChange(null, this.currentUrl)
-    console.debug('LabelsUserscript initialized')
+    
   }
 
   private init (): void {
-    // this.overrideHistoryMethods()
-    // this.setupPopStateListener()
     void this.handleUrlChange(null, this.currentUrl)
     this.addStyles()
   }
-
-  // private overrideHistoryMethods (): void {
-  //   const originalPushState = history.pushState
-  //   history.pushState = (state, title, url) => {
-  //     const previousUrl = this.currentUrl
-  //     const result = originalPushState.apply(history, [state, title, url])
-  //     this.currentUrl = window.location.pathname
-  //     void this.handleUrlChange(previousUrl, this.currentUrl)
-  //     return result
-  //   }
-
-  //   const originalReplaceState = history.replaceState
-  //   history.replaceState = (state, title, url) => {
-  //     const previousUrl = this.currentUrl
-  //     const result = originalReplaceState.apply(history, [state, title, url])
-  //     this.currentUrl = window.location.pathname
-  //     void this.handleUrlChange(previousUrl, this.currentUrl)
-  //     return result
-  //   }
-  // }
-
-  // private setupPopStateListener (): void {
-  //   window.addEventListener('popstate', () => {
-  //     const previousUrl = this.currentUrl
-  //     this.currentUrl = window.location.pathname
-  //     void this.handleUrlChange(previousUrl, this.currentUrl)
-  //   })
-  // }
-
   private async handleUrlChange (previousUrl: string | null, currentUrl: string, tries: number = 0): Promise<void> {
     if (this.currentUrl != '/login' && !this.wereButtonsAdded) {
         this.wereButtonsAdded = this.addButton('Rodyti antkainius', this.listMarkup.bind(this)) && this.addButton('Peržiūrėti prekės judėjimą', this.goToItemMovement.bind(this))
@@ -100,6 +68,7 @@ class LabelsUserscript {
     return ((price - cost) / cost) * 100
   }
 
+  //TODO: add a markup slider of the reccomended price column
   async listMarkup (): Promise<void> {
     //check if it is a purchase view
     if (window.location.pathname !== '/en/warehouse/purchases/edit' && window.location.pathname !== '/warehouse/purchases/edit') {
@@ -168,6 +137,7 @@ class LabelsUserscript {
     return navbarShortcuts != null
   }
 
+  //TODO: refactor this function to use the Request class
   async editPrice (item: { itemPriceWithVat: number, itemId: number}): Promise<void> {
     const prompt = window.prompt('Įveskite naują kainą', item.itemPriceWithVat?.toString() ?? '')
     if (prompt == null) {
@@ -187,8 +157,7 @@ class LabelsUserscript {
         isActive: true,
         priceWithVat: newPrice,
         priceWithoutVat: priceWithoutVat
-      }
-      // id: item.itemId, // itemId in purchase view
+      } 
       void req.saveItem(item.itemId.toString(), data)
     }
   }
@@ -201,11 +170,5 @@ class LabelsUserscript {
 }
 
 window.addEventListener('load', () => {
-  void new LabelsUserscript()
-  // Stop Clarity analytics
-  setTimeout(() => {
-    if ((window as any).clarity != null) {
-      (window as any).clarity('stop')
-    }
-  }, 500)
+  void new AdminExtraFunctionality()
 })

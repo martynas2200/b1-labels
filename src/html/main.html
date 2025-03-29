@@ -1,48 +1,129 @@
-<div class="container look-up-container">
+<nav class="navbar">
+  <a class="navbar-brand header-flex" target="_self" href="/">
+    <span class="smaller-60 white">{{ companyName }}</span>
+  </a>
+  <div class="navbar-shortcuts">
+    <ul>
+      <li>
+        <a class="navbar-shortcut" href="#" ng-click="openMarkdowns()">
+          <i class="fa fa-fw fa-book"></i>
+          <span class="hidden-xs"> {{ 'markdowns' | i18n }}</span>
+        </a>
+      </li>
+      <li>
+        <a class="navbar-shortcut" href="#" ng-click="openCatalog()">
+          <i class="fa fa-fw fa-folder-open"></i>
+          <span class="hidden-xs"> {{ 'itemCatalog' | i18n }}</span>
+        </a>
+      </li>
+      <li>
+        <a class="navbar-shortcut" href="#" ng-click="openFiles()">
+          <i class="fa fa-fw fa-files-o"></i>
+          <span class="hidden-xs"> {{ 'files' | i18n }}</span>
+        </a>
+      </li>
+      <li>
+        <a class="navbar-shortcut" href="/logout">
+          &nbsp;<i class="fa fa-fw fa-power-off"></i>&nbsp;
+        </a>
+      </li>
+    </ul>
+  </div>
+</nav>
+
+<div class="container item-search-container">
   <div class="row">
-    <div class="col-md-4 form-section">
-      <h4 class="header">${i18n('labelsAndPrices')}</h4>
-      <div class="form-group input-group">
-        <input type="text" class="form-control" id="barcode" placeholder="${i18n('enterBarcode')}"
-          autocomplete="off">
-        <div class="ready-for-scan pull-right text-success">${i18n('readyForScan')}</div>
-        <button type="button" class="btn btn-info" id="searchButton">${i18n('code')}</button>
-      </div>
-      <div class="form-group">
-        <div class="checkbox-form">
-          <label>
-            <input type="checkbox" class="ace" id="sayOutLoud" checked>
-            <span class="lbl display-inline">&nbsp;${i18n('sayOutLoud')}</span>
-          </label>
+    <div class="col-md-4 no-padding">
+
+      <div class="form-section">
+        <h4 class="header">{{ 'labelsAndPrices' | i18n }}</h4>
+        <div class="form-group input-group">
+          <input type="text" class="form-control" ng-model="barcode" placeholder="{{ 'enterBarcode' | i18n }}"
+            autocomplete="off" ng-keyup="handleEnterPress($event)" id="barcodeInput">
+          <button type="button" class="btn btn-info" ng-click="searchBarcode()">{{ 'code' | i18n }}</button>
         </div>
-        <div class="checkbox-form">
-          <label>
-            <input type="checkbox" class="ace" id="showStock">
-            <span class="lbl display-inline">&nbsp;${i18n('showStock')}</span>
-          </label>
+        <div class="form-group">
+          <div class="checkbox-form">
+            <label>
+              <input type="checkbox" class="ace" ng-model="settings.sayOutLoud">
+              <span class="lbl display-inline">&nbsp;{{ 'sayOutLoud' | i18n }}</span>
+            </label>
+          </div>
+          <div class="checkbox-form">
+            <label>
+              <input type="checkbox" class="ace" ng-model="settings.showStock">
+              <span class="lbl display-inline">&nbsp;{{ 'showStock' | i18n }}</span>
+            </label>
+          </div>
         </div>
-      </div>
-      <div class="clearfix margin-bottom-10">
-        <div class="pull-right">
-          <!-- select for label type: normal, half, fridge, barcodeOnly -->
-          <button class="btn btn-white" id="labelType">
-            ${i18n('normal')} <i class="fa fa-caret-down"></i>
-          </button>
-          <button type="button" class="btn btn-purple" id="printButton">
-            <i class="fa fa-print"></i>&nbsp;${i18n('print')}</button>
-          <button type="button" class="btn btn-danger" id="cleanAllButton">${i18n('cleanAll')}</button>
+        <div class="clearfix margin-bottom-10">
+          <div class="pull-right">
+            <button class="btn btn-white" ng-click="openTypeModal()">
+              {{ settings.type | i18n }} <i class="fa fa-caret-down"></i>
+            </button>
+            <button class="btn btn-purple" ng-click="print()">
+              <i class="fa fa-print"></i>&nbsp;{{ 'print' | i18n }}
+            </button>
+            <button class="btn btn-danger" ng-click="cleanAll()">
+              {{ 'cleanAll' | i18n }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
     <div class="col-md-8 load-data">
-      <div class="load-overlay" style="display:none" id="loadingOverlay">
+      <div ng-if="loading" class="load-overlay">
         <div>
           <i class="fa fa-5x fa-b1-loader blue"></i>
         </div>
       </div>
       <div class="item-list">
-        <div class="alert alert-info text-center">
-          <svg width="65" height="40" viewBox="10 30 70 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <div ng-repeat="(index, item) in items.grid track by $index" class="item"
+          ng-class="{'inactive': !item.barcode || !item.isActive, 'mark': item.weight != null}">
+          <div class="item-main" ng-click="showDetails(item)">
+            <span class="item-price" ng-if="item.priceWithVat > 0">{{ (item.totalPrice || item.priceWithVat).toFixed(2)
+              }}</span>
+            <span class="item-stock text-primary" ng-if="settings.showStock">
+              <i class="fa fa-home margin-right-5"></i>{{ item.stock || '0' }}
+            </span>
+            <span class="item-name">{{ item.name }}</span>
+          </div>
+          <div class="item-labels">
+            <span ng-repeat="label in ['packageCode', 'weight', 'departmentNumber', 'packageQuantity']"
+              ng-if="item[label] != null">
+              {{ label | i18n }}: {{ item[label] }}
+            </span>
+            <span ng-if="item.weight != null && item.priceWithVat != null">
+              {{ 'kiloPrice' | i18n }}: <b>{{ item.priceWithVat.toFixed(2) }}</b>
+            </span>
+            <span ng-if="item.measurementUnitCanBeWeighed">
+              {{ 'weightedItem' | i18n }}
+            </span>
+            <span
+              ng-if="!item.measurementUnitCanBeWeighed && getPricePerUnit(item) != null && item.priceWithVat != null"
+              class="pull-right text-light-grey">
+              {{ getPricePerUnit(item) }}
+            </span>
+            <span class="text-primary" ng-if="getAgoText(item.retrievedAt) != null">
+              {{ getAgoText(item.retrievedAt) }}
+            </span>
+          </div>
+          <button class="btn btn-yellow" ng-click="removeItem($index)">
+            <i class="fa fa-trash"></i>
+          </button>
+          <button class="btn btn-pink" ng-if="item.measurementUnitCanBeWeighed && item.priceWithVat > 0"
+            ng-click="showWeightModal(item)">
+            <i class="fa fa-balance-scale"></i>
+          </button>
+          <button class="btn btn-danger" ng-if="item.id && !item.priceWithVat" ng-click="quickPriceChange($index)">
+            <i class="fa fa-euro"></i>
+          </button>
+        </div>
+      </div>
+      <div ng-if="items.grid.length === 0">
+        <div class="alert text-center" ng-class="{'alert-info': !printed, 'alert-success': printed}">
+          <svg width="65" height="40" viewBox="10 30 70 40" fill="none" xmlns="http://www.w3.org/2000/svg"
+            ng-if="!printed">
             <rect x="10" y="30" width="5" height="40" fill="#333"></rect>
             <rect x="20" y="30" width="3" height="40" fill="#333"></rect>
             <rect x="28" y="30" width="6" height="40" fill="#333"></rect>
@@ -53,19 +134,73 @@
             <rect x="10" y="50" width="70" height="3" fill="red">
               <animateTransform attributeName="transform" type="translate" values="0 0; 0 7; 0 -3; 0 4; 0 0"
                 keyTimes="0;0.2;0.5;0.8;1" dur="2.4s" calcMode="spline" keySplines="0.25 0.1 0.25 1;
-                      0.45 0 0.55 1;
-                      0.25 0.1 0.25 1;
-                      0.3 0 0.7 1" repeatCount="indefinite" />
+                        0.45 0 0.55 1;
+                        0.25 0.1 0.25 1;
+                        0.3 0 0.7 1" repeatCount="indefinite" />
               <animateTransform attributeName="transform" type="rotate" additive="sum" values="0;2;-1;2;0"
                 keyTimes="0;0.3;0.6;0.8;1" dur="1.7s" calcMode="spline" keySplines="0.5 0 0.5 1;
-                      0.5 0 0.5 1;
-                      0.5 0 0.5 1;
-                      0.5 0 0.5 1" repeatCount="indefinite" />
+                        0.5 0 0.5 1;
+                        0.5 0 0.5 1;
+                        0.5 0 0.5 1" repeatCount="indefinite" />
             </rect>
           </svg>
-          <div>${i18n('noItemsScanned')}</div>
+          <svg width="60" height="70" viewBox="0 0 60 70" fill="none" xmlns="http://www.w3.org/2000/svg"  ng-if="printed">
+            <rect x="5" y="40" width="50" height="10" fill="#555" rx="2"></rect>
+            <g>
+              <rect fill="#d5d5d5" x="10" y="20" width="40" height="20"></rect>
+              <line x1="15" y1="35" x2="45" y2="35" stroke="#888" stroke-width="2"></line>
+              <line x1="15" y1="30" x2="45" y2="30" stroke="#888" stroke-width="2"></line>
+              <animateTransform attributeName="transform" type="translate" values="0,0; 0,22; 0,22" keyTimes="0; 0.33; 1" dur="2s" repeatCount="indefinite"></animateTransform>
+            </g>
+            <rect x="0" y="0" width="60" height="40" fill="#333" rx="5"></rect>
+            <circle cx="55" cy="10" r="3" fill="#2196f3"></circle>
+          </svg>
+          <div>
+            <span ng-if="printed">{{ 'printJobIsSent' | i18n }}.</span>
+            <span>{{ 'noItemsScanned' | i18n }}.</span>
+          </div>
         </div>
-        <div class="alert-xs grey text-center">${i18n('help')}</div>
+          <div class="recent-items" ng-if="tabs">
+            <ul class="nav nav-tabs">
+              <li class="nav-item" ng-class="{'active': activeTab === 'recentItems'}"
+              ng-click="changeActiveTab('recentItems')">
+                <a>{{ 'recentItems' | i18n }}</a>
+              </li>
+              <li class="nav-item" ng-class="{'active': activeTab === 'recentlySearched'}"
+              ng-click="changeActiveTab('recentlySearched')" ng-if="items.searched.length > 0">
+                <a>{{ 'recentlySearched' | i18n }}</a>
+              </li>
+              <div class="pull-right">
+                <button class="btn btn-white btn-xs" ng-click="refreshCurrentTab()">
+                  {{ 'refresh' | i18n }}<i class="fa fa-refresh padding-left-10"></i>
+                </button>
+                <button class="btn-link black" ng-click="toggleTabs()">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            </ul>
+            <div class="tab-content item-list recent-tab-content">
+              <div
+                ng-repeat="item in (activeTab === 'recentItems' ? items.recent : items.searched) | limitTo:10 track by $index"
+                class="item" ng-class="{'inactive': !item.barcode || !item.isActive}">
+                <div class="item-main">
+                  <span class="item-name">
+                    {{ item.name }}
+                  </span>
+                </div>
+                <button class="btn btn-xs btn-pink" ng-if="item.measurementUnitCanBeWeighed && item.priceWithVat > 0" ng-click="showWeightModal(item)">
+                  <i class="fa fa-balance-scale"></i>
+                </button>
+                <span class="item-price" ng-if="item.priceWithVat > 0">{{ item.priceWithVat.toFixed(2) }}</span>
+                <button class="btn btn-xs btn-purple" ng-click="print([item])">
+                  <i class="fa fa-print"></i>
+                  <i class="fa fa-bolt"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        <div class="alert-xs grey text-center margin-10">{{ 'help' | i18n }}</div>
       </div>
     </div>
   </div>

@@ -1,15 +1,14 @@
-import { ModalService } from './modal'
-import { LabelGenerator, labelType } from './labelGenerator'
-import { i18n } from './i18n'
-import { LabelerInterface } from './labelerInterface'
+import { ModalService } from '../services/modal'
+import { LabelGenerator } from '../labelGenerator'
+import { i18n } from '../services/i18n'
+import { type Item } from '../types/item'
+import { type LabelType } from '../types/label'
 
 export class LabelTypeModal {
   modal: ModalService
   lg: LabelGenerator
-  labeler: LabelerInterface
-  current: labelType
-  labelTypes: labelType[] = ['normal', 'fridge', 'half', 'barcodeOnly']
-  fakeItems: any[] = [
+  labelTypes: LabelType[] = ['normal', 'fridge', 'half', 'barcodeOnly']
+  fakeItems: Partial<Item>[] = [
     {
       name: 'Whiskey BLACK RAM, 40%, 0,7 l',
       barcode: '3800032070302',
@@ -40,19 +39,17 @@ export class LabelTypeModal {
     },
   ]
 
-  constructor(labeler: LabelerInterface) {
+  constructor(private type?: LabelType) {
     this.modal = new ModalService()
     this.lg = new LabelGenerator()
-    this.labeler = labeler
-    this.current = this.labeler.settings.type
   }
 
-  open(): void {
-    this.current = this.labeler.settings.type
-    void this.modal.showModal({
-      template:
-        this.lg.createStyleElement().outerHTML +
-        `
+  open(): Promise<LabelType> {
+    return new Promise((resolve, reject) => {
+      void this.modal.showModal({
+        template:
+          this.lg.createStyleElement().outerHTML +
+          `
         <div class="modal-header">
           <button type="button" class="close" ng-click="closeModal()">
             <span>&times;</span>
@@ -76,28 +73,29 @@ export class LabelTypeModal {
             </div>
         </div>
       `,
-      scopeProperties: {
-        labelTypes: this.labelTypes,
-        current: this.current, //
-        fakeItems: this.fakeItems,
-        selectLabelType: (x: labelType) => {
-          console.log(x)
-          this.labeler.setLabelType(x)
-          this.modal.modalInstance.close()
+        scopeProperties: {
+          labelTypes: this.labelTypes,
+          current: this.type,
+          fakeItems: this.fakeItems,
+          selectLabelType: (x: LabelType) => {
+            this.type = x
+            resolve(x)
+            this.modal.modalInstance.close()
+          },
+          lg: this.lg,
+          i18n,
+          getLabelPreview: (labelType: LabelType) => {
+            return this.lg.generateLabel(
+              this.fakeItems[Math.floor(Math.random() * this.fakeItems.length)],
+              labelType,
+            ).outerHTML
+          },
+          closeModal: () => {
+            reject(new Error('Modal closed without selection'))
+            this.modal.modalInstance.close()
+          },
         },
-        lg: this.lg,
-        i18n,
-        getLabelPreview: (labelType: labelType) => {
-          return this.lg.generateLabel(
-            this.fakeItems[Math.floor(Math.random() * this.fakeItems.length)],
-            labelType,
-          ).outerHTML
-          // return this.lg.generateLabel(this.fakeItems[0], labelType).outerHTML
-        },
-        closeModal: () => {
-          this.modal.modalInstance.close()
-        },
-      },
+      })
     })
   }
 }

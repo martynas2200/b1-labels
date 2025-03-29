@@ -1,34 +1,26 @@
 import { i18n } from './i18n'
-import { type item } from './item'
-import { UINotification } from './ui-notification'
-
-declare let angular: any
+import { type Item } from '../types/item'
+import { type FilterRules, type RequestBody } from '../types/request'
+import { AngularServiceLocator } from './angular-service-locator'
+import { UINotification } from './notification'
 
 export class Request {
-  items: Record<string, item> = {}
+  items: Record<string, Item> = {}
   baseUrl: string = 'https://www.b1.lt'
   path: string = '/reference-book/items/search'
   csrfToken: string
   headers: Record<string, string>
-  notifier: UINotification
   turnstileService: {
     render: () => Promise<void>,
   }
 
-  constructor(notifier: UINotification) {
-    const appElement = document.querySelector('[ng-app]') // TODO: refactor, a class could be responsible to get the app element, and load `imported` services
-    if (!appElement) {
-      throw new Error('Angular app not found')
-    }
-
-    const injector = angular.element(appElement).injector()
-    this.turnstileService = injector.get('turnstileService')
+  constructor(private notifier: UINotification) {
+    this.turnstileService = AngularServiceLocator.getService('turnstileService')
 
     const csrfTokenElement: HTMLMetaElement | null = document.querySelector(
       'meta[name="csrf-token"]',
     )
     this.csrfToken = csrfTokenElement != null ? csrfTokenElement.content : ''
-    this.notifier = notifier
     this.headers = {
       accept: 'application/json, text/plain, */*',
       'accept-language': 'en-GB,en;q=0.9,lt-LT;q=0.8,lt;q=0.7,en-US;q=0.6',
@@ -41,6 +33,20 @@ export class Request {
       'x-requested-with': 'XMLHttpRequest',
       'x-csrf-token': this.csrfToken,
       cookie: '',
+    }
+  }
+
+  // build the request body
+  buildRequestBody(rules: FilterRules, pageSize: number = 20): RequestBody {
+    return {
+      pageSize,
+      filters: {
+        groupOp: 'AND',
+        rules,
+      },
+      allSelected: false,
+      asString: '',
+      page: 1,
     }
   }
 
@@ -148,23 +154,14 @@ export class Request {
     }
 
     // Prepare the request body
-    const body = {
-      pageSize: 20,
-      filters: {
-        groupOp: 'AND',
-        rules: {
-          barcode: {
-            data: barcode,
-            field: 'barcode',
-            op: barcode[0] === '0' ? 'cn' : 'eq',
-          },
-        },
+    const rules: FilterRules = {
+      barcode: {
+        data: barcode,
+        field: 'barcode',
+        op: barcode[0] === '0' ? 'cn' : 'eq',
       },
-      allSelected: false,
-      asString: '',
-      page: 1,
     }
-
+    const body = this.buildRequestBody(rules)
     const data = await this.fetchData('POST', this.path, body)
     if (data == null || data.data[0] == null) {
       return null
@@ -190,7 +187,37 @@ export class Request {
     }
     return data.data[0]
   }
-  async saveItem(id: string, data: Record<string, any>): Promise<boolean> {
+  async getRecentItems(): Promise<Item[]> {
+    const body = this.buildRequestBody({
+      isActive: { data: true, field: 'isActive', op: 'eq' },
+    }, 20)
+    body.sort = { id: 'desc' } // recent
+    const items = await this.fetchData('POST', this.path, body)
+    if (items && items.data) {
+      items.data.forEach((item: Item) => {
+        item.retrievedAt = new Date()
+        this.items[item.barcode] = item
+      })
+    }
+    return items.data || []
+  }
+
+  async getItemsByIds(ids: string[]): Promise<Item[]> {
+    const rules: FilterRules = {
+      id: { data: ids, field: 'id', op: 'in' },
+    }
+    const body = this.buildRequestBody(rules, 20)
+    const items = await this.fetchData('POST', this.path, body)
+    if (items && items.data) {
+      items.data.forEach((item: Item) => {
+        item.retrievedAt = new Date()
+        this.items[item.barcode] = item
+      })
+    }
+    return items.data || []
+  }
+
+  async saveItem(id: string, data: Record<string, string | number | boolean>): Promise<boolean> {
     // Check if the id is provided and it consists of digits only
     if (!this.isItDigits(id)) {
       this.notifier.error(i18n('invalidId'))
@@ -205,7 +232,7 @@ export class Request {
     if (response.code === 200) {
       this.notifier.success({
         title: i18n('itemUpdated'),
-        message: i18n('newPriceIs') + data.priceWithVat,
+        message: i18n('newPriceIs') + ' ' + data.priceWithVat, //TODO: use string interpolation
         delay: 15000,
       })
     } else {
@@ -237,46 +264,25 @@ export class Request {
   }
 
   async getSales(operationTypeName: string): Promise<any> {
-    const body = {
-      sort: { saleDate: 'desc' },
-      page: 1,
-      pageSize: 20,
-      allSelected: false,
-      asString: '',
-      filters: {
-        rules: {
-          operationTypeName: {
-            data: operationTypeName,
-            field: 'operationTypeName',
-            op: 'cn',
-          },
-        },
+    const rules: FilterRules = {
+      operationTypeName: {
+        data: operationTypeName,
+        field: 'operationTypeName',
+        op: 'cn',
       },
     }
+    const body = this.buildRequestBody(rules, 20)
+    body.sort = { saleDate: 'desc' }
     const path = '/warehouse/light-sales/search'
     return this.fetchData('POST', path, body)
   }
 
   getSaleItems(lightSaleId: string): Promise<any> {
-    const body = {
-      page: 1,
-      pageSize: -1,
-      filters: {
-        rules: {
-          lightSaleId: { field: 'lightSaleId', op: 'eq', data: lightSaleId },
-        },
-      },
+    const rules: FilterRules = {
+      lightSaleId: { field: 'lightSaleId', op: 'eq', data: lightSaleId },
     }
+    const body = this.buildRequestBody(rules, -1)
     return this.fetchData('POST', '/warehouse/light-sale-items/search', body)
-  }
-
-  clearCache() {
-    const nItems = Object.keys(this.items).length
-    this.items = {}
-    this.notifier.info({
-      title: i18n('cacheCleared'),
-      message: nItems + i18n('nItemsRemoved'),
-    })
   }
 
   async handleChallenge(): Promise<boolean> {

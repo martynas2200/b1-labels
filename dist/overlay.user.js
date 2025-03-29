@@ -1,72 +1,103 @@
 // ==UserScript==
-// @name              Loading Overlay and Inactivity Monitor
+// @name              Loading Overlay, Inactivity Monitor, and Request Modifier
 // @namespace         http://tampermonkey.net/
-// @version           1.0.0
-// @description       Introduces a loading overlay and an inactivity monitor that closes the window when the application is inactive applies only for Application Mode.
+// @version           1.0.1
+// @description       Adds a loading overlay, monitors inactivity, and modifies certain requests. Removes Google Tag Manager scripts.
 // @author            Martynas Miliauskas
 // @match             https://www.b1.lt/*
 // @icon              https://b1.lt/favicon.ico
 // @downloadURL       https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/overlay.user.js
 // @updateURL         https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/overlay.user.js
 // @run-at            document-start
-// @grant             unsafeWindow
 // @license           GNU GPLv3
 // ==/UserScript==
 
-// -------------- Splash screen -----------------------------
+// -------------- Splash Screen -----------------------------
+const overlay = document.createElement('div');
+Object.assign(overlay.style, {
+    position: 'fixed',
+    top: '0',
+    left: '0',
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#333',
+    display: 'flex',
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    zIndex: '9999',
+});
 
-let overlay = document.createElement('div')
-overlay.style.position = 'fixed'
-overlay.style.top = '0'
-overlay.style.left = '0'
-overlay.style.width = '100%'
-overlay.style.height = '100%'
-overlay.style.backgroundColor = '#333'
-overlay.style.display = 'flex'
-overlay.style.justifyContent = 'space-evenly'
-overlay.style.alignItems = 'center'
-overlay.style.zIndex = '9999'
+const loaderIcon = document.createElement('i');
+loaderIcon.className = 'fa-b1-loader';
+Object.assign(loaderIcon.style, {
+    width: '20vh',
+    height: '20vh',
+});
 
-// use default fa-b1-loader
-const i = document.createElement('i')
-i.className = 'fa-b1-loader'
-i.style.width = '20vh'
-i.style.height = '20vh'
-overlay.appendChild(i)
-document.documentElement.appendChild(overlay)
+overlay.appendChild(loaderIcon);
+document.documentElement.appendChild(overlay);
 
 window.addEventListener('load', () => {
-  setTimeout(() => {
-    overlay.remove()
-    window.clarity('stop')
-  }, 200)
-})
+    setTimeout(() => overlay.remove(), 50);
+});
 
-// ---------- Close the window if the app was minimized and not used
-
+// -------------- Inactivity Monitor ------------------------
 const isInAppMode = window.matchMedia('(display-mode: standalone)').matches
-                 || window.matchMedia('(display-mode: fullscreen)').matches;
+    || window.matchMedia('(display-mode: fullscreen)').matches;
+
 let loadTime = Date.now();
-let checkInterval = 30 * 60 * 1000;
+const checkInterval = 30 * 60 * 1000;
 let isMinimized = false;
 
-function checkWindowState() {
+const checkWindowState = () => {
     isMinimized = document.hidden || document.visibilityState === 'hidden';
-}
+};
 
-function checkInactivity() {
+const checkInactivity = () => {
     if (isMinimized && (Date.now() - loadTime) >= checkInterval) {
         window.close();
     }
-}
+};
 
 if (isInAppMode) {
     console.log('Website is opened in App Mode.');
-    window.onfocus = function() {
+
+    window.addEventListener('focus', () => {
         loadTime = Date.now();
-    };
+    });
 
     document.addEventListener('visibilitychange', checkWindowState);
     checkWindowState();
     setInterval(checkInactivity, 301000);
 }
+
+// -------------- XMLHttpRequest Interceptor ----------------
+const originalOpen = XMLHttpRequest.prototype.open;
+
+XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+    if (url.includes("warehouse/light-sales")) {
+        url = "data:text/plain,";
+    } else if (url.includes("sidebar")) {
+        url = 'data:application/json,{ "data": [ { "id": 0, "label": "Žinynai", "icon": "fa-folder-open", "isPrimary": true, "isMinimizible": true, "isAlwaysOpen": false, "items": [ { "id": 84, "label": "Prekės", "url": "/reference-book/items", "helpUrl": "/zinynai", "helpName": "Žinynai", "icon": "fa-folder-open" }, { "id": 85, "label": "Prekių požymiai", "url": "/reference-book/item-attributes", "helpUrl": "/zinynai", "helpName": "Žinynai", "icon": "fa-folder-open" }, { "id": 86, "label": "Prekių grupės", "url": "/reference-book/item-groups", "helpUrl": "/zinynai", "helpName": "Žinynai", "icon": "fa-folder-open" } ] } ], "code": 200 }';
+    }
+
+    return originalOpen.apply(this, [method, url, ...rest]);
+};
+
+// -------------- Remove Google Tag Manager -----------------
+const removeGTM = () => {
+    const removeElements = (selector) => {
+        document.querySelectorAll(selector).forEach(el => el.remove());
+    };
+
+    removeElements('script[src*="googletagmanager.com"], script[src*="cloudflareinsights.com"], noscript');
+    document.querySelectorAll('script').forEach(script => {
+        if (script.textContent.includes('googletagmanager.com') || script.textContent.includes('gtag(')) {
+            script.remove();
+        }
+    });
+};
+
+removeGTM();
+const observer = new MutationObserver(() => removeGTM());
+observer.observe(document.body, { childList: true, subtree: true });

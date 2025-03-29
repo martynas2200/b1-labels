@@ -1,45 +1,37 @@
-import { i18n } from './i18n'
-import { Request } from './request'
+import { i18n } from '../services/i18n'
+import { Request } from '../services/request'
+import { ModalService } from '../services/modal'
 
-declare const angular: any
 declare const GM: any
 
 export class MarkdownModal {
   request: Request
-  $uibModal: any
-  modalScope: any
-  instances: any = []
+  modalService: ModalService
+  tableData: any[] = []
+  saleItems: any[] = []
 
   constructor(request: Request) {
     this.request = request
-    const injector = angular.element(document.body).injector()
-    const $rootScope = injector.get('$rootScope')
-    this.$uibModal = injector.get('$uibModal')
-    this.modalScope = $rootScope.$new(true)
-
-    this.initializeScope()
+    this.modalService = new ModalService()
   }
 
-  initializeScope(): void {
-    this.modalScope.title = i18n('markdowns')
-    this.modalScope.tableData = []
-    this.modalScope.loadData = this.loadData.bind(this)
-    this.modalScope.showSaleItems = this.showSaleItems.bind(this)
-    this.modalScope.noDataMessage = i18n('loading')
-    this.modalScope.closeModal = this.closeModal.bind(this)
-    this.modalScope.goToURL = this.goToURL.bind(this)
-  }
+  async show(): Promise<void> {
+    if (this.tableData.length === 0) {
+      await this.loadData()
+    }
 
-  open(): void {
-    const modalInstance = this.$uibModal.open({
-      animation: true,
+    void this.modalService.showModal({
       template: `
         <div class="modal-header">
-        <h4 class="modal-title pull-left">${i18n('markdowns')}</h4>
-        <div class="pull-right">
-        <button ng-click="goToURL()" class="btn btn-sm btn-purple" type="button"><i class="fa fa-external-link"></i> ${i18n('weeklyReports')}</button>
-        <button ng-click="closeModal()" class="btn btn-sm btn-white" type="button"><i class="fa fa-times"></i> ${i18n('close')}</button>
-        </div>
+          <h4 class="modal-title pull-left">${i18n('markdowns')}</h4>
+          <div class="pull-right">
+            <button ng-click="goToURL()" class="btn btn-sm btn-purple" type="button">
+              <i class="fa fa-external-link"></i> ${i18n('weeklyReports')}
+            </button>
+            <button ng-click="closeModal()" class="btn btn-sm btn-white" type="button">
+              <i class="fa fa-times"></i> ${i18n('close')}
+            </button>
+          </div>
         </div>
         <div class="modal-body">
           <div ng-if="tableData.length === 0" class="alert alert-info">{{ noDataMessage }}</div>
@@ -67,22 +59,22 @@ export class MarkdownModal {
           </table>
         </div>
       `,
-      scope: this.modalScope,
-      size: 'lg',
+      scopeProperties: {
+        tableData: this.tableData,
+        noDataMessage: this.tableData.length ? '' : i18n('loading'),
+        closeModal: () => this.modalService.modalInstance.close(),
+        goToURL: this.goToURL.bind(this),
+        showSaleItems: this.showSaleItems.bind(this),
+      },
     })
-    this.instances.push(modalInstance)
-    if (this.modalScope.tableData.length === 0) {
-      void this.loadData()
-    }
   }
 
   async loadData(): Promise<void> {
     const sales = await this.request.getSales('nur')
     if (!sales) {
-      this.modalScope.tableData = []
-      this.modalScope.noDataMessage = i18n('noDataFound')
+      this.tableData = []
     } else {
-      this.modalScope.tableData = sales.data.map((sale: any) => ({
+      this.tableData = sales.data.map((sale: any) => ({
         id: sale.id,
         series: sale.series,
         number: sale.number,
@@ -90,19 +82,29 @@ export class MarkdownModal {
         discount: sale.discount,
       }))
     }
-    this.modalScope.$apply()
   }
 
   async showSaleItems(id: string, date: string): Promise<void> {
     const items = await this.request.getSaleItems(id)
+    this.saleItems =
+      items?.data
+        .map((item: any) => ({
+          itemId: item.itemId,
+          virtualName: item.virtualName,
+          quantity: item.quantity,
+          total: item.sumWithoutVat + item.vat,
+          discount: item.discount,
+          discountRate: item.discountRate,
+          virtualUnit: item.virtualUnit,
+        }))
+        .filter((item: any) => item.discount < 0) || []
 
-    const modalInstance = this.$uibModal.open({
-      animation: true,
+    void this.modalService.showModal({
       template: `
         <div class="modal-header">
-        <button type="button" class="close" ng-click="closeModal()">
-          <span>&times;</span>
-        </button>
+          <button type="button" class="close" ng-click="closeModal()">
+            <span>&times;</span>
+          </button>
           <h4 class="modal-title">${i18n('markdowns')} <span class="text-primary">${date}</span></h4>
         </div>
         <div class="modal-body">
@@ -133,38 +135,17 @@ export class MarkdownModal {
           <button class="btn btn-primary" ng-click="closeModal()">${i18n('close')}</button>
         </div>
       `,
-      scope: this.modalScope,
-      size: 'lg',
+      scopeProperties: {
+        saleItems: this.saleItems,
+        closeModal: () => this.modalService.modalInstance.close(),
+      },
     })
-
-    this.modalScope.saleItems =
-      items?.data.map((item: any) => ({
-        itemId: item.itemId,
-        virtualName: item.virtualName,
-        quantity: item.quantity,
-        total: item.sumWithoutVat + item.vat,
-        discount: item.discount,
-        discountRate: item.discountRate,
-        virtualUnit: item.virtualUnit,
-      })) || []
-    //filter out items with 0 discount
-    this.modalScope.saleItems = this.modalScope.saleItems.filter(
-      (item: any) => item.discount < 0,
-    )
-    this.instances.push(modalInstance)
   }
 
-  closeModal(): void {
-    if (this.instances.length > 0) {
-      this.instances.pop().close()
-    }
-  }
-  
   async goToURL(): Promise<void> {
-      const url = await GM.getValue('url', '')
-      if (url !== '') {
-        window
-          .open(url, '_blank')
+    const url = await GM.getValue('url', '')
+    if (url !== '') {
+      window.open(url, '_blank')
     }
   }
 }

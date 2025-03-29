@@ -1,8 +1,9 @@
-// Look-up container
+@use 'variables' as vars;
 
-body.labeler-interface {
+body.label-print-interface {
   background-color: #eee;
 
+  // Hides sub-grid rows and other elements
   tr.sub-grid-row,
   td.sub-grid,
   [ng-if="config.subGrid"],
@@ -17,7 +18,7 @@ body.labeler-interface {
   }
 
   .modal {
-
+    // Adjusts modal header and input styles
     h5.header.blue.header-temp-files-list {
       margin-top: 0;
     }
@@ -31,95 +32,15 @@ body.labeler-interface {
     }
   }
 
-  .main-content {
-
-    * {
-      border-radius: 4px !important;
-    }
-
-    table.table.table-bordered * {
-      border-radius: unset !important;
-    }
-
-    .btn-ctrl:has(.fa-print) button.btn.btn-sm:has(.fa-print),
-    span.resizer,
-    .extd-grid-control select {
-      pointer-events: none;
-      opacity: 0.3;
-    }
-
-    // Purchase page
-    .breadcrumbs,
-    .no-border,
-    .form-group:has(.fa-star),
-    .table-responsive thead tr> :nth-child(4),
-    .table-responsive thead tr> :nth-child(6),
-    .table-responsive thead tr> :nth-child(7),
-    .table-responsive tbody tr> :nth-child(4),
-    .table-responsive tbody tr> :nth-child(6),
-    .table-responsive tbody tr> :nth-child(7),
-    .uib-typeahead-match .tt-suggestion> :nth-child(2),
-    .uib-typeahead-match .tt-suggestion> :nth-child(3),
-    .uib-typeahead-match .tt-suggestion> :nth-child(4),
-    .uib-typeahead-match .tt-suggestion> :nth-child(5),
-    .form-horizontal:nth-child(3)> :nth-child(2)> :nth-child(2),
-    .form-horizontal:nth-child(3)> :nth-child(2)> :nth-child(3),
-    .form-horizontal:nth-child(3)> :nth-child(5),
-    .form-horizontal:nth-child(1)> :nth-child(2)> :nth-child(1)> :nth-child(2)> :nth-child(2),
-    .form-horizontal:nth-child(1)> :nth-child(2)> :nth-child(3)> :nth-child(2)> :nth-child(2),
-    .extd-grid-control .extd-grid-buttons.buttons-right,
-    .extd-grid-title,
-    td[ng-if="config.subGrid"] {
-      display: none !important;
-      pointer-events: none;
-    }
-
-    td[extd-touch-resize],
-    a {
-      -webkit-user-drag: none;
-      user-drag: none;
-    }
-
-    .input-group-addon,
-    .input-group-btn {
-      display: table-column;
-    }
-
-    .sticky {
-      background: transparent;
-
-      .btn-ctrl>div {
-        border: unset;
-        padding: unset;
-      }
-    }
-
-    input[ng-model="filter.page"] {
-      width: 30px;
-    }
-
-    .pagination-wrap button.btn.btn-sm.btn-transparent {
-      background: white !important;
-    }
-  }
-
-  &.dark,
-  &.dark .navbar {
-    background-color: #000;
-  }
-
   .navbar {
     background-color: var(--theme-blue--dark-bg);
 
-    .navbar-header {
-      .navbar-brand {
-        padding-left: 1em;
-        filter: brightness(0) invert(1);
-      }
+    .navbar-brand {
+      padding-left: 1em;
+    }
 
-      .navbar-toggle {
-        display: none;
-      }
+    .navbar-shortcuts {
+      margin-right: 10px;
     }
 
     a.navbar-shortcut {
@@ -135,74 +56,10 @@ body.labeler-interface {
     li:has(.navbar-shortcut):hover {
       background: #0000005c;
     }
-
-    .navbar-nav {
-      &>*:not(:last-child) {
-        display: none;
-      }
-
-      &>*:nth-last-child(2),
-      &>*:nth-last-child(4),
-      &>*:nth-last-child(5),
-      &>*:nth-last-child(7) {
-        display: block;
-      }
-    }
-
-    .navbar-toggle.toggle-sidebar,
-    .navbar-collapse a.navbar-brand,
-    .caret {
-      display: none;
-    }
-
-
-    .navbar-collapse-2 {
-
-      img,
-      .divider {
-        display: none;
-      }
-
-      .nav-user-shortcut {
-        height: 100%;
-      }
-    }
-
-    .navbar-nav li.nav-user-dropdown {
-
-      img,
-      .divider {
-        display: none;
-      }
-
-      a .nav-user-company {
-        font-size: unset !important;
-        line-height: unset !important;
-      }
-
-      // Could add `>` to make sure it is only the nav part, not the items in the dropdown, but a touch screen user might have trouble
-      a {
-        padding: 15px 10px;
-      }
-    }
-
-    .nav-user-dropdown__title {
-      // The business name doesn't fit in the header
-      color: #d9d9d9;
-      padding-right: 10px;
-      font-size: 15px;
-      max-width: unset;
-
-      & *:first-child {
-        // The user name
-        display: none;
-      }
-    }
   }
 }
 
-.look-up-container {
-
+.item-search-container {
   *:not(.header):not(svg) {
     border-radius: 4px;
   }
@@ -225,6 +82,7 @@ body.labeler-interface {
     border: 1px solid #ddd;
     margin-top: 10px;
     background-color: #fcfcfc;
+    padding: 0 15px;
   }
 
   .item-list {
@@ -232,15 +90,16 @@ body.labeler-interface {
     overflow: auto;
 
     .item {
+      // Styles for individual items in the list
       transition: 0.5s;
       animation: highlight 0.5s ease-out;
       background-color: white;
       display: grid;
-      grid-template-columns: auto min-content min-content;
+      grid-template-columns: minmax(0, 1fr) min-content min-content min-content;
       column-gap: 5px;
       font-size: 1.1em;
       border: 1px solid #ddd;
-      padding: 10px;
+      padding: 8px;
       margin-bottom: 4px;
       cursor: pointer;
       position: relative;
@@ -252,6 +111,7 @@ body.labeler-interface {
         color: white;
         padding: 2px 8px;
         margin-right: 4px;
+        transition: 0.5s;
       }
 
       &.inactive span.item-price {
@@ -310,12 +170,6 @@ body.labeler-interface {
         display: none;
       }
 
-      .item-price {
-        margin-right: 4px;
-        border-radius: 4px;
-        transition: 0.5s;
-      }
-
       &:not(.inactive):last-child .item-price {
         animation: emphasizePrice 0.5s ease-in-out 5s backwards;
       }
@@ -350,10 +204,55 @@ body.labeler-interface {
   #barcode:focus:placeholder-shown+.ready-for-scan {
     opacity: 1;
   }
+
+  .recent-items {
+    .recent-tab-content {
+      background: white;
+      padding: 10px;
+      border-radius: 0;
+    }
+
+    .item-list {
+      .item {
+        padding: 8px;
+        column-gap: 0px;
+
+        .btn {
+          grid-row: unset;
+        }
+
+        .item-price,
+        .btn-xs {
+          padding: 0px 6px;
+          margin-left: 5px;
+        }
+      }
+
+      .item-main {
+        text-overflow: clip;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      .item-price {
+        margin-right: 0px;
+      }
+
+      .item,
+      .item:last-child {
+        animation: none;
+        margin-bottom: 4px;
+        padding: 6px;
+      }
+
+      .item:last-child .item-price {
+        animation: none;
+      }
+    }
+  }
 }
 
-
-/* item detail modal */
+// Item detail modal
 .container.width-auto>.row {
   padding: 5px 0px;
   border-bottom: 1px solid #eeeeee
@@ -375,7 +274,8 @@ body.labeler-interface {
   }
 }
 
-.list-group {
+// Label type modal
+.modal .list-group {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
@@ -407,13 +307,17 @@ body.labeler-interface {
     content: "";
     height: 20px;
     width: 100%;
-    background-image: url('https://one-pro-public-bucket.s3.eu-central-1.amazonaws.com/ONE/css/scissors-icon.png');
-    background-size: 15% 100%;
+    background-image:  vars.$scissors-icon;
+    background-size: 81% 100%;
+    background-position: 90% 50%;
     background-repeat: no-repeat;
-    background-position: 94% 50%;
-    position: absolute;
-    bottom: 4.6mm;
-    opacity: 0.7;
+    bottom: 0.6mm;
+    right: 3em;
+    opacity: .7;
+    background-blend-mode: color-dodge;
+    width: 2em;
+    height: 4em;
+    transform: rotate(90deg);
   }
 
   .label {
@@ -429,7 +333,7 @@ body.labeler-interface {
     content: "";
     height: 100%;
     width: 20px;
-    background-image: url(https://one-pro-public-bucket.s3.eu-central-1.amazonaws.com/ONE/css/scissors-icon-v.png);
+    background-image: vars.$scissors-icon;
     background-size: 100% 25%;
     background-repeat: no-repeat;
     background-position: 50% 86%;
@@ -441,19 +345,9 @@ body.labeler-interface {
   }
 }
 
-// .modal-backdrop {
-//   display: none;
-// }
-
-// .modal {
-//   background-color: rgba(0, 0, 0, 0.5);
-// }
-
 @keyframes emphasizeItem {
   from {
     font-size: 1.2em;
-    // border-left: solid var(--theme-blue--dark-bg) 4px;
-    // padding-left: 6px;
   }
 }
 

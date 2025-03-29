@@ -1,23 +1,21 @@
-import all from './styles/all.scss'
-import { UserSession } from './userSession'
-import { LabelerInterface } from './labelerInterface'
-import { type item } from './item'
-import { i18n } from './i18n'
-import { LabelGenerator } from './labelGenerator'
-import { UINotification } from './ui-notification'
-interface row extends item {
+
+import { type Item } from '../types/item'
+import { i18n } from '../services/i18n'
+import { LabelGenerator } from '../labelGenerator'
+import { UINotification } from '../services/notification'
+import { WeightLabelModal } from '../modals/weightLabelModal'
+import { ModalService } from '../services/modal'
+interface row extends Item {
   _select: boolean
 }
 declare const angular: angular.IAngularStatic
 declare let history: History
 declare let window: Window
 
-class LabelsUserscript {
-  private wereButtonsAdded: boolean = false
+class AdminPrintUserscript {
   private pageReady: boolean = false
   private readonly notification = new UINotification()
-  private readonly user = new UserSession()
-  private readonly interface = new LabelerInterface()
+  private readonly modal = new ModalService()
   private currentUrl: string
 
   constructor () {
@@ -30,7 +28,6 @@ class LabelsUserscript {
   private init (): void {
     this.overrideHistoryMethods()
     this.setupPopStateListener()
-    this.addStyles()
   }
 
   private overrideHistoryMethods (): void {
@@ -62,12 +59,7 @@ class LabelsUserscript {
   }
 
   private async handleUrlChange (previousUrl: string | null, currentUrl: string, tries: number = 0): Promise<void> {
-    console.info('Url has changed')
     this.pageReady = false
-    if (this.user.isLoggedIn && this.user.admin && !this.interface.isActive()) {
-      if (!this.wereButtonsAdded && this.interface.addActivateButton()) {
-        this.wereButtonsAdded = true
-      }
       void new Promise(resolve => setTimeout(resolve, 200))
       let success = false
       switch (this.currentUrl) {
@@ -96,28 +88,6 @@ class LabelsUserscript {
       if (success) {
         this.pageReady = true
       }
-    } else if (this.user.isLoggedIn && !this.user.admin && !this.interface.isActive()) {
-        switch (this.currentUrl) {
-          case '/en/warehouse/light-sales/edit':
-          case '/warehouse/light-sales/edit':
-            this.pageReady = this.interface.simplifyPage(false) 
-            break
-          case '/en/reference-book/items':
-          case '/en/warehouse/purchases/edit':
-          case '/reference-book/items':
-          case '/en/reference-book/items/edit':
-          case '/reference-book/items/edit': 
-            this.pageReady = this.interface.simplifyPage(false) && await this.addPrintButton('.buttons-left', true)
-            break
-          default:
-            this.pageReady = this.interface.init()
-            break
-        }
-    } else if (!this.user.isLoggedIn && this.currentUrl === '/login') {
-      this.pageReady = this.user.addLoginOptions()
-    } else {
-      this.pageReady = true
-    }
 
     if (!this.pageReady && tries < 5) {
       setTimeout(() => {
@@ -135,15 +105,23 @@ class LabelsUserscript {
     return dataRows
   }
 
-  private extractDataFromAngularItemList (): item[] {
+  private extractDataFromAngularItemList (): Item[] {
     const dataRows = this.getDataRows()
     return angular.element(dataRows).controller().grid.data.filter((a: row) => a._select)
   }
-  async extractDataFromAngularPurchaseView (): Promise<any[]> {
+  async extractDataFromAngularPurchaseView (): Promise<Item[]> {
     const dataRows = this.getDataRows()
     const selectedRows = angular.element(dataRows).controller().data.filter((a: row) => a._select)
-    const items: any[] = []
-      selectedRows.forEach((row: any) => {
+    const items: Partial<Item>[] = []
+      selectedRows.forEach((row: {
+        itemName: string
+        itemBarcode: string
+        itemCode: string
+        itemId: string
+        itemPriceWithVat: number
+        itemPriceWithoutVat: number
+        measurementUnitName: string
+      }) => {
         items.push({
           name: row.itemName,
           barcode: row.itemBarcode,
@@ -158,7 +136,7 @@ class LabelsUserscript {
     return items
   }
 
-  extractDataFromAngularItemView (): item[] {
+  extractDataFromAngularItemView (): Item[] {
     const form = document.querySelector('ng-form')
     if (form == null) {
       this.notification.error(i18n('error'))
@@ -168,8 +146,8 @@ class LabelsUserscript {
     return [data]
   }
 
- async getViewItems (): Promise<item[]> {
-    let items: item[] = []
+ async getViewItems (): Promise<Item[]> {
+    let items: Item[] = []
     switch (window.location.pathname) {
       case '/en/reference-book/items':
       case '/reference-book/items':
@@ -245,7 +223,17 @@ class LabelsUserscript {
 
   async goToWeightLabelModal (): Promise<void> {
     const items = await this.getViewItems()
-    this.interface.modals?.weight.openWeightModal(items[0])
+    if (items.length < 1) {
+      this.notification.error(i18n('noItemsSelected'))
+      return
+    }
+    if (items.length > 1) {
+      this.notification.error(i18n('onlyOneItem'))
+      return
+    }
+    const item = items[0]
+    const modal = new WeightLabelModal(this.modal, this.notification)
+    void modal.show(item)
   }
 
   async printLabels (): Promise<void> {
@@ -256,20 +244,8 @@ class LabelsUserscript {
     }
     void new LabelGenerator(items)
   }
-
-  private addStyles (): void {
-    const styles = document.createElement('style') as HTMLStyleElement
-    styles.innerHTML = `${all}`
-    document.head.appendChild(styles)
-  }
 }
 
 window.addEventListener('load', () => {
-  void new LabelsUserscript()
-  // Stop Clarity analytics
-  setTimeout(() => {
-    if ((window as any).clarity != null) {
-      (window as any).clarity('stop')
-    }
-  }, 500)
+  void new AdminPrintUserscript()
 })

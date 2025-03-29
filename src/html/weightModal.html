@@ -1,5 +1,5 @@
       <div class="modal-header">
-        <button type="button" class="close" ng-click="close()" aria-label="Close">
+        <button type="button" class="close" ng-click="closeModal()" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
         <h4 class="modal-title" id="weightLabelModalLabel">{{ !item.measurementUnitCanBeWeighed ? i18n('label') : i18n('weightLabel')}}</h4>
@@ -67,9 +67,9 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" ng-click="close()">
+        <button type="button" class="btn btn-secondary" ng-click="closeModal()">
           <i class="fa fa-times"></i>&nbsp;{{i18n('close')}}</button>
-        <button type="button" class="btn btn-primary" ng-click="add()" >
+        <button type="button" class="btn btn-primary" ng-click="add()" ng-if="addButton">
           <i class="fa fa-plus"></i>&nbsp;{{i18n('add')}}</button>
         <button type="button" class="btn btn-purple" ng-click="print()" ">
           <i class="fa fa-print"></i>&nbsp;{{i18n('print')}}&nbsp;[{{ i18n('normal')}}]</button>

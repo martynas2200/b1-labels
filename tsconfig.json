@@ -2,15 +2,11 @@
     "compilerOptions": {
         "target": "ES2022",
         "module": "ES2022",
-        "outDir": "./dist",
         "strict": true,
-        "lib": ["dom", "es5"],
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "outDir": "dist"
     },
-    "include": ["src", "**/declarations.d.ts"],
-    "exclude": [
-        "node_modules",
-        "dist",
-        "*.mjs"
-    ]
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
 }
-  
