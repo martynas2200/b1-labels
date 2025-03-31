@@ -40,7 +40,9 @@ export class ItemDetailsModal {
       template: modalTemplate,
       scopeProperties: {
         item,
-        changePrice: this.quickPriceChange.bind(this, item),
+        changePrice: (item: PackagedItem) => {
+          void this.req.quickPriceChange(item)
+        },
         tagModal: (item: Item) => {
           void this.weightModal.show(item)
         }
@@ -48,25 +50,5 @@ export class ItemDetailsModal {
     })
   }
 
-  async quickPriceChange(item: PackagedItem): Promise<void> {
-    const price = prompt(i18n('enterNewPrice'), (item.priceWithVat ?? 0).toString())
-    if (price == null || item.id == null) {
-      this.notification.info(i18n('error'))
-      return
-    }
-    const data = new Object() as Item
-    data.id = item.id.split('-')[0]
-    data.isActive = true
-    data.priceWithVat = parseFloat(price.replace(',', '.'))
-    if (data.priceWithVat <= 0) {
-      this.notification.error(i18n('missingPrice'))
-      return
-    }
-    data.priceWithoutVat = (data.priceWithVat / 1.21)
-    data.priceWithoutVat = Math.round((data.priceWithoutVat + Number.EPSILON) * 10000) / 10000
-    item.priceWithVat = data.priceWithVat
-    item.priceWithoutVat = data.priceWithoutVat
-    await this.req.saveItem(data.id, data)
-  }
 
 }

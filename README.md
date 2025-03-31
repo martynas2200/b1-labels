@@ -32,7 +32,6 @@ There are three different userscripts available, each serving different purposes
 #### Kiosk Mode - `kiosk.user.js` 
 - Simplified interface focused solely on label printing and price verification
 - Automatically loads the label printing interface on login if the user has limited permissions
-- Designed for users with limited permissions
 - Features:
   - Barcode scanning support
   - Item name search

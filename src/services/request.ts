@@ -187,11 +187,19 @@ export class Request {
     }
     return data.data[0]
   }
-  async getRecentItems(): Promise<Item[]> {
+  async getRecentlyModifiedItems(): Promise<Item[]> {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const body = this.buildRequestBody({
       isActive: { data: true, field: 'isActive', op: 'eq' },
+      modifiedAt: {
+        data: today.toISOString().split('T')[0],
+        field: 'modifiedAt',
+        op: 'gt',
+      },
+
     }, 20)
-    body.sort = { id: 'desc' } // recent
+    body.sort = { modifiedAt: 'desc' } // most recent changes first
     const items = await this.fetchData('POST', this.path, body)
     if (items && items.data) {
       items.data.forEach((item: Item) => {
@@ -228,7 +236,7 @@ export class Request {
       `/reference-book/items/update?id=${id}`,
       data,
     )
-
+    // TODO: make it generic
     if (response.code === 200) {
       this.notifier.success({
         title: i18n('itemUpdated'),
@@ -243,7 +251,28 @@ export class Request {
     }
     return response.code === 200
   }
-  async createItem(data: Record<string, any>): Promise<boolean> {
+  async quickPriceChange(item: Item): Promise<boolean> {
+    const price = prompt(i18n('enterNewPrice'), (item.priceWithVat ?? 0).toString())
+    if (price == null || item.id == null) {
+      this.notifier.info(i18n('error'))
+      return false
+    }
+    const data = new Object() as Record<string, string | number | boolean>
+    data.isActive = true
+    data.id = item.id
+    data.priceWithVat = parseFloat(price.replace(',', '.'))
+    if (data.priceWithVat <= 0) {
+      this.notifier.error(i18n('missingPrice'))
+      return false
+    }
+    data.priceWithoutVat = (data.priceWithVat / 1.21)
+    data.priceWithoutVat = Math.round((data.priceWithoutVat + Number.EPSILON) * 10000) / 10000
+    item.priceWithVat = data.priceWithVat
+    item.priceWithoutVat = data.priceWithoutVat
+    return this.saveItem(data.id, data)
+  }
+
+  async createItem(data: Record<string, string | number | boolean>): Promise<boolean> {
     const response = await this.fetchData(
       'POST',
       '/reference-book/items/create',

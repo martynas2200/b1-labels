@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              Loading Overlay, Inactivity Monitor, and Request Modifier
 // @namespace         http://tampermonkey.net/
-// @version           1.0.1
+// @version           1.0.2
 // @description       Adds a loading overlay, monitors inactivity, and modifies certain requests. Removes Google Tag Manager scripts.
 // @author            Martynas Miliauskas
 // @match             https://www.b1.lt/*
@@ -99,5 +99,3 @@ const removeGTM = () => {
 };
 
 removeGTM();
-const observer = new MutationObserver(() => removeGTM());
-observer.observe(document.body, { childList: true, subtree: true });

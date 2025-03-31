@@ -49,7 +49,7 @@ class LabelerController {
     Object.assign(this.$scope, {
       items: {
         grid: [] as Item[],
-        recent: await this.req.getRecentItems(),
+        recent: await this.req.getRecentlyModifiedItems(),
         searched: this.getRecentlySearchedItems(),
       },
       settings: {
@@ -63,7 +63,7 @@ class LabelerController {
       barcode: null,
       printed: false,
       modals: this.modals,
-      activeTab: 'recentItems',
+      activeTab: 'recentlyModified',
       openMarkdowns: this.openMarkdowns.bind(this),
       openCatalog: this.openCatalog.bind(this),
       openFiles: this.openFiles.bind(this),
@@ -74,7 +74,9 @@ class LabelerController {
       handleEnterPress: this.handleEnterPress.bind(this),
       removeItem: this.removeItem.bind(this),
       showDetails: this.showDetails.bind(this),
-      quickPriceChange: this.quickPriceChange.bind(this),
+      quickPriceChange: (item: Item) => {
+        void this.req.quickPriceChange(item)
+      },
       showWeightModal: this.showWeightModal.bind(this),
       clearBarcodeInput: this.clearBarcodeInput.bind(this),
       getAgoText: this.getAgoText.bind(this),
@@ -114,7 +116,7 @@ class LabelerController {
     void filesModal.show()
   }
 
-  openTypeModal(): void {
+  private openTypeModal(): void {
     const typeModal = new LabelTypeModal(this.$scope.settings.type)
     typeModal.open().then((type: labelType) => { 
       this.setType(type)
@@ -325,10 +327,6 @@ class LabelerController {
     void this.modals.details.show(item)
   }
 
-  private quickPriceChange(item: PackagedItem): void {
-    void this.modals.details.quickPriceChange(item)
-  }
-
   private showWeightModal(i: Item): void {
     void this.modals.weightLabel.show(i).then(() => {
       this.$scope.$digest()
@@ -343,11 +341,11 @@ class LabelerController {
     const now = new Date()
     if (retrievedAt) {
       const diff = Math.abs(now.getTime() - new Date(retrievedAt).getTime())
-      const minutes = Math.floor(diff / (1000 * 60))
-      if (minutes < 1) {
+      const seconds = Math.floor(diff / 1000)
+      if (seconds < 15) {
         return ''
       }
-      return i18n('ago') + ' ' + minutes + ' ' + i18n('minutes')
+      return i18n('ago') + ' ' + seconds + ' ' + i18n('seconds')
     }
     return ''
   }
@@ -385,13 +383,13 @@ class LabelerController {
   }
 
   private async updateRecentItems(): Promise<void> {
-    const items = await this.req.getRecentItems()
+    const items = await this.req.getRecentlyModifiedItems()
     this.$scope.items.recent = items
     this.$scope.$digest()
   }
 
   async refreshCurrentTab(): Promise<void> {
-    if (this.$scope.activeTab === 'recentItems') {
+    if (this.$scope.activeTab === 'recentlyModifiedItems') {
       void this.updateRecentItems()
     } else {
       void this.updateSearchedItems()

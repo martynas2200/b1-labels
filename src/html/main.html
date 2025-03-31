@@ -162,9 +162,9 @@
         </div>
           <div class="recent-items" ng-if="tabs">
             <ul class="nav nav-tabs">
-              <li class="nav-item" ng-class="{'active': activeTab === 'recentItems'}"
-              ng-click="changeActiveTab('recentItems')">
-                <a>{{ 'recentItems' | i18n }}</a>
+              <li class="nav-item" ng-class="{'active': activeTab === 'recentlyModified'}"
+              ng-click="changeActiveTab('recentlyModified')">
+                <a>{{ 'recentlyModified' | i18n }}</a>
               </li>
               <li class="nav-item" ng-class="{'active': activeTab === 'recentlySearched'}"
               ng-click="changeActiveTab('recentlySearched')" ng-if="items.searched.length > 0">
@@ -181,7 +181,7 @@
             </ul>
             <div class="tab-content item-list recent-tab-content">
               <div
-                ng-repeat="item in (activeTab === 'recentItems' ? items.recent : items.searched) | limitTo:10 track by $index"
+                ng-repeat="item in (activeTab === 'recentlyModified' ? items.recent : items.searched) | limitTo:10 track by $index"
                 class="item" ng-class="{'inactive': !item.barcode || !item.isActive}">
                 <div class="item-main">
                   <span class="item-name">
