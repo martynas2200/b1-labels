@@ -162,32 +162,23 @@ export class Request {
       },
     }
     const body = this.buildRequestBody(rules)
-    const data = await this.fetchData('POST', this.path, body)
-    if (data == null || data.data[0] == null) {
+    const response = await this.fetchData('POST', this.path, body)
+    if (response == null || response.data[0] == null) {
       return null
     }
-    data.data[0].retrievedAt = new Date()
-    this.items[barcode] = data.data[0]
+    response.data[0].retrievedAt = new Date()
+    this.items[barcode] = response.data[0]
     // if there more than one item with the same barcode, return the first one, and notify the user
-    if (data.data.length > 1) {
+    if (response.data.length > 1) {
       this.notifier.warning({
         title: i18n('multipleItemsFound'),
         delay: 20000,
-        message:
-          i18n('barcode') +
-          ' ' +
-          barcode +
-          ' ' +
-          i18n('found') +
-          ' ' +
-          data.data.length +
-          ' ' +
-          i18n('items'),
+        message: i18n('foundXItems', [response.records]),
       })
     }
-    return data.data[0]
+    return response.data[0]
   }
-  async getRecentlyModifiedItems(): Promise<Item[]> {
+  async getRecentlyModifiedItems(forced: boolean = false): Promise<Item[]> {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const body = this.buildRequestBody({
@@ -200,14 +191,17 @@ export class Request {
 
     }, 20)
     body.sort = { modifiedAt: 'desc' } // most recent changes first
-    const items = await this.fetchData('POST', this.path, body)
-    if (items && items.data) {
-      items.data.forEach((item: Item) => {
+    const response = await this.fetchData('POST', this.path, body)
+    if (response && response.data) {
+      response.data.forEach((item: Item) => {
         item.retrievedAt = new Date()
         this.items[item.barcode] = item
       })
     }
-    return items.data || []
+    if (forced) {
+      this.notifier.info(i18n('foundXItems', [response.records]))
+    }
+    return response.data || []
   }
 
   async getItemsByIds(ids: string[]): Promise<Item[]> {
@@ -215,14 +209,25 @@ export class Request {
       id: { data: ids, field: 'id', op: 'in' },
     }
     const body = this.buildRequestBody(rules, 20)
-    const items = await this.fetchData('POST', this.path, body)
-    if (items && items.data) {
-      items.data.forEach((item: Item) => {
+    const response = await this.fetchData('POST', this.path, body)
+    if (response && response.data) {
+      response.data.forEach((item: Item) => {
         item.retrievedAt = new Date()
         this.items[item.barcode] = item
       })
     }
-    return items.data || []
+    if (response.code === 200) {
+      this.notifier.success({
+        title: i18n('success'),
+        message: i18n('foundXItems', [response.records]),
+      })
+    } else {
+      this.notifier.error({
+        title: i18n('error'),
+        message: response.message,
+      })
+    }
+    return response.data || []
   }
 
   async saveItem(id: string, data: Record<string, string | number | boolean>): Promise<boolean> {

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              Loading Overlay, Inactivity Monitor, and Request Modifier
 // @namespace         http://tampermonkey.net/
-// @version           1.0.2
+// @version           1.0.3
 // @description       Adds a loading overlay, monitors inactivity, and modifies certain requests. Removes Google Tag Manager scripts.
 // @author            Martynas Miliauskas
 // @match             https://www.b1.lt/*
@@ -79,6 +79,8 @@ XMLHttpRequest.prototype.open = function (method, url, ...rest) {
         url = "data:text/plain,";
     } else if (url.includes("sidebar")) {
         url = 'data:application/json,{ "data": [ { "id": 0, "label": "Žinynai", "icon": "fa-folder-open", "isPrimary": true, "isMinimizible": true, "isAlwaysOpen": false, "items": [ { "id": 84, "label": "Prekės", "url": "/reference-book/items", "helpUrl": "/zinynai", "helpName": "Žinynai", "icon": "fa-folder-open" }, { "id": 85, "label": "Prekių požymiai", "url": "/reference-book/item-attributes", "helpUrl": "/zinynai", "helpName": "Žinynai", "icon": "fa-folder-open" }, { "id": 86, "label": "Prekių grupės", "url": "/reference-book/item-groups", "helpUrl": "/zinynai", "helpName": "Žinynai", "icon": "fa-folder-open" } ] } ], "code": 200 }';
+    } else if (url.includes("get-upsell-message")) {
+        url = 'data:application/json,{ "data": [], "code": 200 }';
     }
 
     return originalOpen.apply(this, [method, url, ...rest]);
@@ -99,3 +101,9 @@ const removeGTM = () => {
 };
 
 removeGTM();
+
+setTimeout(() => {
+    if (window.clarity != null) {
+        window.clarity('stop');
+    }
+}, 500);

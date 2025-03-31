@@ -3,7 +3,7 @@ export const MINIMAL_TRANSLATIONS: Record<string, Record<string, string>> = {
     barcode: 'Barcode',
     error: 'Error',
     failed: 'Failed',
-    found: 'found',
+    foundXItems: '{1} items found',
     invalidId: 'Invalid ID',
     itemCreated: 'Item created',
     itemNotFound: 'Item not found!',
@@ -16,12 +16,13 @@ export const MINIMAL_TRANSLATIONS: Record<string, Record<string, string>> = {
     noData: 'No data to print!',
     notAllItemsActive: 'Not all items are active; Do you want to proceed?',
     oddNumberOfItems: 'Odd number of items; Do you want to proceed?',
+    success: 'Success',
   },
   lt: {
     barcode: 'Barkodas',
     error: 'Įvyko klaida',
     failed: 'Nepavyko',
-    found: 'rasta',
+    foundXItems: 'Rasta {1} prekių',
     invalidId: 'Neteisingas ID',
     itemCreated: 'Prekė sukurta',
     itemNotFound: 'Prekė nerasta!',
@@ -34,6 +35,7 @@ export const MINIMAL_TRANSLATIONS: Record<string, Record<string, string>> = {
     noData: 'Nepakanka duomenų spausdinimui!',
     notAllItemsActive: 'Ne visos prekės aktyvios, ar norite tęsti?',
     oddNumberOfItems: 'Nelyginis prekių skaičius, ar norite tęsti?',
+    success: 'Sėkmingai atlikta',
   },
 }
 
@@ -115,8 +117,8 @@ export const FULL_TRANSLATIONS: Record<string, Record<string, string>> = {
     newItem: 'New Item',
     nlabelsToBePrinted: ' labels to be printed',
     no: 'No',
-    noItemsScanned: 'No items scanned yet.',
-    noItemsSelected: 'No items selected!',
+    noItemsScanned: 'No items scanned yet',
+    noItemsSelected: 'No items selected',
     notAllItemsActive:
       'Not all selected items are active. Do you want to continue?',
     number: 'Number',
@@ -242,7 +244,7 @@ export const FULL_TRANSLATIONS: Record<string, Record<string, string>> = {
     newItem: 'Nauja prekė',
     nlabelsToBePrinted: ' etiketės bus spausdinamos',
     no: 'Ne',
-    noItemsScanned: 'Dar nėra nuskaitytų prekių.',
+    noItemsScanned: 'Dar nėra nuskaitytų prekių',
     noItemsSelected: 'Nėra pasirinktų prekių',
     notAllItemsActive:
       'Ne visos pasirinktos prekės yra aktyvios. Ar norite tęsti?',

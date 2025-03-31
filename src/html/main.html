@@ -170,7 +170,7 @@
               ng-click="changeActiveTab('recentlySearched')" ng-if="items.searched.length > 0">
                 <a>{{ 'recentlySearched' | i18n }}</a>
               </li>
-              <div class="pull-right">
+              <div class="pull-right header-flex" style="height: 3rem;">
                 <button class="btn btn-white btn-xs" ng-click="refreshCurrentTab()">
                   {{ 'refresh' | i18n }}<i class="fa fa-refresh padding-left-10"></i>
                 </button>
@@ -181,7 +181,7 @@
             </ul>
             <div class="tab-content item-list recent-tab-content">
               <div
-                ng-repeat="item in (activeTab === 'recentlyModified' ? items.recent : items.searched) | limitTo:10 track by $index"
+                ng-repeat="item in (activeTab === 'recentlyModified' ? items.recent : items.searched) | limitTo:20 track by $index"
                 class="item" ng-class="{'inactive': !item.barcode || !item.isActive}">
                 <div class="item-main">
                   <span class="item-name">

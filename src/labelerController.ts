@@ -84,14 +84,6 @@ class LabelerController {
       changeActiveTab: this.changeActiveTab.bind(this),
       toggleTabs: this.toggleTabs.bind(this),
     })
-
-    // Add watch for activeTab changes
-    this.$scope.$watch('loading', (newValue: string, oldValue: string) => {
-      if (newValue !== oldValue) {
-        console.log('Active tab changed from', oldValue, 'to', newValue)
-        void this.refreshCurrentTab()
-      }
-    })
   }
 
   private openMarkdowns(): void {
@@ -118,7 +110,7 @@ class LabelerController {
 
   private openTypeModal(): void {
     const typeModal = new LabelTypeModal(this.$scope.settings.type)
-    typeModal.open().then((type: labelType) => { 
+    typeModal.open().then((type: labelType) => {
       this.setType(type)
     }).catch(() => {
       this.notification.error(i18n('modalClosed'))
@@ -382,15 +374,15 @@ class LabelerController {
     this.$scope.$digest()
   }
 
-  private async updateRecentItems(): Promise<void> {
-    const items = await this.req.getRecentlyModifiedItems()
+  private async updateRecentItems(forced = false): Promise<void> {
+    const items = await this.req.getRecentlyModifiedItems(forced)
     this.$scope.items.recent = items
     this.$scope.$digest()
   }
 
   async refreshCurrentTab(): Promise<void> {
-    if (this.$scope.activeTab === 'recentlyModifiedItems') {
-      void this.updateRecentItems()
+    if (this.$scope.activeTab === 'recentlyModified') {
+      void this.updateRecentItems(true)
     } else {
       void this.updateSearchedItems()
     }
@@ -403,7 +395,7 @@ class LabelerController {
   toggleTabs(): void {
     this.$scope.tabs = !this.$scope.tabs
   }
-  
+
 }
 
 export { LabelerController }
