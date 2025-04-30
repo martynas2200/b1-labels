@@ -74,6 +74,6 @@ export class LabelerInterface {
   }
   
   changeDocumentTitle(): void {
-    document.title = i18n('labelsAndPrices')
+    document.title = i18n('labels')
   }
 }

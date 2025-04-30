@@ -34,7 +34,7 @@ class LabelsUserscript { //TODO: title
     const navbarShortcuts = document.querySelector('.breadcrumbs')
     if (navbarShortcuts != null) {
       const button = document.createElement('button')
-      button.textContent = i18n('labelsAndPrices')
+      button.textContent = i18n('labels')
       button.className = 'btn btn-sm'
       button.addEventListener('click', () => {
         this.interface.init()

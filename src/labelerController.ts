@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 import { i18n } from './services/i18n'
-import { calculateTotalPrice } from './services/utilities'
+import { calculateTotalPrice, getFriendlyTime, isItRecent } from './services/utilities'
 import { type Item, type PackagedItem } from './types/item'
 import { ItemDetailsModal } from './modals/ItemDetailsModal'
 import { LabelGenerator } from './labelGenerator'
@@ -77,6 +77,9 @@ class LabelerController {
       quickPriceChange: (item: Item) => {
         void this.req.quickPriceChange(item)
       },
+      getPricePerUnit: LabelGenerator.getPricePerUnit,
+      getFriendlyTime: getFriendlyTime.bind(this),
+      isItRecent: isItRecent.bind(this),
       showWeightModal: this.showWeightModal.bind(this),
       clearBarcodeInput: this.clearBarcodeInput.bind(this),
       getAgoText: this.getAgoText.bind(this),
@@ -329,17 +332,17 @@ class LabelerController {
     this.$scope.barcode = null
   }
 
-  getAgoText(retrievedAt: Date): string {
+  getAgoText(retrievedAt: Date): string | null {
     const now = new Date()
     if (retrievedAt) {
       const diff = Math.abs(now.getTime() - new Date(retrievedAt).getTime())
       const seconds = Math.floor(diff / 1000)
       if (seconds < 15) {
-        return ''
+        return null
       }
       return i18n('ago') + ' ' + seconds + ' ' + i18n('seconds')
     }
-    return ''
+    return null
   }
 
   private saveSearchedItemLocally(item: Item): void {

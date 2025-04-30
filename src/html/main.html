@@ -23,8 +23,8 @@
         </a>
       </li>
       <li>
-        <a class="navbar-shortcut" href="/logout">
-          &nbsp;<i class="fa fa-fw fa-power-off"></i>&nbsp;
+        <a class="navbar-shortcut" href="/logout" target="_self">
+          <i class="fa fa-fw fa-power-off"></i>
         </a>
       </li>
     </ul>
@@ -36,7 +36,7 @@
     <div class="col-md-4 no-padding">
 
       <div class="form-section">
-        <h4 class="header">{{ 'labelsAndPrices' | i18n }}</h4>
+        <h4 class="header">{{ 'labels' | i18n }}</h4>
         <div class="form-group input-group">
           <input type="text" class="form-control" ng-model="barcode" placeholder="{{ 'enterBarcode' | i18n }}"
             autocomplete="off" ng-keyup="handleEnterPress($event)" id="barcodeInput">
@@ -83,8 +83,8 @@
           <div class="item-main" ng-click="showDetails(item)">
             <span class="item-price" ng-if="item.priceWithVat > 0">{{ (item.totalPrice || item.priceWithVat).toFixed(2)
               }}</span>
-            <span class="item-stock text-primary" ng-if="settings.showStock">
-              <i class="fa fa-home margin-right-5"></i>{{ item.stock || '0' }}
+            <span class="item-stock text-primary" ng-if="settings.showStock && item.stock">
+              <i class="fa fa-home margin-right-5"></i>{{ item.stock }}
             </span>
             <span class="item-name">{{ item.name }}</span>
           </div>
@@ -104,9 +104,11 @@
               class="pull-right text-light-grey">
               {{ getPricePerUnit(item) }}
             </span>
-            <span class="text-primary" ng-if="getAgoText(item.retrievedAt) != null">
+            <!-- <span class="text-primary" ng-if="getAgoText(item.retrievedAt) != null">
               {{ getAgoText(item.retrievedAt) }}
-            </span>
+            </span> -->
+            <span class="pull-right" ng-class="{' text-bold text-danger': isItRecent(item.modifiedAt), 'light-grey': !isItRecent(item.modifiedAt)}" ng-if=" getFriendlyTime(item.modifiedAt) != null">
+              <i class="fa fa-edit"></i> {{ getFriendlyTime(item.modifiedAt) }}</span>
           </div>
           <button class="btn btn-yellow" ng-click="removeItem($index)">
             <i class="fa fa-trash"></i>
