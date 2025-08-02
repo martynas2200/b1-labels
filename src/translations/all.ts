@@ -181,6 +181,10 @@ export const FULL_TRANSLATIONS: Record<string, Record<string, string>> = {
     weightLabel: 'Weight Label',
     yes: 'Yes',
     zero: 'zero',
+    draft: 'Draft',
+    saveDraft: 'Save Draft',
+    draftSaved: 'Draft saved',
+    printDraft: 'Print Draft',
   },
   lt: {
     ...MINIMAL_TRANSLATIONS.lt,
@@ -309,5 +313,9 @@ export const FULL_TRANSLATIONS: Record<string, Record<string, string>> = {
     weightLabel: 'Svorio etiketė',
     yes: 'Taip',
     zero: 'nulis',
+    draft: 'Juodraštis',
+    saveDraft: 'Išsaugoti juodraštį',
+    draftSaved: 'Juodraštis išsaugotas',
+    printDraft: 'Spausdinti juodraštį',
   },
 }

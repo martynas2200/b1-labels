@@ -240,7 +240,8 @@ export class LabelGenerator {
     let barcodeString = data.barcode
     if (data.weight != null) {
       barcodeString =
-        (data.addPackageFee == true ? '1102\r\n' : '') +
+        // (data.addPackageFee == true ? '1102\r\n' : '') +
+        // TODO: sort out the barcode format when it is fully decided on COM or USB scanner connection
         '2200' +
         '0'.repeat(13 - data.barcode.length) +
         data.barcode +

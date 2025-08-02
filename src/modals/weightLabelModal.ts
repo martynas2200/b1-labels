@@ -50,11 +50,11 @@ export class WeightLabelModal {
       return
     }
     if (input === 'd' && this.modalScope.item.weight) {
-      this.modalScope.item.weight = parseInt(this.modalScope.item.weight.toString().slice(0, -1))
+      this.modalScope.item.weight = this.modalScope.item.weight.toString().slice(0, -1)
     } else if (input === 'c') {
       this.modalScope.item.weight = '' // clear the weight
-    } else {
-      this.modalScope.item.weight += input
+    } else if (input !== 'd') {
+      this.modalScope.item.weight = (this.modalScope.item.weight || '') + input
     }
 
     this.modalScope.handleWeightChange()

@@ -18,6 +18,7 @@ body.label-print-interface {
   }
 
   .modal {
+
     // Adjusts modal header and input styles
     h5.header.blue.header-temp-files-list {
       margin-top: 0;
@@ -56,6 +57,34 @@ body.label-print-interface {
 
     li:has(.navbar-shortcut):hover {
       background: #0000005c;
+    }
+  }
+
+  .summary {
+    background: #fff;
+    border-top: black 2px dashed;
+    padding: 10px;
+    margin-top: 10px;
+
+    .summary-amount {
+      float: right;
+      padding-right: 51px;
+      font-weight: 700;
+    }
+
+    .summary-label {
+      font-weight: 700;
+      color: #333;
+    }
+
+    .summary-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+
+      button {
+        flex: 1;
+      }
     }
   }
 }
@@ -161,6 +190,10 @@ body.label-print-interface {
 
       &.mark {
         background-color: #fcf8e3;
+      }
+
+      &.green {
+        background-color: #e4efc9;
       }
 
       &:hover {
@@ -308,7 +341,7 @@ body.label-print-interface {
     content: "";
     height: 20px;
     width: 100%;
-    background-image:  vars.$scissors-icon;
+    background-image: vars.$scissors-icon;
     background-size: 81% 100%;
     background-position: 90% 50%;
     background-repeat: no-repeat;

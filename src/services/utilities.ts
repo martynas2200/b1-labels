@@ -29,7 +29,10 @@ export function getFriendlyTime(lastChanged: string): string | null {
     return null
   }
   const now = new Date()
-  const changedDate = new Date(lastChanged)
+  const changedDate = new Date(
+    new Date(lastChanged).getTime() - new Date().getTimezoneOffset() * 60000,
+  ) // Adjust for timezone offset
+
   const diffMs = now.getTime() - changedDate.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))

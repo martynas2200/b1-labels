@@ -5,6 +5,12 @@
   <div class="navbar-shortcuts">
     <ul>
       <li>
+        <a class="navbar-shortcut" href="#" ng-click="draft = !draft">
+          <i class="fa fa-fw fa-pencil"></i>
+          <span class="hidden-xs"> {{ 'draft' | i18n }}</span>
+        </a>
+      </li>
+      <li>
         <a class="navbar-shortcut" href="#" ng-click="openMarkdowns()">
           <i class="fa fa-fw fa-book"></i>
           <span class="hidden-xs"> {{ 'markdowns' | i18n }}</span>
@@ -70,6 +76,19 @@
           </div>
         </div>
       </div>
+      <div class="summary" ng-if="draft">
+        <span class="summary-label"> {{ 'total' | i18n }}</span>
+        <span class="summary-amount">{{ getTotalPrice() }}</span>
+        <!-- buttons to save or print the draft -->
+        <div class="summary-buttons">
+          <button class="btn btn-success" ng-click="saveDraft()">
+            <i class="fa fa-save"></i> {{ 'saveDraft' | i18n }}
+          </button>
+          <button class="btn btn-primary" ng-click="printDraft()">
+            <i class="fa fa-print"></i> {{ 'printDraft' | i18n }}
+          </button>
+        </div>
+      </div>
     </div>
     <div class="col-md-8 load-data">
       <div ng-if="loading" class="load-overlay">
@@ -104,10 +123,9 @@
               class="pull-right text-light-grey">
               {{ getPricePerUnit(item) }}
             </span>
-            <!-- <span class="text-primary" ng-if="getAgoText(item.retrievedAt) != null">
-              {{ getAgoText(item.retrievedAt) }}
-            </span> -->
-            <span class="pull-right" ng-class="{' text-bold text-danger': isItRecent(item.modifiedAt), 'light-grey': !isItRecent(item.modifiedAt)}" ng-if=" getFriendlyTime(item.modifiedAt) != null">
+            <span class="pull-right"
+              ng-class="{' text-bold text-danger': isItRecent(item.modifiedAt), 'light-grey': !isItRecent(item.modifiedAt)}"
+              ng-if=" getFriendlyTime(item.modifiedAt) != null">
               <i class="fa fa-edit"></i> {{ getFriendlyTime(item.modifiedAt) }}</span>
           </div>
           <button class="btn btn-yellow" ng-click="removeItem($index)">
@@ -119,6 +137,10 @@
           </button>
           <button class="btn btn-danger" ng-if="item.id && !item.priceWithVat" ng-click="quickPriceChange($index)">
             <i class="fa fa-euro"></i>
+          </button>
+          <button class="btn btn-secondary" ng-if="item.id && item.priceWithVat && draft" ng-click="changeQuantity($index)">
+            <span class="quantity-label">{{ item.weight || 1 }}</span>
+            <i class="fa fa-pencil"></i>
           </button>
         </div>
       </div>
@@ -146,13 +168,15 @@
                         0.5 0 0.5 1" repeatCount="indefinite" />
             </rect>
           </svg>
-          <svg width="60" height="70" viewBox="0 0 60 70" fill="none" xmlns="http://www.w3.org/2000/svg"  ng-if="printed">
+          <svg width="60" height="70" viewBox="0 0 60 70" fill="none" xmlns="http://www.w3.org/2000/svg"
+            ng-if="printed">
             <rect x="5" y="40" width="50" height="10" fill="#555" rx="2"></rect>
             <g>
               <rect fill="#d5d5d5" x="10" y="20" width="40" height="20"></rect>
               <line x1="15" y1="35" x2="45" y2="35" stroke="#888" stroke-width="2"></line>
               <line x1="15" y1="30" x2="45" y2="30" stroke="#888" stroke-width="2"></line>
-              <animateTransform attributeName="transform" type="translate" values="0,0; 0,22; 0,22" keyTimes="0; 0.33; 1" dur="2s" repeatCount="indefinite"></animateTransform>
+              <animateTransform attributeName="transform" type="translate" values="0,0; 0,22; 0,22"
+                keyTimes="0; 0.33; 1" dur="2s" repeatCount="indefinite"></animateTransform>
             </g>
             <rect x="0" y="0" width="60" height="40" fill="#333" rx="5"></rect>
             <circle cx="55" cy="10" r="3" fill="#2196f3"></circle>
@@ -162,45 +186,46 @@
             <span>{{ 'noItemsScanned' | i18n }}.</span>
           </div>
         </div>
-          <div class="recent-items" ng-if="tabs">
-            <ul class="nav nav-tabs">
-              <li class="nav-item" ng-class="{'active': activeTab === 'recentlyModified'}"
+        <div class="recent-items" ng-if="tabs">
+          <ul class="nav nav-tabs">
+            <li class="nav-item" ng-class="{'active': activeTab === 'recentlyModified'}"
               ng-click="changeActiveTab('recentlyModified')">
-                <a>{{ 'recentlyModified' | i18n }}</a>
-              </li>
-              <li class="nav-item" ng-class="{'active': activeTab === 'recentlySearched'}"
+              <a>{{ 'recentlyModified' | i18n }}</a>
+            </li>
+            <li class="nav-item" ng-class="{'active': activeTab === 'recentlySearched'}"
               ng-click="changeActiveTab('recentlySearched')" ng-if="items.searched.length > 0">
-                <a>{{ 'recentlySearched' | i18n }}</a>
-              </li>
-              <div class="pull-right header-flex" style="height: 3rem;">
-                <button class="btn btn-white btn-xs" ng-click="refreshCurrentTab()">
-                  {{ 'refresh' | i18n }}<i class="fa fa-refresh padding-left-10"></i>
-                </button>
-                <button class="btn-link black" ng-click="toggleTabs()">
-                  <i class="fa fa-times"></i>
-                </button>
+              <a>{{ 'recentlySearched' | i18n }}</a>
+            </li>
+            <div class="pull-right header-flex" style="height: 3rem;">
+              <button class="btn btn-white btn-xs" ng-click="refreshCurrentTab()">
+                {{ 'refresh' | i18n }}<i class="fa fa-refresh padding-left-10"></i>
+              </button>
+              <button class="btn-link black" ng-click="toggleTabs()">
+                <i class="fa fa-times"></i>
+              </button>
+            </div>
+          </ul>
+          <div class="tab-content item-list recent-tab-content">
+            <div
+              ng-repeat="item in (activeTab === 'recentlyModified' ? items.recent : items.searched) | limitTo:20 track by $index"
+              class="item" ng-class="{'inactive': !item.barcode || !item.isActive, 'green': item.noNeedToPrint}">
+              <div class="item-main">
+                <span class="item-name">
+                  {{ item.name }}
+                </span>
               </div>
-            </ul>
-            <div class="tab-content item-list recent-tab-content">
-              <div
-                ng-repeat="item in (activeTab === 'recentlyModified' ? items.recent : items.searched) | limitTo:20 track by $index"
-                class="item" ng-class="{'inactive': !item.barcode || !item.isActive}">
-                <div class="item-main">
-                  <span class="item-name">
-                    {{ item.name }}
-                  </span>
-                </div>
-                <button class="btn btn-xs btn-pink" ng-if="item.measurementUnitCanBeWeighed && item.priceWithVat > 0" ng-click="showWeightModal(item)">
-                  <i class="fa fa-balance-scale"></i>
-                </button>
-                <span class="item-price" ng-if="item.priceWithVat > 0">{{ item.priceWithVat.toFixed(2) }}</span>
-                <button class="btn btn-xs btn-purple" ng-click="print([item])">
-                  <i class="fa fa-print"></i>
-                  <i class="fa fa-bolt"></i>
-                </button>
-              </div>
+              <button class="btn btn-xs btn-pink" ng-if="item.measurementUnitCanBeWeighed && item.priceWithVat > 0"
+                ng-click="showWeightModal(item)">
+                <i class="fa fa-balance-scale"></i>
+              </button>
+              <span class="item-price" ng-if="item.priceWithVat > 0">{{ item.priceWithVat.toFixed(2) }}</span>
+              <button class="btn btn-xs btn-purple" ng-click="print([item])">
+                <i class="fa fa-print"></i>
+                <i class="fa fa-bolt"></i>
+              </button>
             </div>
           </div>
+        </div>
 
         <div class="alert-xs grey text-center margin-10">{{ 'help' | i18n }}</div>
       </div>

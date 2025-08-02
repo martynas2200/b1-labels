@@ -22,6 +22,13 @@ function htmlToTemplateString() {
   };
 }
 
+function handleWarnings(warning, warn) {
+  if (warning.loc && (warning.loc.file.includes('barcodeGenerator.ts') || warning.message.includes('TRANSLATION_SERVICE'))) {
+    return;
+  }
+  warn(warning);
+}
+
 export default [{
     input: 'src/scripts/accounting.user.ts',
     output: {
@@ -55,6 +62,9 @@ export default [{
       addUserScriptMetadata({
         name: "B1 Accounting Tools",
         description: "Additional accounting and inventory management tools",
+        require: [
+          "https://cdn.jsdelivr.net/npm/chart.js",
+        ],
         downloadURL: "https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/accounting.user.js",
         updateURL: "https://raw.githubusercontent.com/martynas2200/b1-labels/main/dist/accounting.user.js",
       }),
@@ -66,12 +76,7 @@ export default [{
       }),
       terser()
     ],
-    onwarn: (warning, warn) => {
-      if (warning.loc && warning.loc.file.includes('barcodeGenerator.ts')) {
-        return;
-      }
-      // warn(warning)
-    },
+    onwarn: handleWarnings,
   }, {
     input: 'src/scripts/labels.user.ts',
     output: {
@@ -116,12 +121,7 @@ export default [{
       }),
       // terser()
     ],
-    onwarn: (warning, warn) => {
-      if (warning.loc && warning.loc.file.includes('barcodeGenerator.ts')) {
-        return;
-      }
-      warn(warning)
-    },
+    onwarn: handleWarnings,
   }, {
     input: 'src/scripts/kiosk.user.ts',
     output: {
@@ -166,10 +166,5 @@ export default [{
       }),
       terser()
     ],
-    onwarn: (warning, warn) => {
-      if (warning.loc && warning.loc.file.includes('barcodeGenerator.ts')) {
-        return;
-      }
-      warn(warning)
-    },
+    onwarn: handleWarnings,
   }];

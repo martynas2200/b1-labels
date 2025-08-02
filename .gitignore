@@ -4,5 +4,5 @@ package-lock.json
 *.txt
 *.beta.*
 /__tests__
-
-/src/dymoPrinter.ts
+/.vscode
+/.idea

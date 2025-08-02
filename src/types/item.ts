@@ -20,6 +20,9 @@ export interface Item {
   retrievedAt?: Date;
   stock: number;
   vatRate?: number;
+  modifiedAt?: Date | string;
+  printedAt?: Date | string;
+  noNeedToPrint?: boolean;
 }
 
 export interface PackagedItem extends Item {

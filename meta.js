@@ -45,6 +45,9 @@ export default function addUserScriptMetadata(overwrites = {}) {
   for (const key in overwrites) {
     if (key in metadata) {
       metadata[key] = overwrites[key];
+    } else {
+      console.warn(`Warning: Metadata key "${key}" does not exist in the default metadata.`);
+      metadata[key] = overwrites[key];
     }
   }
   

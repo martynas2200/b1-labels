@@ -192,10 +192,16 @@ export class Request {
     }, 20)
     body.sort = { modifiedAt: 'desc' } // most recent changes first
     const response = await this.fetchData('POST', this.path, body)
+    const recentlySearched = JSON.parse(localStorage.getItem('items') ?? '[]') as Item[]
+    const now = new Date()
     if (response && response.data) {
       response.data.forEach((item: Item) => {
-        item.retrievedAt = new Date()
+        item.retrievedAt = now
         this.items[item.barcode] = item
+        const found = recentlySearched.find((i) => i.barcode === item.barcode)
+        if (found && found.printedAt && item.modifiedAt &&  new Date(item.modifiedAt).getTime() <= new Date(found.printedAt).getTime()) {
+          item.noNeedToPrint = true
+        }
       })
     }
     if (forced) {
@@ -216,6 +222,29 @@ export class Request {
         this.items[item.barcode] = item
       })
     }
+    if (response.code === 200) {
+      this.notifier.success({
+        title: i18n('success'),
+        message: i18n('foundXItems', [response.records]),
+      })
+    } else {
+      this.notifier.error({
+        title: i18n('error'),
+        message: response.message,
+      })
+    }
+    return response.data || []
+  }
+
+  async getItemMovements(itemId: string, dateFrom: string, warehouseId: string): Promise<any> {
+    const rules: FilterRules = {
+      itemId: { data: itemId, field: 'itemId', op: 'eq' },
+      warehouseId: { data: warehouseId, field: 'warehouseId', op: 'eq' },
+      date: { data: dateFrom, field: 'date', op: 'eq' },
+    }
+    const body = this.buildRequestBody(rules, 20)
+    body.sort = {};
+    const response = await this.fetchData('POST', '/warehouse/item-movement/search', body)
     if (response.code === 200) {
       this.notifier.success({
         title: i18n('success'),

@@ -62,6 +62,7 @@ class LabelerController {
       loading: false,
       barcode: null,
       printed: false,
+      draft: false,
       modals: this.modals,
       activeTab: 'recentlyModified',
       openMarkdowns: this.openMarkdowns.bind(this),
@@ -82,10 +83,13 @@ class LabelerController {
       isItRecent: isItRecent.bind(this),
       showWeightModal: this.showWeightModal.bind(this),
       clearBarcodeInput: this.clearBarcodeInput.bind(this),
-      getAgoText: this.getAgoText.bind(this),
       refreshCurrentTab: this.refreshCurrentTab.bind(this),
       changeActiveTab: this.changeActiveTab.bind(this),
       toggleTabs: this.toggleTabs.bind(this),
+      getTotalPrice: this.getTotalPrice.bind(this),
+      saveDraft: this.saveDraft.bind(this),
+      printDraft: this.printDraft.bind(this),
+      changeQuantity: this.changeQuantity.bind(this),
     })
   }
 
@@ -213,7 +217,7 @@ class LabelerController {
     this.$scope.items.grid.push(item)
     this.scrollToLastItem()
     if (!item.weight) {
-      this.saveSearchedItemLocally(item) // Printed or only searched item
+      void this.saveSearchedItemLocally(item) // Printed or only searched item
     }
   }
 
@@ -351,8 +355,10 @@ class LabelerController {
     if (existingItemIndex !== -1) {
       items.splice(existingItemIndex, 1)
     }
+    item.printedAt = new Date().toISOString()
+    // remove the unnecessary properties
     items.unshift(item)
-    if (items.length > 10) {
+    if (items.length > 50) {
       items.pop()
     }
     localStorage.setItem('items', JSON.stringify(items))
@@ -399,6 +405,63 @@ class LabelerController {
     this.$scope.tabs = !this.$scope.tabs
   }
 
+  private changeQuantity(index: number): void {
+    const item = this.$scope.items.grid[index]
+    if (!item || !item.priceWithVat) {
+      this.notification.error(i18n('noData'))
+      return
+    }
+    //use simple prompt to change the quantity
+    const newQuantity = prompt(i18n('changeQuantity'), item.weight?.toString() || '1')
+    if (newQuantity !== null) {
+      const quantity = parseFloat(newQuantity)
+      if (isNaN(quantity) || quantity <= 0) {
+        this.notification.error(i18n('invalidQuantity'))
+        return
+      }
+      item.weight = quantity
+      item.totalPrice = calculateTotalPrice(item.priceWithVat, quantity)
+      this.$scope.items.grid[index] = item
+      this.notification.success({
+        title: i18n('quantityChanged'),
+        message: `${item.name} - ${quantity} ${item.measurementUnitName}`,
+      })
+    }
+  }
+
+  private getTotalPrice(): number {
+    return this.$scope.items.grid.reduce(
+      (acc: number, item: packagedItem) =>
+        acc + (item.totalPrice ?? item.priceWithVat) +
+        // TODO: ideally fetch the item, and use its price
+        (item.packageCode ? item.packageQuantity * 0.1 : 0),
+      0,
+    )
+  }
+
+  private saveDraft(): void {
+    const draftItems = this.$scope.items.grid.map((item: Item) => ({
+      ...item,
+      printedAt: new Date().toISOString(),
+    }))
+    const drafts = JSON.parse(localStorage.getItem('drafts') ?? '[]') as Item[]
+    drafts.push(...draftItems)
+    if (drafts.length > 50) {
+      drafts.splice(0, drafts.length - 50) // keep only the last 50
+    }
+    localStorage.setItem('drafts', JSON.stringify(drafts))
+    this.$scope.draft = true
+    this.$scope.items.grid = []
+    this.notification.success(i18n('draftSaved'))
+  }
+  private printDraft(): void {
+    // currently, draft items are printed as normal items
+    if (this.$scope.items.grid.length === 0) {
+      this.notification.error(i18n('noItemsToPrint'))
+      return
+    }
+    // TODO: implement draft printing logic
+  }
 }
 
 export { LabelerController }
