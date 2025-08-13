@@ -4,19 +4,25 @@ import { type LabelType } from './types/label'
 import printStyles from './styles/label-print.scss'
 import { Code128, getDataMatrixMat, toPath } from './services/barcodeGenerator'
 
-export { type LabelType } from './types/label'
-
 export class LabelGenerator {
   items: Item[] = []
   success: boolean = false
   readonly type: LabelType
 
-  constructor(data: Item[] | Promise<Item[]> | PackagedItem[] | Promise<PackagedItem[]> | undefined = undefined, type: LabelType = 'normal') {
+  constructor(
+    data:
+      | Item[]
+      | Promise<Item[]>
+      | PackagedItem[]
+      | Promise<PackagedItem[]>
+      | undefined = undefined,
+    type: LabelType = 'normal',
+  ) {
     this.type = type
     if (data == null) {
       // The constructor was called without data.
     } else if (data instanceof Promise) {
-      void data.then(data => {
+      void data.then((data) => {
         this.items = data
         this.print()
       })
@@ -27,9 +33,7 @@ export class LabelGenerator {
   }
 
   print(): void {
-    this.items = this.items.filter(
-      (item) => item.barcode != null,
-    )
+    this.items = this.items.filter((item) => item.barcode != null)
     if (!this.isAllItemsActive()) {
       if (!confirm(i18n('notAllItemsActive'))) {
         return
@@ -49,7 +53,7 @@ export class LabelGenerator {
   }
 
   isAllItemsActive(): boolean {
-    return this.items.every(item => item.isActive)
+    return this.items.every((item) => item.isActive)
   }
 
   makeUpperCaseBold(text: string): string {
@@ -58,7 +62,8 @@ export class LabelGenerator {
   }
 
   static getPricePerUnit(item: Item): string | null {
-    const regex = /(?:,?\s*)?(?:(\d+)\s*x\s*)?(\d+(\.\d+)?(?:,\d+)?)[\s]*(k?g|m?l|vnt|pak|rul)\b/i
+    const regex =
+      /(?:,?\s*)?(?:(\d+)\s*x\s*)?(\d+(\.\d+)?(?:,\d+)?)[\s]*(k?g|m?l|vnt|pak|rul)\b/i
     const match = item.name.match(regex)
 
     if (match) {
@@ -74,7 +79,8 @@ export class LabelGenerator {
       let pricePerUnit
 
       if (unit === 'g' || unit === 'ml') {
-        pricePerUnit = (item.priceWithVat / (amount / 1000)).toFixed(2) +
+        pricePerUnit =
+          (item.priceWithVat / (amount / 1000)).toFixed(2) +
           (unit === 'ml' ? ' €/l' : ' €/kg')
       } else {
         pricePerUnit = (item.priceWithVat / amount).toFixed(2) + ' €/' + unit
@@ -106,13 +112,17 @@ export class LabelGenerator {
     if (data.barcode != null && type !== 'half') {
       label.appendChild(this.createCode123Div(data))
     } else if (data.barcode != null) {
-      label.appendChild(this.createDMDiv(data))
+      label.appendChild(this.createDMDiv(data.barcode))
     }
 
     label.appendChild(this.createDivWithClass('price', this.getItemPrice(data)))
 
     if (data.packageCode != null) {
-      label.appendChild(this.createDivWithClass('subtext', 'Tara +0.10'))
+      const packagePrice = 0.1 * data.packageQuantity
+      //TODO: ideally you look up the package code, and do not hardcode the price
+      label.appendChild(
+        this.createDivWithClass('subtext', 'Tara +' + packagePrice.toFixed(2)),
+      )
     } else if (data.measurementUnitCanBeWeighed == true) {
       label.appendChild(
         this.createDivWithClass('subtext', '/ 1 ' + data.measurementUnitName),
@@ -175,7 +185,7 @@ export class LabelGenerator {
         className: 'weight',
         text:
           (data.measurementUnitCanBeWeighed
-            ? data.weight.toFixed(3)
+            ? Number(data.weight).toFixed(3)
             : data.weight.toString()) +
           (half ? ' ' + data.measurementUnitName : ''),
       },
@@ -193,7 +203,11 @@ export class LabelGenerator {
       label.appendChild(this.createDivWithClass(className, text))
     })
 
-    label.appendChild(this.createDMDiv(data))
+    const barcodeString =
+      (data.addPackageFee ? '1102\t1\n' : '') +
+      this.createPackedItemBarcode(data) +
+      '\t1\n\r'
+    label.appendChild(this.createDMDiv(barcodeString))
 
     if (data.expiryDate != null) {
       const date: string = new Date(data.expiryDate).toLocaleDateString(
@@ -230,32 +244,78 @@ export class LabelGenerator {
     return div
   }
 
-  createDMDiv(data: PackagedItem): HTMLDivElement {
+  createPackageBarcode(items: Item[] | PackagedItem[]): string {
+    if (items.length < 1) {
+      throw new Error('No items to create package barcode')
+      return ''
+    }
+    // { barcode + tab + quantity + line feed } for each item
+    // and a final \r
+    let barcodeString = ''
+    items.forEach((item) => {
+      if (item.barcode == null) {
+        throw new Error('Item has no barcode')
+      }
+      const quantity = item.weight != null ? item.weight : 1
+      barcodeString += `${item.barcode}\t${quantity}\n`
+    })
+    barcodeString += '\r' // carriage return at the end
+    return barcodeString
+  }
+  createPackedItemBarcode(data: PackagedItem): string {
+    if (data.barcode == null) {
+      throw new Error('Item has no barcode')
+    }
+    // Prefix 2200, then 13 digits of barcode, then 4 digits of weight
+    return (
+      '2200' +
+      data.barcode.padStart(13, '0') +
+      data.weight.toFixed(3).replace('.', '').padStart(4, '0')
+    )
+  }
+  /**
+   * Create a Data Matrix barcode as a div element
+   * @param barcodeString The barcode string to encode
+   * @param big If true, the barcode will be larger (default: false)
+   * @returns HTMLDivElement containing the Data Matrix barcode
+   */
+  createDMDiv(barcodeString: string, big = false): HTMLDivElement {
+    if (typeof barcodeString !== 'string') {
+      throw new Error('Barcode string must be a string')
+    } else if (barcodeString.length < 1) {
+      throw new Error('Barcode string cannot be empty')
+    }
     const barcode = document.createElement('div')
     barcode.className = 'barcode dm'
-    // Prefix 2200, then 13 digits of barcode, then 4 digits of weight
-    if (data.barcode == null) {
-      return barcode
-    }
-    let barcodeString = data.barcode
-    if (data.weight != null) {
-      barcodeString =
-        // (data.addPackageFee == true ? '1102\r\n' : '') +
-        // TODO: sort out the barcode format when it is fully decided on COM or USB scanner connection
-        '2200' +
-        '0'.repeat(13 - data.barcode.length) +
-        data.barcode +
-        '0'.repeat(5 - data.weight.toFixed(3).length) +
-        data.weight.toFixed(3).replace('.', '')
-    }
+    
     const svgNS = 'http://www.w3.org/2000/svg'
     const svg: SVGSVGElement = document.createElementNS(svgNS, 'svg')
     const path = document.createElementNS(svgNS, 'path')
+
+    // Get the actual DataMatrix pattern
+    const matrix = getDataMatrixMat(barcodeString)
+    const actualSize = matrix.length
     path.setAttribute('transform', 'scale(1)')
+    path.setAttribute('d', toPath(matrix))
     svg.appendChild(path)
-    path.setAttribute('d', toPath(getDataMatrixMat(barcodeString)))
     svg.setAttribute('class', 'datamatrix')
-    svg.setAttribute('viewBox', '0 0 18 18')
+    // Set viewBox to exactly match the matrix dimensions with small padding
+    svg.setAttribute('viewBox', `0 0 ${actualSize} ${actualSize}`)
+    // Set CSS dimensions to fill available space
+    if (big === true) {
+      svg.style.width = '100%'
+      svg.style.height = '100%'
+      svg.style.maxWidth = '60px'
+      svg.style.maxHeight = '60px'
+    } else {
+      svg.style.width = '100%'
+      svg.style.height = '100%'
+      svg.style.maxWidth = '30px'
+      svg.style.maxHeight = '30px'
+    }
+    // Ensure crisp edges for barcode
+    svg.style.imageRendering = 'pixelated'
+    svg.style.shapeRendering = 'crispEdges'
     barcode.appendChild(svg)
     return barcode
   }
@@ -268,7 +328,7 @@ export class LabelGenerator {
   }
 
   async printLabelsUsingBrowser(data: Item[]): Promise<void> {
-    const labels: HTMLElement[] = data.map(item => this.generateLabel(item))
+    const labels: HTMLElement[] = data.map((item) => this.generateLabel(item))
 
     const popup: Window | null = window.open(
       '',
@@ -282,15 +342,15 @@ export class LabelGenerator {
     popup.document.title = `${labels.length} ${i18n('nlabelsToBePrinted')}`
     popup.document.head.appendChild(this.createStyleElement())
 
-    labels.forEach(label => {
+    labels.forEach((label) => {
       popup.document.body.appendChild(label)
     })
 
     this.success = true
 
-    popup.addEventListener('afterprint', () => {
-      popup.close()
-    })
+    // popup.addEventListener('afterprint', () => {
+    //   popup.close()
+    // })
     popup.print()
   }
 

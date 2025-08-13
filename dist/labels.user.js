@@ -2,7 +2,7 @@
 // @name              B1 Label Printing
 // @namespace         http://tampermonkey.net/
 // @homepage          https://github.com/martynas2200/b1-labels
-// @version           2.1.0
+// @version           2.1.1
 // @description       Standard label printing interface
 // @author            Martynas Miliauskas
 // @match             https://www.b1.lt/*
@@ -447,7 +447,7 @@
             this.type = type;
             if (data == null) ;
             else if (data instanceof Promise) {
-                void data.then(data => {
+                void data.then((data) => {
                     this.items = data;
                     this.print();
                 });
@@ -477,7 +477,7 @@
             }
         }
         isAllItemsActive() {
-            return this.items.every(item => item.isActive);
+            return this.items.every((item) => item.isActive);
         }
         makeUpperCaseBold(text) {
             const regex = /("[^"]+"|[A-ZŽĄČĘĖĮŠŲŪ]{3,})/g;
@@ -496,8 +496,9 @@
                 const unit = match[4].replace('.', '').toLowerCase();
                 let pricePerUnit;
                 if (unit === 'g' || unit === 'ml') {
-                    pricePerUnit = (item.priceWithVat / (amount / 1000)).toFixed(2) +
-                        (unit === 'ml' ? ' €/l' : ' €/kg');
+                    pricePerUnit =
+                        (item.priceWithVat / (amount / 1000)).toFixed(2) +
+                            (unit === 'ml' ? ' €/l' : ' €/kg');
                 }
                 else {
                     pricePerUnit = (item.priceWithVat / amount).toFixed(2) + ' €/' + unit;
@@ -523,11 +524,12 @@
                 label.appendChild(this.createCode123Div(data));
             }
             else if (data.barcode != null) {
-                label.appendChild(this.createDMDiv(data));
+                label.appendChild(this.createDMDiv(data.barcode));
             }
             label.appendChild(this.createDivWithClass('price', this.getItemPrice(data)));
             if (data.packageCode != null) {
-                label.appendChild(this.createDivWithClass('subtext', 'Tara +0.10'));
+                const packagePrice = 0.1 * data.packageQuantity;
+                label.appendChild(this.createDivWithClass('subtext', 'Tara +' + packagePrice.toFixed(2)));
             }
             else if (data.measurementUnitCanBeWeighed == true) {
                 label.appendChild(this.createDivWithClass('subtext', '/ 1 ' + data.measurementUnitName));
@@ -576,7 +578,7 @@
                 {
                     className: 'weight',
                     text: (data.measurementUnitCanBeWeighed
-                        ? data.weight.toFixed(3)
+                        ? Number(data.weight).toFixed(3)
                         : data.weight.toString()) +
                         (half ? ' ' + data.measurementUnitName : ''),
                 },
@@ -593,7 +595,10 @@
             elements.forEach(({ className, text }) => {
                 label.appendChild(this.createDivWithClass(className, text));
             });
-            label.appendChild(this.createDMDiv(data));
+            const barcodeString = (data.addPackageFee ? '1102\t1\n' : '') +
+                this.createPackedItemBarcode(data) +
+                '\t1\n\r';
+            label.appendChild(this.createDMDiv(barcodeString));
             if (data.expiryDate != null) {
                 const date = new Date(data.expiryDate).toLocaleDateString('lt-LT', {
                     month: '2-digit',
@@ -617,29 +622,62 @@
             }
             return div;
         }
-        createDMDiv(data) {
+        createPackageBarcode(items) {
+            if (items.length < 1) {
+                throw new Error('No items to create package barcode');
+            }
+            let barcodeString = '';
+            items.forEach((item) => {
+                if (item.barcode == null) {
+                    throw new Error('Item has no barcode');
+                }
+                const quantity = item.weight != null ? item.weight : 1;
+                barcodeString += `${item.barcode}\t${quantity}\n`;
+            });
+            barcodeString += '\r';
+            return barcodeString;
+        }
+        createPackedItemBarcode(data) {
+            if (data.barcode == null) {
+                throw new Error('Item has no barcode');
+            }
+            return ('2200' +
+                data.barcode.padStart(13, '0') +
+                data.weight.toFixed(3).replace('.', '').padStart(4, '0'));
+        }
+        createDMDiv(barcodeString, big = false) {
+            if (typeof barcodeString !== 'string') {
+                throw new Error('Barcode string must be a string');
+            }
+            else if (barcodeString.length < 1) {
+                throw new Error('Barcode string cannot be empty');
+            }
             const barcode = document.createElement('div');
             barcode.className = 'barcode dm';
-            if (data.barcode == null) {
-                return barcode;
-            }
-            let barcodeString = data.barcode;
-            if (data.weight != null) {
-                barcodeString =
-                    '2200' +
-                        '0'.repeat(13 - data.barcode.length) +
-                        data.barcode +
-                        '0'.repeat(5 - data.weight.toFixed(3).length) +
-                        data.weight.toFixed(3).replace('.', '');
-            }
             const svgNS = 'http://www.w3.org/2000/svg';
             const svg = document.createElementNS(svgNS, 'svg');
             const path = document.createElementNS(svgNS, 'path');
+            const matrix = getDataMatrixMat(barcodeString);
+            const actualSize = matrix.length;
             path.setAttribute('transform', 'scale(1)');
+            path.setAttribute('d', toPath(matrix));
             svg.appendChild(path);
-            path.setAttribute('d', toPath(getDataMatrixMat(barcodeString)));
             svg.setAttribute('class', 'datamatrix');
-            svg.setAttribute('viewBox', '0 0 18 18');
+            svg.setAttribute('viewBox', `0 0 ${actualSize} ${actualSize}`);
+            if (big === true) {
+                svg.style.width = '100%';
+                svg.style.height = '100%';
+                svg.style.maxWidth = '60px';
+                svg.style.maxHeight = '60px';
+            }
+            else {
+                svg.style.width = '100%';
+                svg.style.height = '100%';
+                svg.style.maxWidth = '30px';
+                svg.style.maxHeight = '30px';
+            }
+            svg.style.imageRendering = 'pixelated';
+            svg.style.shapeRendering = 'crispEdges';
             barcode.appendChild(svg);
             return barcode;
         }
@@ -648,7 +686,7 @@
                 window.matchMedia('(display-mode: fullscreen)').matches);
         }
         async printLabelsUsingBrowser(data) {
-            const labels = data.map(item => this.generateLabel(item));
+            const labels = data.map((item) => this.generateLabel(item));
             const popup = window.open('', '_blank', this.isItInAppMode() ? 'width=250,height=300' : 'width=800,height=600');
             if (popup == null) {
                 alert('Please allow popups for this site');
@@ -656,13 +694,10 @@
             }
             popup.document.title = `${labels.length} ${i18n('nlabelsToBePrinted')}`;
             popup.document.head.appendChild(this.createStyleElement());
-            labels.forEach(label => {
+            labels.forEach((label) => {
                 popup.document.body.appendChild(label);
             });
             this.success = true;
-            popup.addEventListener('afterprint', () => {
-                popup.close();
-            });
             popup.print();
         }
         createStyleElement() {
@@ -732,7 +767,11 @@
         return Math.round((totalPrice + Number.EPSILON) * 100) / 100;
     }
 
-    function modalHTML(i18n) { return ` <div class="modal-header"> <button type="button" class="close" ng-click="closeModal()" aria-label="Close"> <span aria-hidden="true">&times;</span> </button> <h4 class="modal-title" id="weightLabelModalLabel">{{ !item.measurementUnitCanBeWeighed ? i18n('label') : i18n('weightLabel')}}</h4> </div> <div class="modal-body {{ item.weight > 9999 ? 'background-white-red' : '' }}"> <div class="form"> <div class="form-group"> <label for="productName">{{i18n('name')}}</label> <input type="text" class="form-control" ng-model="item.name" readonly> </div> <div class="row"> <div class="form-group col-sm-4"> <label for="productWeight" >{{ (!item.measurementUnitCanBeWeighed ? i18n('quantity') : i18n('weight') + ' (g)')}}</label> <input type="text" class="form-control" ng-model="item.weight" ng-keyup="handleWeightChange(item.weight)" ng-keydown="hideVirtualKeyboard()"> </div> <div class="form-group col-sm-4"> <label for="totalPrice">{{i18n('totalPrice')}} (€)</label> <input type="number" step="0.01" class="form-control" readonly ng-model="item.totalPrice" > </div> <div class="form-group col-sm-4"> <label for="kgPrice">{{ i18n('price') + ' 1 ' + item.measurementUnitName }} (€)</label> <input type="number" step="0.01" class="form-control" readonly ng-model="item.priceWithVat"> </div> </div> <div class="row"> <div class="col-sm-6"> <div class="form-group"> <label for="expiryDate">{{i18n('expiryDate')}}</label> <input type="date" class="form-control" ng-model="item.expiryDate" ng-click="picker($event)"> </div> <div class="form-group"> <div class="checkbox-form"> <label> <input type="checkbox" class="ace" ng-model="item.addManufacturer"> <span class="lbl display-inline">&nbsp;{{i18n('addManufacturer')}}&nbsp; {{ item.manufacturerName }}</span> </label> </div> <div class="checkbox-form"> <label> <input type="checkbox" class="ace" ng-model="item.addPackageFee" checked> <span class="lbl display-inline">&nbsp;{{i18n('addPackageFee')}}</span> </label> </div> </div> </div> <div class="col-sm-6" ng-show="virtualKeyboardVisible"> <div class="keyboard"> <button class="key btn" ng-click="key('7')">7</button> <button class="key btn" ng-click="key('8')">8</button> <button class="key btn" ng-click="key('9')">9</button> <button class="key btn" ng-click="key('4')">4</button> <button class="key btn" ng-click="key('5')">5</button> <button class="key btn" ng-click="key('6')">6</button> <button class="key btn" ng-click="key('1')">1</button> <button class="key btn" ng-click="key('2')">2</button> <button class="key btn" ng-click="key('3')">3</button> <button class="key btn" ng-click="key('0')">0</button> <button class="key btn btn-grey" ng-click="key('c')">C</button> <button class="key btn btn-danger backspace" ng-click="key('d')">⌫</button> </div> </div> </div> </div> </div> <div class="modal-footer"> <button type="button" class="btn btn-secondary" ng-click="closeModal()"> <i class="fa fa-times"></i>&nbsp;{{i18n('close')}}</button> <button type="button" class="btn btn-primary" ng-click="add()" ng-if="addButton"> <i class="fa fa-plus"></i>&nbsp;{{i18n('add')}}</button> <button type="button" class="btn btn-purple" ng-click="print()" "> <i class="fa fa-print"></i>&nbsp;{{i18n('print')}}&nbsp;[{{ i18n('normal')}}]</button> </div>`; }
+    function modalHTML(i18n) { return `<div class="modal-header"> <button type="button" class="close" ng-click="closeModal()" aria-label="Close"> <span aria-hidden="true">&times;</span> </button> <h4 class="modal-title" id="weightLabelModalLabel">{{ !item.measurementUnitCanBeWeighed ? i18n('label') : i18n('weightLabel')}}</h4>
+</div>
+<div class="modal-body {{ item.weight > 9999 ? 'background-white-red' : '' }}"> <div class="form"> <div class="form-group"> <label for="productName">{{i18n('name')}}</label> <input type="text" class="form-control" ng-model="item.name" readonly> </div> <div class="row"> <div class="form-group col-sm-4"> <label for="productWeight">{{ (!item.measurementUnitCanBeWeighed ? i18n('quantity') : i18n('weight') + ' (g)')}}</label> <input type="text" class="form-control" ng-model="item.weight" ng-keyup="handleWeightChange(item.weight)" ng-keydown="hideVirtualKeyboard()"> </div> <div class="form-group col-sm-4"> <label for="totalPrice">{{i18n('totalPrice')}} (€)</label> <input type="number" step="0.01" class="form-control" readonly ng-model="item.totalPrice"> </div> <div class="form-group col-sm-4"> <label for="kgPrice">{{ i18n('price') + ' 1 ' + item.measurementUnitName }} (€)</label> <input type="number" step="0.01" class="form-control" readonly ng-model="item.priceWithVat"> </div> </div> <div class="row"> <div class="col-sm-6"> <div class="form-group"> <label for="expiryDate">{{i18n('expiryDate')}}</label> <input type="date" class="form-control" ng-model="item.expiryDate" ng-click="picker($event)"> </div> <div class="form-group"> <div class="checkbox-form"> <label> <input type="checkbox" class="ace" ng-model="item.addManufacturer"> <span class="lbl display-inline">&nbsp;{{i18n('addManufacturer')}}&nbsp; {{ item.manufacturerName }}</span> </label> </div> <div class="checkbox-form"> <label> <input type="checkbox" class="ace" ng-model="item.addPackageFee" checked> <span class="lbl display-inline">&nbsp;{{i18n('addPackageFee')}}</span> </label> </div> </div> </div> <div class="col-sm-6" ng-show="virtualKeyboardVisible"> <div class="keyboard"> <button class="key btn" ng-click="key('7')">7</button> <button class="key btn" ng-click="key('8')">8</button> <button class="key btn" ng-click="key('9')">9</button> <button class="key btn" ng-click="key('4')">4</button> <button class="key btn" ng-click="key('5')">5</button> <button class="key btn" ng-click="key('6')">6</button> <button class="key btn" ng-click="key('1')">1</button> <button class="key btn" ng-click="key('2')">2</button> <button class="key btn" ng-click="key('3')">3</button> <button class="key btn" ng-click="key('0')">0</button> <button class="key btn btn-grey" ng-click="key('c')">C</button> <button class="key btn btn-danger backspace" ng-click="key('d')">⌫</button> </div> </div> </div> </div>
+</div> <div class="modal-footer"> <button type="button" class="btn btn-secondary" ng-click="closeModal()"> <i class="fa fa-times"></i>&nbsp;{{i18n('close')}}</button> <button type="button" class="btn btn-primary" ng-click="add()" ng-if="addButton"> <i class="fa fa-plus"></i>&nbsp;{{i18n('add')}}</button> <button type="button" class="btn btn-purple" ng-click="print()" "> <i class=" fa fa-print"></i>&nbsp;{{i18n('print')}}&nbsp;[{{ i18n('normal')}}]</button>
+</div>`; }
 
     class WeightLabelModal {
         modalService;

@@ -1,4 +1,5 @@
 export interface Item {
+  totalPrice: number;
   attributeId: number;
   barcode: string;
   code: string;

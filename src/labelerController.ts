@@ -14,19 +14,29 @@ import { LabelTypeModal } from './modals/labelTypeModal'
 import { TempFileListModal } from './modals/tempFileListModal'
 import { MarkdownModal } from './modals/markdownModal'
 import { UserSession } from './userSession'
+import { DeviceClient, DeviceType } from './deviceClient'
+import ConfigModal from './modals/configModal'
+
+declare let GM: any
 
 export type labelType = 'normal' | 'half' | 'fridge' | 'barcodeOnly'
+export interface Draft {
+  items: Item[],
+  date: string,
+  title?: string,
+}
 
 class LabelerController {
   private notification = new UINotification()
   private req = new Request(this.notification)
   private modalService = new ModalService()
   private textToVoice = new TextToVoice(this.notification)
-
   private modals: {
     weightLabel: WeightLabelModal
     details: ItemDetailsModal
   }
+  private config: Partial<Record<DeviceType, string>> = {}
+  private deviceClient: DeviceClient | undefined = undefined
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(private $scope: any) {
@@ -39,9 +49,58 @@ class LabelerController {
         this.req,
         weightLabelModal
       ),
+      
     }
+  }
+  async $onInit(): Promise<void> {
+    console.debug('Initializing LabelerController + $onInit')
+    const barcode = await GM.getValue('devices.barcode', "")
+    const scales = await GM.getValue('devices.scales', "")
+    const printer = await GM.getValue('devices.printer', "")
+
+    this.config = {
+      barcode,
+      scales,
+      printer
+    }
+    this.deviceClient = new DeviceClient(this.config, this.notification)
     void this.initializeScope().then(() => {
       this.$scope.$digest()
+    })
+    this.deviceClient.connect('barcode')
+    // onblur send INACTIVE to barcode device
+    // onfocus send ACTIVE to barcode device
+    window.addEventListener('blur', () => {
+      this.deviceClient?.sendToDevice('barcode', 'INACTIVE').catch((err) => {
+        console.error('Error sending INACTIVE to barcode device:', err)
+      })
+    })
+    window.addEventListener('focus', () => {
+      this.deviceClient?.sendToDevice('barcode', 'ACTIVE').catch((err) => {
+        console.error('Error sending ACTIVE to barcode device:', err)
+      })
+    })
+    // send inactive before closing the window
+    window.addEventListener('beforeunload', () => {
+      this.deviceClient?.sendToDevice('barcode', 'INACTIVE').catch((err) => {
+        console.error('Error sending INACTIVE to barcode device:', err)
+      })
+    })
+
+    // subscribe to device status changes
+    this.deviceClient.on('barcode', (code: string | number) => {
+      //TODO: debug
+      const clean = code.toString().replace(/[\x00-\x1F\x7F]/g, '').replace(/[^0-9]/g, '')
+      if (document.hasFocus()) {
+        void this.searchBarcode(clean)
+      }
+    })
+    //on any message from device, log it
+    this.deviceClient.on('message', (deviceType: DeviceType, message: string) => {
+      console.log(`Device ${deviceType} message:`, message)
+    })
+    this.deviceClient.sendToDevice('barcode', 'ACTIVE').catch((err) => {
+      console.error('Error sending ACTIVE to barcode device:', err)
     })
   }
 
@@ -53,21 +112,25 @@ class LabelerController {
         searched: this.getRecentlySearchedItems(),
       },
       settings: {
-        sayOutLoud: true,
-        showStock: false,
+        sayOutLoud: JSON.parse(localStorage.getItem('sayOutLoud') ?? 'true'),
+        showStock: JSON.parse(localStorage.getItem('showStock') ?? 'false'),
         type: 'normal',
       },
+      drafts: JSON.parse(localStorage.getItem('drafts') ?? '[]') as Item[][],
       tabs: true,
       companyName: UserSession.getCurrentCompany(),
       loading: false,
       barcode: null,
       printed: false,
       draft: false,
+      currentDraft: null,
       modals: this.modals,
       activeTab: 'recentlyModified',
+      scanner:  this.deviceClient?.status.barcode.connected || this.config.barcode === '',
       openMarkdowns: this.openMarkdowns.bind(this),
       openCatalog: this.openCatalog.bind(this),
       openFiles: this.openFiles.bind(this),
+      logout: this.logout.bind(this),
       openTypeModal: this.openTypeModal.bind(this),
       searchBarcode: this.searchBarcode.bind(this),
       print: this.print.bind(this),
@@ -88,7 +151,9 @@ class LabelerController {
       toggleTabs: this.toggleTabs.bind(this),
       getTotalPrice: this.getTotalPrice.bind(this),
       saveDraft: this.saveDraft.bind(this),
-      printDraft: this.printDraft.bind(this),
+      deleteDraft: this.deleteDraft.bind(this),
+      showDraftBarcode: this.showDraftBarcode.bind(this),
+      loadDraft: this.loadDraft.bind(this),
       changeQuantity: this.changeQuantity.bind(this),
     })
   }
@@ -115,6 +180,12 @@ class LabelerController {
     void filesModal.show()
   }
 
+  private logout(): void {
+    //open config modal
+    const configModal = new ConfigModal(this.modalService)
+    void configModal.show()
+  }
+
   private openTypeModal(): void {
     const typeModal = new LabelTypeModal(this.$scope.settings.type)
     typeModal.open().then((type: labelType) => {
@@ -136,13 +207,13 @@ class LabelerController {
     this.$scope.$digest()
   }
 
-  private async searchBarcode(): Promise<void> {
+  private async searchBarcode(code?: string): Promise<void> {
     this.$scope.printed = false
-    if (!this.$scope.barcode) {
+    if (!this.$scope.barcode && !code) {
       this.notification.error(i18n('missingBarcode'))
       return
     }
-    const barcode = this.$scope.barcode.toString().trim()
+    const barcode = ((code != undefined) ? code : this.$scope.barcode).toString().trim()
     this.clearBarcodeInput()
     this.canItBePackaged(barcode)
       ? await this.searchforAPackagedItem(barcode)
@@ -189,7 +260,7 @@ class LabelerController {
     ) {
       return barcode.slice(0, 7)
     } else if (barcode.length === 21) {
-      return barcode.slice(4, 17)
+      return barcode.slice(4, 17).replace(/^0+/, '')
     }
     return barcode
   }
@@ -429,10 +500,10 @@ class LabelerController {
     }
   }
 
-  private getTotalPrice(): number {
-    return this.$scope.items.grid.reduce(
-      (acc: number, item: packagedItem) =>
-        acc + (item.totalPrice ?? item.priceWithVat) +
+  private getTotalPrice(items?: Item[]): number {
+    return (items ?? this.$scope.items.grid).reduce(
+      (acc: number, item: Item) =>
+        acc + (item?.totalPrice ?? item.priceWithVat) +
         // TODO: ideally fetch the item, and use its price
         (item.packageCode ? item.packageQuantity * 0.1 : 0),
       0,
@@ -440,28 +511,105 @@ class LabelerController {
   }
 
   private saveDraft(): void {
+    if (this.$scope.items.grid.length === 0) {
+      this.notification.error(i18n('noItems'))
+      return
+    }
     const draftItems = this.$scope.items.grid.map((item: Item) => ({
       ...item,
-      printedAt: new Date().toISOString(),
     }))
-    const drafts = JSON.parse(localStorage.getItem('drafts') ?? '[]') as Item[]
-    drafts.push(...draftItems)
-    if (drafts.length > 50) {
-      drafts.splice(0, drafts.length - 50) // keep only the last 50
+    const newDraft: Draft = {
+      items: draftItems,
+      date: new Date().toISOString(),
+      title: (this.$scope.currentDraft == null) ? prompt(i18n('enterDraftTitle')) : this.$scope.drafts[this.$scope.currentDraft].title,
     }
-    localStorage.setItem('drafts', JSON.stringify(drafts))
-    this.$scope.draft = true
+    if (this.$scope.currentDraft != null && this.$scope.currentDraft >= 0) {
+      this.$scope.drafts[this.$scope.currentDraft] = newDraft // update existing draft
+    } else {
+      this.$scope.drafts.push(newDraft)
+    }
+    localStorage.setItem('drafts', JSON.stringify(this.$scope.drafts))
+    if (this.$scope.drafts.length > 50) {
+      this.$scope.drafts.splice(0, this.$scope.drafts.length - 50) // keep only the last 50
+    }
     this.$scope.items.grid = []
     this.notification.success(i18n('draftSaved'))
   }
-  private printDraft(): void {
-    // currently, draft items are printed as normal items
-    if (this.$scope.items.grid.length === 0) {
-      this.notification.error(i18n('noItemsToPrint'))
+
+  private deleteDraft(): void {
+    if (!window.confirm(i18n('confirmDeleteDraft'))) {
       return
     }
-    // TODO: implement draft printing logic
+    const index = this.$scope.currentDraft
+    if (index < 0 || index >= this.$scope.drafts.length) {
+      this.notification.error(i18n('invalidDraftIndex'))
+      return
+    }
+    this.$scope.drafts.splice(index, 1)
+    localStorage.setItem('drafts', JSON.stringify(this.$scope.drafts))
+    this.notification.success(i18n('draftDeleted'))
+    this.$scope.items.grid = []
+    this.$scope.currentDraft = null
+  }
+
+  private showDraftBarcode(): void {
+    // currently, draft items are printed as normal items
+    if (this.$scope.items.grid.length === 0) {
+      this.notification.error(i18n('noItems'))
+      return
+    }
+    // show datamatrix code for draft items
+    const labelGenerator = new LabelGenerator()
+    const barcodeString = labelGenerator.createPackageBarcode(this.$scope.items.grid)
+    // show the datamatrix code in a modal
+    const dm = labelGenerator.createDMDiv(barcodeString, true).outerHTML
+    void this.modalService.showModal({
+      template: `<div class="modal-content" uib-modal-transclude="">
+      <div class="modal-header">
+        <h3 class="modal-title inline">${i18n('draft')}</h3>
+        <button type="button" class="close" aria-label="Close" ng-click="closeModal()">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="datamatrix-code">
+          <div style="white-space: pre-wrap;">${barcodeString}</div>
+          <div class="margin-10">${dm}</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm" ng-click="closeModal()">${i18n('close')}</button>
+      </div>
+    </div>`,
+      scopeProperties: {
+        closeModal: () => {
+          this.modalService.modalInstance?.close()
+        },
+        // printBarcode: (dm: string) => {
+        //   this.printBarcode(dm)
+        //   this.modalService.modalInstance?.close()
+        // },
+      },
+      size: 'md',
+    })
+  }
+
+  private loadDraft(index: number): void {
+    if (index < 0 || index >= this.$scope.drafts.length) {
+      this.notification.error(i18n('invalidDraftIndex'))
+      return
+    }
+    const draft = this.$scope.drafts[index]
+    if (!draft || !draft.items || draft.items.length === 0) {
+      this.notification.error(i18n('draftIsEmpty'))
+      return
+    }
+    this.$scope.items.grid = draft.items.map((item: Item) => ({
+      ...item,
+      printedAt: new Date().toISOString(),
+      retrievedAt: new Date().toISOString(),
+    }))
+    this.$scope.currentDraft = index
   }
 }
-
 export { LabelerController }

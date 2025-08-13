@@ -32,8 +32,6 @@ export class UserSession {
   constructor() {
     this.user = null
     this.checkLoginStatus()
-    unsafeWindow.saveLoginDetails = this.saveLoginDetails.bind(this)
-    unsafeWindow.saveURL = this.saveURL.bind(this)
   }
 
   //static to return the current company
@@ -132,11 +130,7 @@ export class UserSession {
     const username = await GM.getValue('username', '')
     const password = await GM.getValue('password', '')
     if (username === '' || password === '') {
-      // crazy idea to check what is in the fields and if they contain x's then ask to save the login details
       this.notification.error(i18n('loginDetailsNotFound'))
-      if (usernameInput.value === 'x' && passwordInput.value === 'x') {
-        void this.saveLoginDetails()
-      }
       return false
     }
     usernameInput.value = username
@@ -164,35 +158,4 @@ export class UserSession {
     angular.element(form).controller().signIn(key)
     return true
   }
-
-  // function to prompt user to save login details
-  async saveLoginDetails(): Promise<void> {
-    if (window.confirm('Do you want to save these login details?')) {
-      const username = window.prompt('Enter your username')
-      const password = window.prompt('Enter your password')
-      if (username != null && password != null) {
-        await GM.setValue('username', username)
-        await GM.setValue('password', password)
-        alert('Login details saved')
-      }
-    }
-    if (!window.confirm('Do you want to save API key?')) {
-      return
-    }
-    const apiKey = window.prompt('Enter your API key')
-    if (apiKey === null) {
-      return
-    }
-    await GM.setValue('api-key', apiKey)
-    alert('API key saved')
-  }
-  async saveURL(): Promise<void> { //not clear what this function does
-    const url = window.prompt('Enter the URL')
-    if (url === null) {
-      return
-    }
-    await GM.setValue('url', url)
-    alert('URL saved')
-  }
-
 }

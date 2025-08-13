@@ -29,9 +29,9 @@
         </a>
       </li>
       <li>
-        <a class="navbar-shortcut" href="/logout" target="_self">
+        <div class="navbar-shortcut" ng-click="logout()">
           <i class="fa fa-fw fa-power-off"></i>
-        </a>
+        </div>
       </li>
     </ul>
   </div>
@@ -40,9 +40,15 @@
 <div class="container item-search-container">
   <div class="row">
     <div class="col-md-4 no-padding">
-
       <div class="form-section">
-        <h4 class="header">{{ 'labels' | i18n }}</h4>
+        <h4 class="header" ng-if="!draft">{{ 'labels' | i18n }}</h4>
+        <h4 class="header" ng-if="draft">{{ 'draft' | i18n }}&nbsp;{{ drafts[currentDraft].title }}</h4>
+        <div class="form-group" ng-if="!scanner">
+          <div class="alert alert-danger">
+            <i class="fa fa-exclamation-triangle"></i> {{ 'scannerIsNotConnected' | i18n }}: {{ error }}
+          </div>
+        </div>
+        <!-- input for barcode scanning -->
         <div class="form-group input-group">
           <input type="text" class="form-control" ng-model="barcode" placeholder="{{ 'enterBarcode' | i18n }}"
             autocomplete="off" ng-keyup="handleEnterPress($event)" id="barcodeInput">
@@ -62,7 +68,7 @@
             </label>
           </div>
         </div>
-        <div class="clearfix margin-bottom-10">
+        <div class="clearfix margin-bottom-10" ng-if="!draft">
           <div class="pull-right">
             <button class="btn btn-white" ng-click="openTypeModal()">
               {{ settings.type | i18n }} <i class="fa fa-caret-down"></i>
@@ -78,16 +84,33 @@
       </div>
       <div class="summary" ng-if="draft">
         <span class="summary-label"> {{ 'total' | i18n }}</span>
-        <span class="summary-amount">{{ getTotalPrice() }}</span>
+        <span class="summary-amount">{{ getTotalPrice() | number:2 }} €</span>
         <!-- buttons to save or print the draft -->
         <div class="summary-buttons">
           <button class="btn btn-success" ng-click="saveDraft()">
             <i class="fa fa-save"></i> {{ 'saveDraft' | i18n }}
           </button>
-          <button class="btn btn-primary" ng-click="printDraft()">
-            <i class="fa fa-print"></i> {{ 'printDraft' | i18n }}
+          <button class="btn btn-danger" ng-click="deleteDraft()" ng-if="currentDraft !== null">
+            <i class="fa fa-trash"></i>
           </button>
+          <button class="btn btn-primary" ng-click="showDraftBarcode()" ng-valid="items.grid.length > 0">
+            <i class="fa fa-barcode"></i> {{ 'draftBarcode' | i18n }}
+          </button>
+
         </div>
+      </div>
+      <!-- saved summaries list -->
+      <div class="saved-summaries" ng-if="draft && drafts.length > 0 && items.grid.length === 0">
+        <h4 class="header">{{ 'savedDrafts' | i18n }}</h4>
+        <ul class="list-group">
+          <li class="list-group-item" ng-repeat="draft in drafts track by $index" ng-click="loadDraft($index)">
+            <span class="draft-name">{{ draft.title }}</span>
+            <span class="draft-date">{{ draft.date | date:'short' }}</span>
+            <span class="draft-total pull-right">{{ getTotalPrice(draft.items) | number:2 }} €</span>
+              <i class="fa fa-trash"></i>
+            </button>
+          </li>
+        </ul>
       </div>
     </div>
     <div class="col-md-8 load-data">
@@ -206,6 +229,7 @@
             </div>
           </ul>
           <div class="tab-content item-list recent-tab-content">
+            <div class="alert-xs grey text-center" ng-if="(activeTab === 'recentlyModified' ? items.recent : items.searched).length === 0"> {{ 'noItems' | i18n }}</div>
             <div
               ng-repeat="item in (activeTab === 'recentlyModified' ? items.recent : items.searched) | limitTo:20 track by $index"
               class="item" ng-class="{'inactive': !item.barcode || !item.isActive, 'green': item.noNeedToPrint}">
