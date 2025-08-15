@@ -287,7 +287,7 @@ export class LabelGenerator {
     }
     const barcode = document.createElement('div')
     barcode.className = 'barcode dm'
-    
+
     const svgNS = 'http://www.w3.org/2000/svg'
     const svg: SVGSVGElement = document.createElementNS(svgNS, 'svg')
     const path = document.createElementNS(svgNS, 'path')
@@ -301,7 +301,7 @@ export class LabelGenerator {
     svg.setAttribute('class', 'datamatrix')
     // Set viewBox to exactly match the matrix dimensions with small padding
     svg.setAttribute('viewBox', `0 0 ${actualSize} ${actualSize}`)
-    // Set CSS dimensions to fill available space
+    // TODO: not sure about max constraints
     if (big === true) {
       svg.style.width = '100%'
       svg.style.height = '100%'
@@ -348,9 +348,9 @@ export class LabelGenerator {
 
     this.success = true
 
-    // popup.addEventListener('afterprint', () => {
-    //   popup.close()
-    // })
+    popup.addEventListener('afterprint', () => {
+      popup.close()
+    })
     popup.print()
   }
 

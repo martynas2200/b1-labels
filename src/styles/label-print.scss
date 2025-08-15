@@ -168,10 +168,11 @@
   display: block;
   border-right: 0.5px dashed #ff9b79;
 
-  & + .label.half:nth-of-type(even) {
+  &+.label.half:nth-of-type(even) {
     border-right-style: solid;
     border-left-style: none;
   }
+
   .item {
     font-size: 0.75em;
     font-size: 12px;
@@ -193,11 +194,9 @@
     font-size: 38px;
   }
 
-  .barcode div {
-    font-size: 8px;
-    margin: 0px;
-    padding: 0px;
-    bottom: 0;
+  .barcode.dm {
+    transform: none;
+    bottom: 1;
   }
 
   .barcode p {
@@ -382,8 +381,9 @@ del {
   bottom: 0;
   right: 5px;
   font-size: 1.4em;
-  line-height:1em;
+  line-height: 1em;
 }
+
 del:after {
   content: "";
   display: block;

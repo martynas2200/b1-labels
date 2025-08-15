@@ -53,7 +53,6 @@ class LabelerController {
     }
   }
   async $onInit(): Promise<void> {
-    console.debug('Initializing LabelerController + $onInit')
     const barcode = await GM.getValue('devices.barcode', "")
     const scales = await GM.getValue('devices.scales', "")
     const printer = await GM.getValue('devices.printer', "")
@@ -89,7 +88,6 @@ class LabelerController {
 
     // subscribe to device status changes
     this.deviceClient.on('barcode', (code: string | number) => {
-      //TODO: debug
       const clean = code.toString().replace(/[\x00-\x1F\x7F]/g, '').replace(/[^0-9]/g, '')
       if (document.hasFocus()) {
         void this.searchBarcode(clean)
