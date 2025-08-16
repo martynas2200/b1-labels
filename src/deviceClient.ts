@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-function-type */
-import { UINotification } from "./services/notification";
+import { UINotification } from "./services/notification"
 
 export type DeviceType = 'barcode' | 'scales' | 'printer'
 
@@ -23,7 +23,7 @@ class EventEmitter {
   on(event: string, listener: Function) {
     (this.events[event] ||= []).push(listener)
   }
-  emit(event: string, ...args: any[]) {
+  emit(event: string, ...args: unknown[]) {
     (this.events[event] || []).forEach((fn) => fn(...args))
   }
 }
@@ -42,51 +42,67 @@ export class DeviceClient extends EventEmitter {
     super()
   }
 
-  connect(device: DeviceType) {
+  async connect(device: DeviceType): Promise<void> {
     const cfg = this.config[device]
     if (cfg !== undefined && cfg.includes('ws')) {
-      this.connectWebSocket(device, cfg)
+      return this.connectWebSocket(device, cfg)
     } else if (cfg !== undefined && cfg.includes('COM')) {
-      void this.connectComPort(device)
+      return this.connectComPort(device)
+    } else {
+      throw new Error(`No configuration found for device: ${device}`)
     }
   }
 
-  private connectWebSocket(device: DeviceType, url: string) {
-    const ws = new WebSocket(url)
-    ws.onopen = () => {
-      this.status[device].connected = true
-      this.status[device].error = undefined
+  async connectAndSend(device: DeviceType, initialMessage?: string): Promise<void> {
+    await this.connect(device)
+    if (initialMessage) {
+      await this.sendToDevice(device, initialMessage)
     }
-    ws.onmessage = (event) => {
-      this.status[device].lastMessage = event.data
-      // Handle device-specific logic here
-      switch (device) {
-        case 'barcode':
-          void this.readBarcodeMessage(event.data)
-          break
-        case 'scales':
-          void this.readWeightMessage(event.data)
-          break
-        case 'printer':
-          void this.readPrinterMessage(event.data)
-          break
+  }
+
+  private connectWebSocket(device: DeviceType, url: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(url)
+      ws.onopen = () => {
+        this.status[device].connected = true
+        this.status[device].error = undefined
+        this.emit('connected', device)
+        resolve()
       }
-    }
-    ws.onerror = (_err) => {
-      this.status[device].error = 'WebSocket error'
-      this.status[device].connected = false
-      this.notification.error(`Error connecting to ${device} WebSocket: ${_err}`)
-    }
-    ws.onclose = () => {
-      this.status[device].connected = false
-    }
-    this.wsConnections[device] = ws
+      ws.onmessage = (event) => {
+        this.status[device].lastMessage = event.data
+        // Handle device-specific logic here
+        switch (device) {
+          case 'barcode':
+            void this.readBarcodeMessage(event.data)
+            break
+          case 'scales':
+            void this.readWeightMessage(event.data)
+            break
+          case 'printer':
+            void this.readPrinterMessage(event.data)
+            break
+        }
+      }
+      ws.onerror = (err) => {
+        this.status[device].error = 'WebSocket error'
+        this.status[device].connected = false
+        this.notification.error(`Error connecting to ${device} WebSocket: ${err}`)
+        this.emit('error', device, err)
+        reject(new Error(`WebSocket connection failed for ${device}: ${err}`))
+      }
+      ws.onclose = () => {
+        this.status[device].connected = false
+        this.emit('disconnected', device)
+      }
+      this.wsConnections[device] = ws
+    })
   }
 
-  async connectComPort(device: DeviceType, baudRate = 9600) {
+  async connectComPort(device: DeviceType, baudRate = 9600): Promise<void> {
     if (!('serial' in navigator)) {
       this.status[device].error = 'Web Serial API not supported'
-      return
+      throw new Error('Web Serial API not supported')
     }
     try {
       // Request port (user must select)
@@ -95,11 +111,14 @@ export class DeviceClient extends EventEmitter {
       this.comPorts[device] = port
       this.status[device].connected = true
       this.status[device].error = undefined
+      this.emit('connected', device)
       // Optionally, set up reading from the port
       void this.readFromComPort(device)
     } catch (err) {
       this.status[device].error = 'COM port error: ' + (err as Error).message
       this.status[device].connected = false
+      this.emit('error', device, err)
+      throw err
     }
   }
 
@@ -136,22 +155,13 @@ export class DeviceClient extends EventEmitter {
   }
 
   private async readBarcodeMessage(barcode: string) {
-    // ...read logic...
-    // this.emit('barcode', barcode)
-    // could be BARCODE:<barcode>
-    // could be BARCODE:<CR><barcode>
-    // could be STATUS:<status>
     if (barcode.startsWith('BARCODE:')) {
       const code = barcode.replace('BARCODE:', '').trim()
-      // remove any trailing CR or LF
-      // const cleanedCode = code.replace(/[\r\n]+$/, '')
-      //leave only numbers
       const cleanedCode = code.replace(/[\x00-\x1F\x7F]/g, '').replace(/[^0-9]/g, '')
       if (cleanedCode.length === 0) {
         this.notification.error(`Invalid barcode: ${code}`)
         return
       }
-      console.debug('BBBarcode read:', cleanedCode)
       this.emit('barcode', cleanedCode)
     }
     else if (barcode.startsWith('STATUS:')) {
@@ -178,21 +188,34 @@ export class DeviceClient extends EventEmitter {
     this.emit('printer', printer)
   }
 
-  async sendToDevice(device: DeviceType, data: string) {
+  async sendToDevice(device: DeviceType, data: string): Promise<void> {
     // Send data to device (printer, etc.)
     if (this.wsConnections[device]?.readyState === WebSocket.OPEN) {
       this.wsConnections[device]?.send(data)
     } else if (this.comPorts[device]) {
       const encoder = new TextEncoder()
       const writer = this.comPorts[device]?.writable.getWriter()
-      await writer.write(encoder.encode(data))
-      writer.releaseLock()
+      if (writer) {
+        await writer.write(encoder.encode(data))
+        writer.releaseLock()
+      } else {
+        throw new Error(`Failed to get writer for ${device}`)
+      }
     } else {
-      this.status[device].error = 'Device not connected'
+      const error = `Device ${device} not connected`
+      this.status[device].error = error
+      throw new Error(error)
     }
   }
 
-  async disconnect(device: DeviceType) {
+  isConnected(device: DeviceType): boolean {
+    return this.status[device].connected && (
+      this.wsConnections[device]?.readyState === WebSocket.OPEN ||
+      !!this.comPorts[device]
+    )
+  }
+
+  async disconnect(device: DeviceType): Promise<void> {
     if (this.wsConnections[device]) {
       this.wsConnections[device]?.close()
       delete this.wsConnections[device]
@@ -202,6 +225,7 @@ export class DeviceClient extends EventEmitter {
       delete this.comPorts[device]
     }
     this.status[device].connected = false
+    this.emit('disconnected', device)
   }
 }
 

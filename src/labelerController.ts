@@ -66,7 +66,12 @@ class LabelerController {
     void this.initializeScope().then(() => {
       this.$scope.$digest()
     })
-    this.deviceClient.connect('barcode')
+    
+    // Connect to barcode device and send ACTIVE message
+    this.deviceClient.connectAndSend('barcode', 'ACTIVE').catch((err) => {
+      console.error('Error connecting to barcode device or sending ACTIVE:', err)
+    })
+
     // onblur send INACTIVE to barcode device
     // onfocus send ACTIVE to barcode device
     window.addEventListener('blur', () => {
@@ -97,8 +102,18 @@ class LabelerController {
     this.deviceClient.on('message', (deviceType: DeviceType, message: string) => {
       console.log(`Device ${deviceType} message:`, message)
     })
-    this.deviceClient.sendToDevice('barcode', 'ACTIVE').catch((err) => {
-      console.error('Error sending ACTIVE to barcode device:', err)
+    // Listen for connection events
+    this.deviceClient.on('connected', (deviceType: DeviceType) => {
+      console.log(`Device ${deviceType} connected`)
+      this.notification.success(`${deviceType} device connected`)
+    })
+    this.deviceClient.on('disconnected', (deviceType: DeviceType) => {
+      console.log(`Device ${deviceType} disconnected`)
+      this.notification.info(`${deviceType} device disconnected`)
+    })
+    this.deviceClient.on('error', (deviceType: DeviceType, error: Error) => {
+      console.error(`Device ${deviceType} error:`, error)
+      this.notification.error(`${deviceType} device error: ${error}`)
     })
   }
 
